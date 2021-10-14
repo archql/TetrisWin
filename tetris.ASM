@@ -30,6 +30,7 @@ section '.data' data readable writable
         Text             db '¬сем привет!', 13;,0
         Text.Random      db 16 dup ?, 0
         _wav_play        db 'play c:\windows\media\tada.wav',0 ; 'play c:\windows\media\tada.wav wait'
+        _wav_play_tetris db 'tetris.wav',0
 
         buf_format       db '%10d', 0
         buffer           db 16 dup ' ', 0
@@ -51,9 +52,9 @@ section '.data' data readable writable
         hwnd            dd      ?
         hrc             dd      ?
                 ;соотношение разрешений экрана по горизонтали и вертикали
-        ratio           dq ?
+        ratio           dq      ?
 
-        Rect            RECT    10, 10, 110, 110
+        ;Rect            RECT    10, 10, 110, 110
         rc              RECT
 
         length          dd      120
@@ -71,13 +72,16 @@ section '.data' data readable writable
         blocksArrCopy:  times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
                 db    FIELD_W dup $01
 
-        Color_Table     dd      0.1, 0.1, 0.6,\
-                                0.3, 0.9, 0.3,\
-                                1.0, 1.0, 1.0,\
-                                1.0, 1.0, 1.0,\
-                                1.0, 1.0, 1.0,\
-                                1.0, 1.0, 1.0,\
-                                1.0, 1.0, 1.0
+        Color_Table     dd      0.271, 0.271, 0.271,\
+                                0.7, 0.7, 0.7,\
+                                0.45, 0.45, 0.45,\
+                                0.851, 0.012, 0.408,\
+                                0.761, 0.91, 0.071,\
+                                0.024, 0.737, 0.757,\
+                                0.733, 0.678, 1.0,\
+                                1.0, 0.831, 0.0,\
+                                0.078, 0.461, 0.82,\
+                                0.078, 0.82, 0.82
         colorsNum       dw      ($ - Color_Table)/12 - 1
 
         figArr          dw      0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\
@@ -106,8 +110,8 @@ section '.data' data readable writable
         Game.Score              dw      ?
         Game.Playing            dw      ?
         Game.Pause              dw      ?
-        Game.FigsPlaced         dw      ?
-        Game.CurSoundTick       dw      ?
+        ;Game.FigsPlaced         dw      ?
+        ;Game.CurSoundTick       dw      ?
         
 ;===========================
 
@@ -115,7 +119,8 @@ section '.code' code executable readable  ; code section
 
 start:
         ; test playsound
-        invoke  mciSendString, _wav_play, 0, 0, 0
+        ;invoke  mciSendString, _wav_play, 0, 0, 0
+        ;invoke  PlaySound, _wav_play_tetris, 0, 8 + 1;SND_LOOP + SND_ASYNC
 
         call    Random.Initialize
 
@@ -136,7 +141,7 @@ start:
         ; - adress of message text 1st letter
         ; - adress of caption text 1st letter
         ; - window style
-        invoke  MessageBox, ebx, Text, Caption, MB_OK; invoke -- special windows macro; waits for user reaction!!;
+        ;invoke  MessageBox, ebx, Text, Caption, MB_OK; invoke -- special windows macro; waits for user reaction!!;
 
         ; window creation process
         invoke  GetModuleHandle, ebx
@@ -276,6 +281,12 @@ proc WindowProc uses ebx esi edi,\
   .wmpaint:
         invoke  GetTickCount
         push    eax; copy res
+        ; CHECK IF GAME RUNNING
+        cmp     [Game.Playing], TRUE
+        jne     @F
+        cmp     [Game.Pause], FALSE
+        jne     @F
+
         ; define game tick update
         sub     ax, [Game.CurTick]
         cmp     ax, 300; temp
@@ -315,7 +326,7 @@ proc WindowProc uses ebx esi edi,\
         movzx   esi, word [Game.FigX]  ; X
         push    bx esi ; save
         movzx   edi, word [Game.FigPreviewY]  ; Y
-        stdcall View.DrawFigure, 1
+        stdcall View.DrawFigure, 2
         ; draw figure
         pop     esi bx
         movzx   edi, word [Game.FigY]  ; Y
@@ -325,7 +336,7 @@ proc WindowProc uses ebx esi edi,\
         mov     bx,  word [Game.NextFig]
         mov     esi, FIELD_W + 3; X
         mov     edi, 2  ; Y
-        stdcall View.DrawFigure, 2;//????
+        stdcall View.DrawFigure, 3;//????
 
         invoke  SwapBuffers,[hdc]
         xor     eax,eax
@@ -334,9 +345,26 @@ proc WindowProc uses ebx esi edi,\
         ; save key pressed
         mov     eax, [wparam]
 
+        cmp     eax, 'R' ; restart
+        jne     @F
+        mov     [Game.Playing], TRUE
+        stdcall Game.Initialize
+@@:
+        cmp     eax, 'P'
+        jne     @F
+        xor     [Game.Pause], 1
+@@:
+        cmp     [Game.Playing], TRUE
+        jne     @F
+        cmp     [Game.Pause], FALSE
+        jne     @F
         stdcall Game.KeyEvent
+@@:
 
         cmp     eax, VK_ESCAPE
+        jne     .defwndproc
+        cmp     [Game.Playing], FALSE
+        mov     [Game.Playing], FALSE
         jne     .defwndproc
   .wmdestroy:
         invoke  wglMakeCurrent, 0, 0
@@ -373,11 +401,9 @@ proc Game.Initialize
 
         mov     [Game.TickSpeed], START_TICK_SPEED
         mov     [Game.Pause], TRUE;
-        mov     [Game.Playing], FALSE
+        mov     [Game.Playing], TRUE;temp!!FALSE
 
-        mov     [Game.CurSoundTick], 0
-
-        mov     [Game.FigPreviewY], 0
+        ;mov     [Game.CurSoundTick], 0
 
         ;fld     [Game.SpeedMul]
 
@@ -399,6 +425,7 @@ proc Game.GenNewFig
         mov     [Game.FigX], FIELD_W/2-2
         mov     [Game.FigY], 0
         mov     [Game.CurFigRotation], 0
+        mov     [Game.FigPreviewY], 0
 
         ; setup new color
         movzx   eax, [colorsNum]
@@ -420,6 +447,10 @@ proc Game.GenNewFig
         mov     ax, [figArr + ebx]
         mov     [Game.NextFig], ax
 
+        ; update screen
+        xor      eax, eax
+        stdcall  Game.KeyEvent
+
         ret
 endp
 
@@ -437,10 +468,52 @@ proc Game.KeyEvent uses eax
         mov     dx, [Game.CurFigRotation]
 
         ; game logics here
+        ; move left-right-rotate
+        cmp     eax, VK_LEFT;'a'
+        jne     @F
+        dec     si
+@@:
+        cmp     eax, VK_RIGHT ;'d'
+        jne     @F
+        inc     si
+@@:
+        ; decode key and apply rotation
+        cmp     eax, VK_UP  ; rotation
+        jne     @F
+        inc     dx
+        and     dx, 0000'0000'0000'0011b
+@@:
+        cmp     eax, VK_DOWN ; rotation
+        jne     @F
+        dec     dx
+        and     dx, 0000'0000'0000'0011b
+@@:
         ; get figure (duplicated!)
         add     bx, dx ; apply rotation
         shl     bx, 1  ; each fig is 2 bytes long
+        ; TEST
+        ;cmp     si, $FFFF
+        ;je      .EndKeyEvent
+
         mov     bx, [figArr + ebx] ; is cur figure
+
+        ; check collisions
+        push    ebx esi edi edx eax ecx
+        stdcall Game.CollideFigure
+        test    ax, ax
+        pop     ecx eax edx edi esi ebx
+
+        jz      @F
+        ; restore changes if collided
+        ; get figure
+        mov     dx, [Game.CurFigRotation]
+        add     cx, dx  ; apply rotation
+        shl     cx, 1  ; each fig is 2 bytes long
+        mov     bx, [figArr + ecx] ; is cur figure
+        ; restore x cord
+        mov     si, [Game.FigX] ; initial X
+
+@@:
         ; check timer update
         cmp     eax, 7; reserved for timer update
         jne     @F
@@ -451,12 +524,12 @@ proc Game.KeyEvent uses eax
         ; go down loop
 .GoDownLoop:
         ; check on collision
-        push    ebx esi edx eax ecx edi
+        push    eax ebx esi edx edi
         stdcall Game.CollideFigure; esi - X edi - Y bx - FIG
         pop     edi ; reset Y to new
         inc     edi
         test    ax, ax
-        pop     ecx eax edx esi ebx
+        pop     edx esi ebx eax
         jz      .GoDownLoop
         ; collided
         sub     di, 2
@@ -467,45 +540,11 @@ proc Game.KeyEvent uses eax
         jb      .Collided
         ; save new di as preview Y
         mov     [Game.FigPreviewY], di
-        ; restore old Y
-        mov     di, word [Game.FigY]
-        ; move left-right-rotate
-        cmp     eax, 'A';VK_LEFT;'a'
-        jne     @F
-        dec     si
-@@:
-        cmp     eax, 'D';VK_RIGHT ;'d'
-        jne     @F
-        inc     si
-@@:
-        ; decode key and apply rotation
-        cmp     eax, 'W'  ; rotation
-        jne     @F
-        inc     dx
-        and     dx, 0000'0000'0000'0011b
-@@:
-        cmp     eax, 'S' ; rotation
-        jne     @F
-        dec     dx
-        and     dx, 0000'0000'0000'0011b
-@@:
-        ; get figure
-        add     cx, dx ; apply rotation
-        shl     cx, 1  ; each fig is 2 bytes long
-        mov     bx, [figArr + ecx] ; is cur figure
 
-        ; check collisions
-        push    ebx esi edi edx
-        stdcall Game.CollideFigure
-        pop     edx edi esi ebx
-        test    ax, ax
-
-        jnz     .End_key_event; ignore changes if collided
 
         ; noncollided
         ; EVERYTHING IS GOOD
         mov     [Game.FigX], si
-        mov     [Game.FigY], di
         mov     [Game.CurFig], bx
         mov     [Game.CurFigRotation], dx
         jmp     .End_key_event
@@ -517,9 +556,11 @@ proc Game.KeyEvent uses eax
         stdcall Game.PlaceFigure
         pop     edx edi esi ebx
         ; check on loose
-        ;stdcall Game.CheckOnEnd
+        stdcall Game.CheckOnEnd
+        xor     ax, 1
+        mov     [Game.Playing], ax
         ; check on scrore
-        ;stdcall Game.CheckOnLine
+        stdcall Game.CheckOnLine
         ; gen new fig (temp)
         stdcall Game.GenNewFig
         ;mov     [Game.FigY], 0
@@ -542,7 +583,7 @@ proc Game.CheckOnEnd uses ebx ecx
         mov     eax, TRUE
         jmp     .EndProc
 @@:
-        inc     bx
+        inc     ebx
         loop    .CheckLoop
 .EndProc:
         ret
@@ -817,6 +858,8 @@ section '.idata' import data readable writeable
         include 'api\gdi32.inc'
         include 'api\kernel32.inc'
         include 'api\user32.inc'
+        ;include 'api\winmm.inc'
+        ;include 'windows.inc'
         ;include 'lib\gdi32.lib'
                 
         include 'opengl.inc'
@@ -852,7 +895,8 @@ section '.idata' import data readable writeable
         ;CreateSolidBrush, 'CreateSolidBrush'
 
         import winmm,\
-        mciSendString,'mciSendStringA'
+        mciSendString,'mciSendStringA',\
+        PlaySound , 'PlaySound'
 
         ;include 'api\kernel32.inc'
         ;include 'api\user32.inc'
