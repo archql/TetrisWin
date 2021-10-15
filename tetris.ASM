@@ -1,7 +1,7 @@
 ;include '%fasminc%/win32a.inc' ;;ax
 ;include '%fasminc%/win32a.inc'
 
-format PE GUI 4.0
+format PE GUI 5.0
 
 include '%fasminc%/macro/proc32.inc'
 include 'win32ax.inc'
@@ -16,12 +16,16 @@ entry start
         FIELD_W = 12; 12
         FIELD_H = 23
 
+        TOP_LINE= 3
+
         BLOCK_W = 7
 
         TRUE    = 1
         FALSE   = 0
 
-        START_TICK_SPEED = 10
+        START_TICK_SPEED = 500
+
+        INC_EVERY_FIGS=15;2^N-1
 
         _style equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 ;===========================
@@ -32,12 +36,12 @@ section '.data' data readable writable
         _wav_play        db 'play c:\windows\media\tada.wav',0 ; 'play c:\windows\media\tada.wav wait'
         _wav_play_tetris db 'tetris.wav',0
 
-        buf_format       db '%10d', 0
-        buffer           db 16 dup ' ', 0
+        buf_format       db '%d', 0
+        buffer           db 16 dup 'A', 0
 
 
         _class          TCHAR    'FASMW32',0
-        _title          TCHAR    'Hello from FASM!',0
+        _title          TCHAR    'TETRIS WIN v.1.0.0',0
 
         ;wc              WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, NULL, NULL, _class ;COLOR_BTNFACE + 1
         wc              WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, NULL, NULL, _class
@@ -59,7 +63,7 @@ section '.data' data readable writable
 
         length          dd      120
 
-        ;========Game model==============
+        ;========
         ;FIELD_H         dd      23
         DFIELD_H        dq      24.0
         DFIELD_W        dq      ?
@@ -71,6 +75,7 @@ section '.data' data readable writable
                 db    FIELD_W dup $01
         blocksArrCopy:  times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
                 db    FIELD_W dup $01
+        glowArr:        db     FIELD_H dup $00
 
         Color_Table     dd      0.271, 0.271, 0.271,\
                                 0.7, 0.7, 0.7,\
@@ -108,10 +113,31 @@ section '.data' data readable writable
         Game.TickSpeed          dw      ?
         Game.CurTick            dw      ?
         Game.Score              dw      ?
+        Game.HighScore          dw      ?
         Game.Playing            dw      ?
         Game.Pause              dw      ?
-        ;Game.FigsPlaced         dw      ?
+        Game.FigsPlaced         dw      ?
         ;Game.CurSoundTick       dw      ?
+        Game.SpeedMul           dq      0.96
+
+        ;========Game Settings==============
+        Settings.strFilename      db    'settings.txt', 0
+        Settings.fileHandle       dd    -1; INVALIF_FILE_HANDLE
+        Settings.buffer           db    64 dup ?
+        Settings.fileSize         dd    ?
+        Settings.BytesProceed     dd    ?
+
+        ; ==============
+        ; text test
+        ;DIM ArialFont AS GLOBAL GLuint '(aka; DWORD)'
+
+        tmp_tmp                   dd    0.0
+        tmp_tmp_delta             dd    20.0
+        Glow.SZ_delta             dd    0.05
+        Glow.SZ_cur               dd    ?
+        Glow.right                dd    ?
+        Glow.left                 dd    ?
+        Glow.Neg                  dd    -1.0
         
 ;===========================
 
@@ -120,7 +146,7 @@ section '.code' code executable readable  ; code section
 start:
         ; test playsound
         ;invoke  mciSendString, _wav_play, 0, 0, 0
-        ;invoke  PlaySound, _wav_play_tetris, 0, 8 + 1;SND_LOOP + SND_ASYNC
+
 
         call    Random.Initialize
 
@@ -225,6 +251,13 @@ proc WindowProc uses ebx esi edi,\
         ; set fone color
         invoke  glClearColor, 0.07, 0.13, 0.17, 1.0
 
+        ; set font
+        ;invoke  glGenLists
+        ;invoke  CreateFont
+        ;invoke  SelectObject
+        ;invoke  wglUseFontBitmapsA
+        ;invoke  DeleteObject
+
 
         ; set clock
         invoke  GetTickCount
@@ -289,7 +322,7 @@ proc WindowProc uses ebx esi edi,\
 
         ; define game tick update
         sub     ax, [Game.CurTick]
-        cmp     ax, 300; temp
+        cmp     ax, [Game.TickSpeed];300; temp
         jb      @F
         add     [Game.CurTick], ax
         mov     eax, 7; key with ID 7 is undefined
@@ -308,16 +341,7 @@ proc WindowProc uses ebx esi edi,\
 
         invoke  glPointSize, [rect_size] ; pixels!!!!
 
-        invoke  glBegin, GL_QUADS
-        invoke  glColor3f,1.0,0.1,0.1
-        invoke  glVertex3f,-0.6,-0.6,0.0
-        invoke  glColor3f,0.1,0.1,0.1
-        invoke  glVertex3f,0.6,-0.6,0.0
-        invoke  glColor3f,0.1,0.1,1.0
-        invoke  glVertex3f,0.6,0.6,0.0
-        invoke  glColor3f,1.0,0.1,1.0
-        invoke  glVertex3f,-0.6,0.6,0.0
-        invoke  glEnd
+
 
         ; draw field
         stdcall View.DrawField
@@ -337,8 +361,93 @@ proc WindowProc uses ebx esi edi,\
         mov     esi, FIELD_W + 3; X
         mov     edi, 2  ; Y
         stdcall View.DrawFigure, 3;//????
+        ; test letters GL_LINES
+        invoke  glLineWidth, 3.0
+
+        invoke  glPushMatrix;
+        invoke  glTranslatef, 5.0, 5.0, 0
+
+        invoke  glBegin, GL_LINE_STRIP
+
+        invoke  glVertex2f, 0.0, 0.8;
+        invoke  glVertex2f, 0.25, 0.0;
+        invoke  glVertex2f, 0.5, 0.8;
+
+        invoke  glEnd
+
+        invoke  glTranslatef, 0.5, 0.0, 0
+
+        invoke  glBegin, GL_LINE_STRIP
+
+        invoke  glVertex2f, 0.0, 1.0;
+        invoke  glVertex2f, 0.5, 0.0;
+        invoke  glVertex2f, 1.0, 1.0;
+
+        invoke  glEnd
+
+        invoke  glPopMatrix
+        ; test glow draw
+        ;mov     esi, 0.5
+        ;mov     edi, -0.5
+
+        ;fld     [tmp_tmp]
+        ;fld     [tmp_tmp_delta]
+        ;faddp
+        ;fstp    [tmp_tmp]
+
+        ;mov     ecx, FIELD_H-1
+     ;.glow_draw:
+        ;movzx  ebx, byte [ecx + glowArr]
+        ;mov     ebx, 10; tmp
+        ;mov    [Glow.SZ_cur], ebx ; copy for fld mul
+        ;cmp    ebx, 0
+        ;je     @F
+        ;fld    [Glow.SZ_delta]
+        ;fild   [Glow.SZ_cur]
+        ;fmulp  st1, st0
+        ;fst    dword [Glow.right]
+        ;fild   [Glow.Neg]
+        ;fimulp st1, st0
+        ;fstp   dword [Glow.left]
+
+        ;mov    esi, [Glow.right]
+        ;mov    edi, [Glow.left]
+
+        ; test rotating rect draw
+        ;invoke  glPushMatrix;
+        ;invoke  glTranslatef, 5.0, 5.0, 0
+        ;invoke  glRotatef, [tmp_tmp], 0.0, 0.0, 5.0;
+        ;invoke  glBegin, GL_QUADS
+
+                ;invoke  glColor3f,1.0,0.1,0.1
+                ;invoke  glVertex2f,edi,edi
+                ;invoke  glColor3f,0.1,0.1,0.1
+                ;invoke  glVertex2f,esi,edi
+                ;invoke  glColor3f,0.1,0.1,1.0
+                ;invoke  glVertex2f,esi,esi
+                ;invoke  glColor3f,1.0,0.1,1.0
+                ;invoke  glVertex2f,edi,esi
+
+        ;invoke  glEnd
+        ;invoke  glPopMatrix
+
+      ;@@:
+        ;loop  .glow_draw
+
+        ; end test glow draw
+
+        ; test text draW
+        ;invoke  glPushMatrix
+        ;invoke  glLoadIdentity
+        ;invoke  glRasterPos2i, 10, 1014 ;  // move in 10 pixels from the left and bottom edges
+        ;mov     ecx, 10
+    ;.draw_text:
+        ;invoke  glutBitmapCharacter, 2, 'A' ;GLUT_BITMAP_TIMES_ROMAN_10
+        ;loop    .draw_text
+        ;tEST text draw end
 
         invoke  SwapBuffers,[hdc]
+
         xor     eax,eax
         jmp     .finish
   .wmkeydown:
@@ -347,7 +456,8 @@ proc WindowProc uses ebx esi edi,\
 
         cmp     eax, 'R' ; restart
         jne     @F
-        mov     [Game.Playing], TRUE
+        ;mov     [Game.Playing], TRUE
+        stdcall Game.End
         stdcall Game.Initialize
 @@:
         cmp     eax, 'P'
@@ -364,9 +474,15 @@ proc WindowProc uses ebx esi edi,\
         cmp     eax, VK_ESCAPE
         jne     .defwndproc
         cmp     [Game.Playing], FALSE
-        mov     [Game.Playing], FALSE
-        jne     .defwndproc
+        je      .wmdestroy
+        ; stop game
+        stdcall Game.End
+        jmp     .defwndproc
+
   .wmdestroy:
+        ; file
+        invoke  CloseHandle, [Settings.fileHandle]
+        ; gl & window
         invoke  wglMakeCurrent, 0, 0
         invoke  wglDeleteContext,[hrc]
         invoke  ReleaseDC,[hwnd],[hdc]
@@ -393,7 +509,8 @@ proc Game.Initialize
         ;mov     word [Game.ScoreStrEnd - 3], $0000; clear string for score
         ;mov     word [Game.ScoreStrEnd - 1], $0000
 
-        mov     [Game.Score], 0; set score to 0
+        mov     word [Game.Score], 0; set score to 0
+        stdcall Settings.GetHigh
 
         ; write high scoree
         stdcall Game.GenNewFig
@@ -404,8 +521,10 @@ proc Game.Initialize
         mov     [Game.Playing], TRUE;temp!!FALSE
 
         ;mov     [Game.CurSoundTick], 0
+        invoke  PlaySound, _wav_play_tetris, 0, 8 + 1;SND_LOOP + SND_ASYNC
 
         ;fld     [Game.SpeedMul]
+        mov     [Game.FigsPlaced], 0
 
         ; update screen
                 ; CLEAR
@@ -521,18 +640,20 @@ proc Game.KeyEvent uses eax
 @@:
         ; save old di
         mov     word [Game.FigY], di
+        dec     di
         ; go down loop
 .GoDownLoop:
+        inc     di
         ; check on collision
-        push    eax ebx esi edx edi
+        push    eax ebx esi edx di
         stdcall Game.CollideFigure; esi - X edi - Y bx - FIG
-        pop     edi ; reset Y to new
-        inc     edi
+        ;pop     edi ; reset Y to new
+        ;inc     edi
         test    ax, ax
-        pop     edx esi ebx eax
+        pop     di edx esi ebx eax
         jz      .GoDownLoop
         ; collided
-        sub     di, 2
+        dec     di
         ; speed up on space
         cmp     eax, ' '
         je      .Collided
@@ -558,7 +679,22 @@ proc Game.KeyEvent uses eax
         ; check on loose
         stdcall Game.CheckOnEnd
         xor     ax, 1
-        mov     [Game.Playing], ax
+        test    ax, ax ; temp snd off
+        jnz     @F
+        stdcall Game.End
+        jmp     .End_key_event
+        ; speed up
+        ; inc counts of figure
+        inc     [Game.FigsPlaced]
+        ; encount new speed
+        test    [Game.FigsPlaced], INC_EVERY_FIGS; 111; every 16 figs
+        jnz     @F
+        fild    [Game.TickSpeed]
+        fld     [Game.SpeedMul]
+        fmulp   st1, st0
+        fistp   [Game.TickSpeed]
+@@:
+
         ; check on scrore
         stdcall Game.CheckOnLine
         ; gen new fig (temp)
@@ -576,7 +712,7 @@ proc Game.CheckOnEnd uses ebx ecx
         xor     eax, eax
 
         mov     ecx, FIELD_W - 2
-        mov     ebx, FIELD_W * 3 + 1; from 3rd line
+        mov     ebx, FIELD_W * TOP_LINE + 1; from TOP_LINE line
 .CheckLoop:
         cmp     byte [ebx + blocksArr], 0
         je      @F
@@ -606,8 +742,11 @@ proc Game.CheckOnLine uses dx ebx ecx
 
         inc     ebx
         loop    .InnerCheckLoop
-        ; if non skipped -- rm line
-
+        ; if non skipped -- do changes
+        ; make line glow (line mecanics)
+        mov     edx, [esp + 4]; get ecx
+        mov     byte [edx + glowArr], 10
+        ; rm line
         sub     ebx, FIELD_W
         mov     ecx, ebx
 .RmLineLoop:
@@ -639,6 +778,9 @@ proc Game.CheckOnLine uses dx ebx ecx
 
         add     [Game.Score], ax ; add
 
+        ; play snd
+        invoke  mciSendString, _wav_play, 0, 0, 0
+
         ;push    0
         ;push    [Game.Score]; SCORE
         ;push    Game.ScoreStrEnd
@@ -668,7 +810,7 @@ proc Game.PlaceFigure ;uses eax ecx esi edi ebx
         ; prep cords
         mov     eax, FIELD_W
         mul     di
-        add     esi, eax; esi is cord in matrix
+        add     si, ax; esi is cord in matrix
 
 
         xchg    al, cl ; mov color to al
@@ -705,7 +847,7 @@ proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
         ; prep cords
         mov     eax, FIELD_W
         mul     di
-        add     esi, eax; esi is cord in matrix
+        add     si, ax; esi is cord in matrix
 
         ; result set
         xor     eax, eax
@@ -840,6 +982,85 @@ proc View.DrawRect ;uses ecx, edx
         ret
 endp
 
+;#############GAME END ##############################
+proc Game.End
+        ; set playing false
+        mov     [Game.Playing], FALSE
+        ; stop music
+        invoke  PlaySound, 0, 0, 1;SND_LOOP + SND_ASYNC
+        ; check score if new high
+        mov     cx, [Game.HighScore]
+        mov     ax, word [Game.Score]
+        cmp     ax, cx
+        jle     @F
+        ; save high scrore
+        mov    [Game.HighScore], ax
+        stdcall Settings.SetHigh
+@@:
+        ret
+
+endp
+
+
+;#############GET HIGH SCORE####################
+; high score in ax
+proc Settings.GetHigh
+
+        ; check if created handle still valid
+        cmp     [Settings.fileHandle], INVALID_HANDLE_VALUE
+        jne     @F
+        ; createfile
+        invoke  CreateFileA, Settings.strFilename, GENERIC_WRITE + GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL
+        cmp     eax, INVALID_HANDLE_VALUE
+        je      .EndProc
+        mov     [Settings.fileHandle], eax ; save file handler
+@@:
+        ; temp set pos!!!!!
+        invoke  SetFilePointer, [Settings.fileHandle] , 0, 0, FILE_BEGIN
+        ; get sz
+        invoke GetFileSize, [Settings.fileHandle], 0;
+        inc eax
+        ;mov [nSize], eax
+        ; read high
+        invoke  ReadFile, [Settings.fileHandle], Settings.buffer, eax, Settings.BytesProceed, 0 ; [nSize]
+
+        cmp     [Settings.BytesProceed], 0
+        je      .EndProc
+        ; !!!!
+        ;invoke CloseHandle, [Settings.fileHandle]
+        ; set high
+        mov     ax, word [Settings.buffer]
+        jmp     @F ; skip reset score
+.EndProc:
+        xor     ax, ax
+@@:
+        mov     word [Game.HighScore], ax  ;[Settings.strHighScore]
+        ret
+endp
+
+;#############SET HIGH SCORE####################
+; high score in ax
+proc Settings.SetHigh
+        ; convert num to str
+        ;cinvoke wsprintfA, Settings.buffer, buf_format, eax
+        ; mov high to buffer
+        mov     word [Settings.buffer], ax
+        ; temp set pos!!!!!
+        invoke  SetFilePointer, [Settings.fileHandle] , 0, 0, FILE_BEGIN
+        ; write high
+        invoke  WriteFile, [Settings.fileHandle], Settings.buffer, 2, Settings.BytesProceed, 0 ; [nSize]
+        ;invoke  GetLastError
+        ;xor     ax, ax
+        ; !!!!
+        jmp     @F ; skip reset score
+.EndProc:
+        xor     ax, ax
+@@:
+        ret
+
+        ;invoke  glutBitmapCharacter
+endp
+
 
 
 ;===========================
@@ -851,7 +1072,8 @@ section '.idata' import data readable writeable
         user32,'USER32.DLL',\
         winmm,'WINMM.DLL',\
         opengl,'OPENGL32.DLL',\
-        glu, 'GLU32.DLL'
+        glu, 'GLU32.DLL',\
+        glut, 'GL/GLUT32.DLL'
 
 
 
@@ -863,6 +1085,7 @@ section '.idata' import data readable writeable
         ;include 'lib\gdi32.lib'
                 
         include 'opengl.inc'
+        include 'glut.inc'
 
         ;import  opengl,\
         ;wglCreateContext,'wglCreateContext'
@@ -903,7 +1126,8 @@ section '.idata' import data readable writeable
 
         include 'units/random.h'
 
-
+;import glut,\
+         ;glutBitmapCharacter, 'glutBitmapCharacter'
 
 import opengl,\
          glAccum,'glAccum',\
@@ -1301,5 +1525,6 @@ import opengl,\
 import glu,\
          gluPerspective,'gluPerspective',\
          gluOrtho2D, 'gluOrtho2D'
+
 
 
