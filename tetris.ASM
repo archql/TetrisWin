@@ -23,7 +23,7 @@ entry start
         TRUE    = 1
         FALSE   = 0
 
-        START_TICK_SPEED = 500
+        START_TICK_SPEED = 500;500
 
         NUM_OF_CHARACTERS = 128
 
@@ -122,7 +122,7 @@ section '.data' data readable writable
         Game.Pause              dw      ?
         Game.FigsPlaced         dw      ?
         ;Game.CurSoundTick       dw      ?
-        Game.SpeedMul           dq      0.96
+        Game.SpeedMul           dq      0.96;96
 
         ;========Game Settings==============
         Settings.strFilename      db    'settings.txt', 0
@@ -133,6 +133,8 @@ section '.data' data readable writable
 
 
         ; =======TEXT==============================
+        font_size                 dd    ?
+
         SCOLE_LEN_CONST = 5
         Str.NextFig               db    'NEXT FIGURE'
         Str.NextFig.Len           dd    $ - Str.NextFig
@@ -260,15 +262,7 @@ proc WindowProc uses ebx esi edi,\
         ; set fone color
         invoke  glClearColor, 0.07, 0.13, 0.17, 1.0
 
-        ; set font
-        xor     ebx, ebx
-        ; create font "Lucida Console" sz -9
-        ;invoke  glShadeModel, GL_SMOOTH
-        invoke  CreateFont,-27, ebx, ebx, ebx, ebx,\
-                          ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, _font_name
-        invoke  SelectObject, [hdc], eax
 
-        invoke  wglUseFontBitmapsA, [hdc], ebx, NUM_OF_CHARACTERS, ebx
 
         ; set clock
         invoke  GetTickCount
@@ -292,7 +286,7 @@ proc WindowProc uses ebx esi edi,\
         ;fstp    [ratio] ; screen ratio
 
 
-        add     esp, 4; reserve stack for cell width
+        sub     esp, 4; reserve stack for cell width
         ; get rect size
         fild    dword [rc.bottom]
         fdiv    [DFIELD_H]
@@ -300,15 +294,30 @@ proc WindowProc uses ebx esi edi,\
 
         fmul    [RECT_MODIFIER]; modify (rect should be < than cell on screen)
         frndint  ; round
-        fstp    [rect_size]
+        fst     [rect_size]
+        ;fchs
+        fistp   [font_size]
+
         ; get width ratio
         fild    [rc.right]
         ; use saved cell width
         fdiv    dword [esp]
         ; move stack back
-        sub     esp, 4
+        add     esp, 4
         ; get result
         fstp    [DFIELD_W]
+
+        ; set font
+        xor     ebx, ebx
+
+        ;delete old fonts
+        invoke  glDeleteLists, 0, NUM_OF_CHARACTERS
+        ; create font "Lucida Console" sz -9
+        invoke  CreateFont,[font_size], ebx, ebx, ebx, ebx,\
+                          ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, _font_name
+        invoke  SelectObject, [hdc], eax
+
+        invoke  wglUseFontBitmapsA, [hdc], ebx, NUM_OF_CHARACTERS, ebx
 
         ; set projection
         invoke  glMatrixMode, GL_PROJECTION
@@ -405,54 +414,75 @@ proc WindowProc uses ebx esi edi,\
         ;mov     esi, 0.5
         ;mov     edi, -0.5
 
+        ; setup rotation
         fld     [tmp_tmp]
         fld     [tmp_tmp_delta]
         faddp
         fstp    [tmp_tmp]
-
+        ; draw special effect
         mov     ecx, FIELD_H-1
      .glow_draw:
         movzx  ebx, byte [ecx + glowArr]
         ;mov     ebx, 5; tmp
-        mov    [Glow.SZ_cur], ebx ; copy for fld mul
         cmp    ebx, 0
         je     @F
+        push   ebx ; copy for fld mul (sp-=4)
+        ; dec effect
+        dec    byte [ecx + glowArr]
+        ; count cur effect sz
         fld    [Glow.SZ_delta]
-        fild   [Glow.SZ_cur]
+        fild   dword [esp]
         fmulp  st1, st0
         fst    dword [Glow.right]
         fchs
         fstp   dword [Glow.left]
-
+        ; load it to regs
         mov    esi, [Glow.right]
         mov    edi, [Glow.left]
 
+        ; load ebx to fpu (Y cord)
+        mov    dword [esp], ecx; load Y cord
+        fild   dword [esp]     ; load Y cord to FPU
+        fstp   dword [esp]     ; convert to float Y cord
 
-        push    ecx
+        sub     esp, 4 ; reserve place on stack to float X cord  (sp-=4)
+
+        push    ecx            ; (sp-=4)
         mov     ecx, FIELD_W - 1
      .inner_glow_draw:
-        push    ecx
+        push    ecx            ; (sp-=4)
+        ; load X cord (ecx) to FPU
+        fild    dword [esp]    ; cur int X cord
+        fstp    dword [esp + 8]
+
         ; test rotating rect draw
         invoke  glPushMatrix;
-        invoke  glTranslatef, 1, 2, 0  ; dword[esp], ebx
+        invoke  glTranslatef, dword [esp + 16], dword [esp + 16], 0.0  ;  esp -= 4 happened 2xtimes
         invoke  glRotatef, [tmp_tmp], 0.0, 0.0, 5.0;
         invoke  glBegin, GL_QUADS
 
                 ;invoke  glColor3f,1.0,0.1,0.1
-                invoke  glVertex2f,edi,edi
+                invoke  glVertex2f, edi, edi
                 ;invoke  glColor3f,0.1,0.1,0.1
-                invoke  glVertex2f,esi,edi
+                invoke  glVertex2f, esi, edi
                 ;invoke  glColor3f,0.1,0.1,1.0
-                invoke  glVertex2f,esi,esi
+                invoke  glVertex2f, esi, esi
                 ;invoke  glColor3f,1.0,0.1,1.0
-                invoke  glVertex2f,edi,esi
+                invoke  glVertex2f, edi, esi
 
         invoke  glEnd
         invoke  glPopMatrix
-        pop     ecx
-        loop    .inner_glow_draw
+        ; go next X cord
+        fsub    st0, st1; st1 is 1
 
-        pop     ecx
+        ; load loop cntr (X cord)
+        pop     ecx    ;(sp+=4)
+        loop    .inner_glow_draw
+        ; load loop cntr (Y cord)
+        pop     ecx    ;(sp+=4)
+        ; free stack (from reserved for X and Y cord)
+        add     esp, 8 ;(sp+=8)
+        ; go next
       @@:
         dec     ecx
         test    ecx, ecx
@@ -515,7 +545,7 @@ proc WindowProc uses ebx esi edi,\
   .wmdestroy:
         ; file
         invoke  CloseHandle, [Settings.fileHandle]
-        invoke  glDeleteLists, 1000, NUM_OF_CHARACTERS
+        invoke  glDeleteLists, 0, NUM_OF_CHARACTERS
         ; gl & window
         invoke  wglMakeCurrent, 0, 0
         invoke  wglDeleteContext,[hrc]
@@ -786,7 +816,8 @@ proc Game.CheckOnLine uses dx ebx ecx
         loop    .InnerCheckLoop
         ; if non skipped -- do changes
         ; make line glow (line mecanics)
-        mov     edx, [esp + 4]; get ecx
+        mov     edx, FIELD_H
+        sub     edx, [esp + 4]; get ecx
         mov     byte [edx + glowArr], 10
         ; rm line
         sub     ebx, FIELD_W
