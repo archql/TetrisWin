@@ -25,9 +25,7 @@ entry start
 
         START_TICK_SPEED = 500
 
-        NUM_OF_CHARACTERS = 128
-
-        INC_EVERY_FIGS=15;15;2^N-1
+        INC_EVERY_FIGS=15;2^N-1
 
         _style equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 ;===========================
@@ -40,8 +38,6 @@ section '.data' data readable writable
 
         buf_format       db '%d', 0
         buffer           db 16 dup 'A', 0
-
-        _font_name       db "Lucida Console", 0
 
 
         _class          TCHAR    'FASMW32',0
@@ -131,15 +127,10 @@ section '.data' data readable writable
         Settings.fileSize         dd    ?
         Settings.BytesProceed     dd    ?
 
+        ; ==============
+        ; text test
+        ;DIM ArialFont AS GLOBAL GLuint '(aka; DWORD)'
 
-        ; =======TEXT==============================
-        SCOLE_LEN_CONST = 5
-        Str.NextFig               db    'NEXT FIGURE'
-        Str.NextFig.Len           dd    $ - Str.NextFig
-        Str.HighScore             db    SCOLE_LEN_CONST dup ' '
-        Str.Score                 db    SCOLE_LEN_CONST dup ' '
-        Str.Score.Format          db    '%4d', 0
-        ;========ANIMATIONS========================
         tmp_tmp                   dd    0.0
         tmp_tmp_delta             dd    20.0
         Glow.SZ_delta             dd    0.05
@@ -233,7 +224,7 @@ proc WindowProc uses ebx esi edi,\
         jmp     .finish
   .wmcreate:
         invoke  GetDC,[hwnd]
-        mov     [hdc], eax
+        mov     [hdc],eax
 
         ; initialize OpenGL
         ;mov     edi,pfd
@@ -261,14 +252,12 @@ proc WindowProc uses ebx esi edi,\
         invoke  glClearColor, 0.07, 0.13, 0.17, 1.0
 
         ; set font
-        xor     ebx, ebx
-        ; create font "Lucida Console" sz -9
-        ;invoke  glShadeModel, GL_SMOOTH
-        invoke  CreateFont,-27, ebx, ebx, ebx, ebx,\
-                          ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, _font_name
-        invoke  SelectObject, [hdc], eax
+        ;invoke  glGenLists
+        ;invoke  CreateFont
+        ;invoke  SelectObject
+        ;invoke  wglUseFontBitmapsA
+        ;invoke  DeleteObject
 
-        invoke  wglUseFontBitmapsA, [hdc], ebx, NUM_OF_CHARACTERS, ebx
 
         ; set clock
         invoke  GetTickCount
@@ -287,9 +276,9 @@ proc WindowProc uses ebx esi edi,\
         invoke  GetSystemMetrics, ebx  ; width
         push    eax
 
-        ;fild    dword [esp]; wdt
-        ;fidiv   dword [esp+4] ; hei
-        ;fstp    [ratio] ; screen ratio
+        fild    dword [esp]; wdt
+        fidiv   dword [esp+4] ; hei
+        fstp    [ratio] ; screen ratio
 
 
         add     esp, 4; reserve stack for cell width
@@ -373,101 +362,79 @@ proc WindowProc uses ebx esi edi,\
         mov     edi, 2  ; Y
         stdcall View.DrawFigure, 3;//????
         ; test letters GL_LINES
-        ;invoke  glLineWidth, 3.0
+        invoke  glLineWidth, 3.0
 
-        ;invoke  glPushMatrix;
-        ;invoke  glTranslatef, 5.0, 5.0, 0
+        invoke  glPushMatrix;
+        invoke  glTranslatef, 5.0, 5.0, 0
 
-        ;invoke  glBegin, GL_LINE_STRIP
+        invoke  glBegin, GL_LINE_STRIP
 
-        ;invoke  glVertex2f, 0.0, 0.8;
-        ;invoke  glVertex2f, 0.25, 0.0;
-        ;invoke  glVertex2f, 0.5, 0.8;
+        invoke  glVertex2f, 0.0, 0.8;
+        invoke  glVertex2f, 0.25, 0.0;
+        invoke  glVertex2f, 0.5, 0.8;
 
-        ;invoke  glEnd
+        invoke  glEnd
 
-        ;invoke  glTranslatef, 0.5, 0.0, 0
+        invoke  glTranslatef, 0.5, 0.0, 0
 
-        ;invoke  glBegin, GL_LINE_STRIP
+        invoke  glBegin, GL_LINE_STRIP
 
-        ;invoke  glVertex2f, 0.0, 1.0;
-        ;invoke  glVertex2f, 0.5, 0.0;
-        ;invoke  glVertex2f, 1.0, 1.0;
+        invoke  glVertex2f, 0.0, 1.0;
+        invoke  glVertex2f, 0.5, 0.0;
+        invoke  glVertex2f, 1.0, 1.0;
 
-        ;invoke  glEnd
+        invoke  glEnd
 
-        ;invoke  glPopMatrix
-
-        ;invoke  glListBase, 1000
+        invoke  glPopMatrix
         ; test glow draw
-        ;invoke  glListBase, 0
-
         ;mov     esi, 0.5
         ;mov     edi, -0.5
 
-        fld     [tmp_tmp]
-        fld     [tmp_tmp_delta]
-        faddp
-        fstp    [tmp_tmp]
+        ;fld     [tmp_tmp]
+        ;fld     [tmp_tmp_delta]
+        ;faddp
+        ;fstp    [tmp_tmp]
 
-        mov     ecx, FIELD_H-1
-     .glow_draw:
-        movzx  ebx, byte [ecx + glowArr]
-        ;mov     ebx, 5; tmp
-        mov    [Glow.SZ_cur], ebx ; copy for fld mul
-        cmp    ebx, 0
-        je     @F
-        fld    [Glow.SZ_delta]
-        fild   [Glow.SZ_cur]
-        fmulp  st1, st0
-        fst    dword [Glow.right]
-        fchs
-        fstp   dword [Glow.left]
+        ;mov     ecx, FIELD_H-1
+     ;.glow_draw:
+        ;movzx  ebx, byte [ecx + glowArr]
+        ;mov     ebx, 10; tmp
+        ;mov    [Glow.SZ_cur], ebx ; copy for fld mul
+        ;cmp    ebx, 0
+        ;je     @F
+        ;fld    [Glow.SZ_delta]
+        ;fild   [Glow.SZ_cur]
+        ;fmulp  st1, st0
+        ;fst    dword [Glow.right]
+        ;fild   [Glow.Neg]
+        ;fimulp st1, st0
+        ;fstp   dword [Glow.left]
 
-        mov    esi, [Glow.right]
-        mov    edi, [Glow.left]
+        ;mov    esi, [Glow.right]
+        ;mov    edi, [Glow.left]
 
-
-        push    ecx
-        mov     ecx, FIELD_W - 1
-     .inner_glow_draw:
-        push    ecx
         ; test rotating rect draw
-        invoke  glPushMatrix;
-        invoke  glTranslatef, 1, 2, 0  ; dword[esp], ebx
-        invoke  glRotatef, [tmp_tmp], 0.0, 0.0, 5.0;
-        invoke  glBegin, GL_QUADS
+        ;invoke  glPushMatrix;
+        ;invoke  glTranslatef, 5.0, 5.0, 0
+        ;invoke  glRotatef, [tmp_tmp], 0.0, 0.0, 5.0;
+        ;invoke  glBegin, GL_QUADS
 
                 ;invoke  glColor3f,1.0,0.1,0.1
-                invoke  glVertex2f,edi,edi
+                ;invoke  glVertex2f,edi,edi
                 ;invoke  glColor3f,0.1,0.1,0.1
-                invoke  glVertex2f,esi,edi
+                ;invoke  glVertex2f,esi,edi
                 ;invoke  glColor3f,0.1,0.1,1.0
-                invoke  glVertex2f,esi,esi
+                ;invoke  glVertex2f,esi,esi
                 ;invoke  glColor3f,1.0,0.1,1.0
-                invoke  glVertex2f,edi,esi
+                ;invoke  glVertex2f,edi,esi
 
-        invoke  glEnd
-        invoke  glPopMatrix
-        pop     ecx
-        loop    .inner_glow_draw
+        ;invoke  glEnd
+        ;invoke  glPopMatrix
 
-        pop     ecx
-      @@:
-        dec     ecx
-        test    ecx, ecx
-        jnz  .glow_draw
+      ;@@:
+        ;loop  .glow_draw
 
         ; end test glow draw
-        ; draw NEXT FIG
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2;
-        invoke  glCallLists, dword[Str.NextFig.Len], GL_UNSIGNED_BYTE, Str.NextFig
-        ; DRAW SCORE
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 2;
-        invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.Score
-        ; DRAW SCORE HIGH
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 3;
-        invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.HighScore
 
         ; test text draW
         ;invoke  glPushMatrix
@@ -515,7 +482,6 @@ proc WindowProc uses ebx esi edi,\
   .wmdestroy:
         ; file
         invoke  CloseHandle, [Settings.fileHandle]
-        invoke  glDeleteLists, 1000, NUM_OF_CHARACTERS
         ; gl & window
         invoke  wglMakeCurrent, 0, 0
         invoke  wglDeleteContext,[hrc]
@@ -546,17 +512,10 @@ proc Game.Initialize
         mov     word [Game.Score], 0; set score to 0
         stdcall Settings.GetHigh
 
-        ; write high score
-        movzx   eax, word [Game.HighScore]
-        cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
-        ;write score
-        movzx   eax, word [Game.Score]
-        cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
-
-        ; gen new fig
+        ; write high scoree
         stdcall Game.GenNewFig
 
-        ; setup timer
+
         mov     [Game.TickSpeed], START_TICK_SPEED
         mov     [Game.Pause], TRUE;
         mov     [Game.Playing], TRUE;temp!!FALSE
@@ -724,8 +683,6 @@ proc Game.KeyEvent uses eax
         jnz     @F
         stdcall Game.End
         jmp     .End_key_event
-
-@@:
         ; speed up
         ; inc counts of figure
         inc     [Game.FigsPlaced]
@@ -737,6 +694,7 @@ proc Game.KeyEvent uses eax
         fmulp   st1, st0
         fistp   [Game.TickSpeed]
 @@:
+
         ; check on scrore
         stdcall Game.CheckOnLine
         ; gen new fig (temp)
@@ -823,9 +781,13 @@ proc Game.CheckOnLine uses dx ebx ecx
         ; play snd
         invoke  mciSendString, _wav_play, 0, 0, 0
 
-        ;write score
-        movzx   eax, word [Game.Score]
-        cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
+        ;push    0
+        ;push    [Game.Score]; SCORE
+        ;push    Game.ScoreStrEnd
+        ;call    DecimalWrite.ExtMem
+        ;stdcall Screen.DrawRect, FIELD_W*(BLOCK_W+1)+30, 90, 20*5, 5, $00
+        ;stdcall Screen.WriteStr.Mode13h, FIELD_W*(BLOCK_W+1)+30, 90, Game.ScoreStr, $1F, alCustom
+                ; WRITE SCORE
 
 .EndProc:
         ret
@@ -1034,9 +996,6 @@ proc Game.End
         ; save high scrore
         mov    [Game.HighScore], ax
         stdcall Settings.SetHigh
-        ; write high score
-        movzx   eax, word [Game.HighScore]
-        cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
 @@:
         ret
 
@@ -1076,7 +1035,6 @@ proc Settings.GetHigh
         xor     ax, ax
 @@:
         mov     word [Game.HighScore], ax  ;[Settings.strHighScore]
-
         ret
 endp
 
@@ -1099,6 +1057,8 @@ proc Settings.SetHigh
         xor     ax, ax
 @@:
         ret
+
+        ;invoke  glutBitmapCharacter
 endp
 
 
@@ -1112,8 +1072,8 @@ section '.idata' import data readable writeable
         user32,'USER32.DLL',\
         winmm,'WINMM.DLL',\
         opengl,'OPENGL32.DLL',\
-        glu, 'GLU32.DLL';,\
-        ;glut, 'GL/GLUT32.DLL'
+        glu, 'GLU32.DLL',\
+        glut, 'GL/GLUT32.DLL'
 
 
 
