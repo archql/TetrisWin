@@ -24,6 +24,7 @@ entry start
         FALSE   = 0
 
         START_TICK_SPEED = 500;500
+        GLOW_TIME_TICKS  = 15
 
         NUM_OF_CHARACTERS = 128
 
@@ -81,16 +82,31 @@ section '.data' data readable writable
                 db    FIELD_W dup $01
         glowArr:        db     FIELD_H dup $00
 
-        Color_Table     dd      0.271, 0.271, 0.271,\
+        Color_Table     dd      0.0, 0.0, 0.0,\   ;0.271, 0.271, 0.271,\
                                 0.7, 0.7, 0.7,\
                                 0.45, 0.45, 0.45,\
-                                0.851, 0.012, 0.408,\
-                                0.761, 0.91, 0.071,\
-                                0.024, 0.737, 0.757,\
-                                0.733, 0.678, 1.0,\
-                                1.0, 0.831, 0.0,\
-                                0.078, 0.461, 0.82,\
-                                0.078, 0.82, 0.82
+                                1.0, 0.5098, 0.0,\
+                                0.0, 0.0, 1.0,\
+                                0.2549, 0.0, 1.0,\
+                                0.5098, 0.0, 1.0,\
+                                0.745, 0.0, 1.0,\
+                                1.0, 0.0, 0.745,\
+                                1.0, 0.0, 0.5098,\
+                                1.0, 0.0, 0.2549,\
+                                1.0, 0.0, 0.0,\
+                                1.0, 0.2549, 0.0,\;;;;
+                                1.0, 0.745, 0.0,\
+                                1.0, 1.0, 0.0,\
+                                0.745, 1.0, 0.0,\
+                                0.5098, 1.0, 0.0,\
+                                0.2549, 1.0, 0.0,\
+                                0.0, 1.0, 0.2549,\
+                                0.0, 1.0, 0.5098,\
+                                0.0, 1.0, 0.745,\
+                                0.0, 1.0, 1.0,\
+                                0.0, 0.745, 1.0,\
+                                0.0, 0.5098, 1.0,\
+                                0.0, 0.2549, 1.0
         colorsNum       dw      ($ - Color_Table)/12 - 1
 
         figArr          dw      0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\
@@ -133,14 +149,14 @@ section '.data' data readable writable
 
 
         ; =======TEXT==============================
-        font_size                 dd    ?
+        font_size                 dd    30
 
-        SCOLE_LEN_CONST = 5
+        SCOLE_LEN_CONST           = 6
         Str.NextFig               db    'NEXT FIGURE'
         Str.NextFig.Len           dd    $ - Str.NextFig
         Str.HighScore             db    SCOLE_LEN_CONST dup ' '
         Str.Score                 db    SCOLE_LEN_CONST dup ' '
-        Str.Score.Format          db    '%4d', 0
+        Str.Score.Format          db    '%5d', 0
         ;========ANIMATIONS========================
         tmp_tmp                   dd    0.0
         tmp_tmp_delta             dd    20.0
@@ -180,6 +196,7 @@ start:
         ; - window style
         ;invoke  MessageBox, ebx, Text, Caption, MB_OK; invoke -- special windows macro; waits for user reaction!!;
 
+
         ; window creation process
         invoke  GetModuleHandle, ebx
         mov     [wc.hInstance],  eax
@@ -194,8 +211,17 @@ start:
         test    eax, eax ; check if success
         jz      creation_error; err_reg_class
 
-        invoke  CreateWindowEx, ebx, _class, _title, WS_VISIBLE+WS_OVERLAPPEDWINDOW+WS_CLIPCHILDREN+WS_CLIPSIBLINGS,\
-                                     CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, ebx, ebx, [wc.hInstance], ebx
+        ; push wnd data
+        push    ebx [wc.hInstance] ebx ebx
+        ; push wnd szs
+        ; get screen ratio
+        invoke  GetSystemMetrics, SM_CYSCREEN   ; hei
+        push    eax
+        invoke  GetSystemMetrics, ebx  ; width
+        push    eax
+
+        invoke  CreateWindowEx, ebx, _class, _title,WS_POPUP+WS_VISIBLE+WS_SYSMENU,\          ;+WS_VISIBLE+WS_OVERLAPPEDWINDOW+WS_CLIPCHILDREN+WS_CLIPSIBLINGS
+                                     ebx, ebx
         test    eax, eax ; check if success
         jz      creation_error; err_reg_class
         mov     [hwnd], eax
@@ -260,7 +286,7 @@ proc WindowProc uses ebx esi edi,\
         invoke  wglMakeCurrent, [hdc], eax;[hrc]
 
         ; set fone color
-        invoke  glClearColor, 0.07, 0.13, 0.17, 1.0
+        invoke  glClearColor, 0.0,0.0,0.0,1.0;0.07, 0.13, 0.17, 1.0
 
 
 
@@ -274,17 +300,6 @@ proc WindowProc uses ebx esi edi,\
         xor     ebx, ebx
         invoke  GetClientRect, [hwnd], rc
         invoke  glViewport, ebx, ebx, [rc.right], [rc.bottom]
-
-        ; get screen ratio
-        invoke  GetSystemMetrics, SM_CYSCREEN   ; hei
-        push    eax
-        invoke  GetSystemMetrics, ebx  ; width
-        push    eax
-
-        ;fild    dword [esp]; wdt
-        ;fidiv   dword [esp+4] ; hei
-        ;fstp    [ratio] ; screen ratio
-
 
         sub     esp, 4; reserve stack for cell width
         ; get rect size
@@ -311,13 +326,14 @@ proc WindowProc uses ebx esi edi,\
         xor     ebx, ebx
 
         ;delete old fonts
-        invoke  glDeleteLists, 0, NUM_OF_CHARACTERS
-        ; create font "Lucida Console" sz -9
-        invoke  CreateFont,[font_size], ebx, ebx, ebx, ebx,\
+        invoke  glDeleteLists, ebx, NUM_OF_CHARACTERS
+        ; create font "Lucida Console" sz
+        invoke  CreateFontA,[font_size], ebx, ebx, ebx, ebx,\
                           ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, _font_name
         invoke  SelectObject, [hdc], eax
 
-        invoke  wglUseFontBitmapsA, [hdc], ebx, NUM_OF_CHARACTERS, ebx
+        invoke  wglUseFontBitmapsA, [hdc], ebx, NUM_OF_CHARACTERS, ebx ; if errors ret 0
+        ;invoke  GetLastError
 
         ; set projection
         invoke  glMatrixMode, GL_PROJECTION
@@ -326,7 +342,6 @@ proc WindowProc uses ebx esi edi,\
         invoke  glOrtho, double 0.0, double [DFIELD_W], double [DFIELD_H], double 0.0, double -1.0, double 1.0
 
         invoke  glMatrixMode, GL_MODELVIEW
-
 
         ; exit with success
         xor     eax,eax
@@ -362,7 +377,6 @@ proc WindowProc uses ebx esi edi,\
         invoke  glPointSize, [rect_size] ; pixels!!!!
 
 
-
         ; draw field
         stdcall View.DrawField
         ; draw figure figure
@@ -381,44 +395,14 @@ proc WindowProc uses ebx esi edi,\
         mov     esi, FIELD_W + 3; X
         mov     edi, 2  ; Y
         stdcall View.DrawFigure, 3;//????
-        ; test letters GL_LINES
-        ;invoke  glLineWidth, 3.0
-
-        ;invoke  glPushMatrix;
-        ;invoke  glTranslatef, 5.0, 5.0, 0
-
-        ;invoke  glBegin, GL_LINE_STRIP
-
-        ;invoke  glVertex2f, 0.0, 0.8;
-        ;invoke  glVertex2f, 0.25, 0.0;
-        ;invoke  glVertex2f, 0.5, 0.8;
-
-        ;invoke  glEnd
-
-        ;invoke  glTranslatef, 0.5, 0.0, 0
-
-        ;invoke  glBegin, GL_LINE_STRIP
-
-        ;invoke  glVertex2f, 0.0, 1.0;
-        ;invoke  glVertex2f, 0.5, 0.0;
-        ;invoke  glVertex2f, 1.0, 1.0;
-
-        ;invoke  glEnd
-
-        ;invoke  glPopMatrix
-
-        ;invoke  glListBase, 1000
-        ; test glow draw
-        ;invoke  glListBase, 0
-
-        ;mov     esi, 0.5
-        ;mov     edi, -0.5
 
         ; setup rotation
         fld     [tmp_tmp]
         fld     [tmp_tmp_delta]
         faddp
         fstp    [tmp_tmp]
+        ; set Special color
+        invoke  glColor3f, 0.9, 0.9, 0.9
         ; draw special effect
         mov     ecx, FIELD_H-1
      .glow_draw:
@@ -448,11 +432,15 @@ proc WindowProc uses ebx esi edi,\
         sub     esp, 4 ; reserve place on stack to float X cord  (sp-=4)
 
         push    ecx            ; (sp-=4)
-        mov     ecx, FIELD_W - 1
+        mov     ecx, FIELD_W - 2
      .inner_glow_draw:
         push    ecx            ; (sp-=4)
+        ; timed sol
+        inc     ecx
+        push    ecx
         ; load X cord (ecx) to FPU
         fild    dword [esp]    ; cur int X cord
+        add     esp, 4         ; reset stack (temp)
         fstp    dword [esp + 8]
 
         ; test rotating rect draw
@@ -461,19 +449,13 @@ proc WindowProc uses ebx esi edi,\
         invoke  glRotatef, [tmp_tmp], 0.0, 0.0, 5.0;
         invoke  glBegin, GL_QUADS
 
-                ;invoke  glColor3f,1.0,0.1,0.1
                 invoke  glVertex2f, edi, edi
-                ;invoke  glColor3f,0.1,0.1,0.1
                 invoke  glVertex2f, esi, edi
-                ;invoke  glColor3f,0.1,0.1,1.0
                 invoke  glVertex2f, esi, esi
-                ;invoke  glColor3f,1.0,0.1,1.0
                 invoke  glVertex2f, edi, esi
 
         invoke  glEnd
         invoke  glPopMatrix
-        ; go next X cord
-        fsub    st0, st1; st1 is 1
 
         ; load loop cntr (X cord)
         pop     ecx    ;(sp+=4)
@@ -489,13 +471,13 @@ proc WindowProc uses ebx esi edi,\
         jnz  .glow_draw
 
         ; end test glow draw
-        ; draw NEXT FIG
+        ; draw text NEXT FIG
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2;
         invoke  glCallLists, dword[Str.NextFig.Len], GL_UNSIGNED_BYTE, Str.NextFig
-        ; DRAW SCORE
+        ; DRAW text SCORE
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 2;
         invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.Score
-        ; DRAW SCORE HIGH
+        ; DRAW text SCORE HIGH
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 3;
         invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.HighScore
 
@@ -729,7 +711,7 @@ proc Game.KeyEvent uses eax
         cmp     eax, ' '
         je      .Collided
         cmp     di, [Game.FigY]
-        jb      .Collided
+        jbe     .Collided     ; bug with end of game fixed
         ; save new di as preview Y
         mov     [Game.FigPreviewY], di
 
@@ -742,11 +724,13 @@ proc Game.KeyEvent uses eax
         jmp     .End_key_event
 
 .Collided:
+
         ; 1st place figure
         mov     cl, byte [Game.CurFigColor]
         push    ebx esi edi edx
         stdcall Game.PlaceFigure
         pop     edx edi esi ebx
+
         ; check on loose
         stdcall Game.CheckOnEnd
         xor     ax, 1
@@ -754,8 +738,8 @@ proc Game.KeyEvent uses eax
         jnz     @F
         stdcall Game.End
         jmp     .End_key_event
-
 @@:
+
         ; speed up
         ; inc counts of figure
         inc     [Game.FigsPlaced]
@@ -818,7 +802,7 @@ proc Game.CheckOnLine uses dx ebx ecx
         ; make line glow (line mecanics)
         mov     edx, FIELD_H
         sub     edx, [esp + 4]; get ecx
-        mov     byte [edx + glowArr], 10
+        mov     byte [edx + glowArr], GLOW_TIME_TICKS
         ; rm line
         sub     ebx, FIELD_W
         mov     ecx, ebx
