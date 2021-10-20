@@ -33,20 +33,20 @@ entry start
         _style equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 ;===========================
 section '.data' data readable writable
-        Caption          db 'Моя первая программа.',0
-        Text             db 'Всем привет!', 13;,0
+        Caption          db 'ERROR',0
+        Text             db 'Error occured while window creation', 0;,0
         Text.Random      db 16 dup ?, 0
         _wav_play        db 'play c:\windows\media\tada.wav',0 ; 'play c:\windows\media\tada.wav wait'
-        _wav_play_tetris db 'tetris.wav',0
+        ;_wav_play_tetris db 'tetris.wav',0
 
         buf_format       db '%d', 0
         buffer           db 16 dup 'A', 0
 
-        _font_name       db "Lucida Console", 0
+        _font_name       db "Verdana", 0  ;
 
 
         _class          TCHAR    'FASMW32',0
-        _title          TCHAR    'TETRIS WIN v.1.0.0',0
+        _title          TCHAR    'TETRIS WIN v.1.2.0 by Artiom Drankevich',0
 
         ;wc              WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, NULL, NULL, _class ;COLOR_BTNFACE + 1
         wc              WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, NULL, NULL, _class
@@ -137,7 +137,7 @@ section '.data' data readable writable
         Game.Playing            dw      ?
         Game.Pause              dw      ?
         Game.FigsPlaced         dw      ?
-        ;Game.CurSoundTick       dw      ?
+        Game.CurSoundTick       dw      ?
         Game.SpeedMul           dq      0.96;96
 
         ;========Game Settings==============
@@ -226,6 +226,8 @@ start:
         jz      creation_error; err_reg_class
         mov     [hwnd], eax
 
+        ; call music ini
+        stdcall SoundPlayer.Ini
         ; call game initialization
         stdcall Game.GenNewFig; its for ini new fig -> cur fig
         stdcall Game.Initialize
@@ -351,18 +353,29 @@ proc WindowProc uses ebx esi edi,\
         push    eax; copy res
         ; CHECK IF GAME RUNNING
         cmp     [Game.Playing], TRUE
-        jne     @F
+        jne     .animation
         cmp     [Game.Pause], FALSE
-        jne     @F
+        jne     .animation
 
+        ; define sound tick update
+        sub     ax, [Game.CurSoundTick]
+        cmp     ax, 180; temp//180
+        jb      @F
+        add     [Game.CurSoundTick], ax
+        ; play single snd tmp
+        stdcall SoundPlayer.PlayNext
+@@:
         ; define game tick update
+        mov     eax, dword [esp]
         sub     ax, [Game.CurTick]
         cmp     ax, [Game.TickSpeed];300; temp
         jb      @F
         add     [Game.CurTick], ax
+        ; call game update
         mov     eax, 7; key with ID 7 is undefined
         stdcall Game.KeyEvent
 @@:
+.animation:
         ; define animation
         pop     eax
         sub     eax,[clock]
@@ -370,6 +383,8 @@ proc WindowProc uses ebx esi edi,\
         jb      .finish
         add     [clock], eax; reset timer
         ;invoke  glRotatef,[theta],0.0,0.0,1.0
+
+
       ;.animation_ok:
         invoke  glClear,GL_COLOR_BUFFER_BIT
         invoke  glLoadIdentity
@@ -525,6 +540,8 @@ proc WindowProc uses ebx esi edi,\
         jmp     .defwndproc
 
   .wmdestroy:
+        ; misuc
+        stdcall SoundPlayer.Close
         ; file
         invoke  CloseHandle, [Settings.fileHandle]
         invoke  glDeleteLists, 0, NUM_OF_CHARACTERS
@@ -537,6 +554,11 @@ proc WindowProc uses ebx esi edi,\
   .finish:
         ret
 endp
+
+
+
+
+
 
 ;#############GAME INITIALIZATION####################
 proc Game.Initialize
@@ -574,7 +596,8 @@ proc Game.Initialize
         mov     [Game.Playing], TRUE;temp!!FALSE
 
         ;mov     [Game.CurSoundTick], 0
-        invoke  PlaySound, _wav_play_tetris, 0, 8 + 1;SND_LOOP + SND_ASYNC
+        ;invoke  PlaySound, _wav_play_tetris, 0, 8 + 1;SND_LOOP + SND_ASYNC
+        mov     [Game.CurSoundTick], 0
 
         ;fld     [Game.SpeedMul]
         mov     [Game.FigsPlaced], 0
@@ -711,7 +734,7 @@ proc Game.KeyEvent uses eax
         cmp     eax, ' '
         je      .Collided
         cmp     di, [Game.FigY]
-        jbe     .Collided     ; bug with end of game fixed
+        jb      .Collided
         ; save new di as preview Y
         mov     [Game.FigPreviewY], di
 
@@ -1171,15 +1194,18 @@ section '.idata' import data readable writeable
         ;MoveToEx, 'MoveToEx',\
         ;LineTo, 'LineTo',\
         ;CreateSolidBrush, 'CreateSolidBrush'
-
-        import winmm,\
+import winmm,\
         mciSendString,'mciSendStringA',\
-        PlaySound , 'PlaySound'
+        PlaySound , 'PlaySound',\
+        midiOutOpen,'midiOutOpen',\
+        midiOutShortMsg, 'midiOutShortMsg',\
+        midiOutClose, 'midiOutClose'
 
         ;include 'api\kernel32.inc'
         ;include 'api\user32.inc'
 
         include 'units/random.h'
+        include 'music.h'
 
 ;import glut,\
          ;glutBitmapCharacter, 'glutBitmapCharacter'
