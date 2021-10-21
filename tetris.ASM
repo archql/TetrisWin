@@ -115,9 +115,9 @@ section '.data' data readable writable
                         0100'0100_1100'0000b, 0000'1110_0010'0000b, 0110'0100_0100'0000b, 1000'1110_0000'0000b,\
                         0100'1110_0000'0000b, 0100'0110_0100'0000b, 0000'1110_0100'0000b, 0100'1100_0100'0000b,\
                         1000'1100_0100'0000b, 0000'0110_1100'0000b, 1000'1100_0100'0000b, 0000'0110_1100'0000b,\
-                        0100'1100_1000'0000b, 0000'1100_0110'0000b, 0100'1100_1000'0000b, 0000'1100_0110'0000b
+                        0100'1100_1000'0000b, 0000'1100_0110'0000b, 0100'1100_1000'0000b, 0000'1100_0110'0000b;,\
                         ;0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b,\
-                        ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b,\;
+                        ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b;,\;
         figNum          dw      ($ - figArr)/8 - 1
 
         ;========Game model==============
@@ -137,7 +137,6 @@ section '.data' data readable writable
         Game.Playing            dw      ?
         Game.Pause              dw      ?
         Game.FigsPlaced         dw      ?
-        Game.CurSoundTick       dw      ?
         Game.SpeedMul           dq      0.96;96
 
         ;========Game Settings==============
@@ -357,14 +356,9 @@ proc WindowProc uses ebx esi edi,\
         cmp     [Game.Pause], FALSE
         jne     .animation
 
-        ; define sound tick update
-        sub     ax, [Game.CurSoundTick]
-        cmp     ax, 180; temp//180
-        jb      @F
-        add     [Game.CurSoundTick], ax
-        ; play single snd tmp
-        stdcall SoundPlayer.PlayNext
-@@:
+        ; check on snd
+        stdcall SoundPlayer.Update ; got eax in [esp] as param
+
         ; define game tick update
         mov     eax, dword [esp]
         sub     ax, [Game.CurTick]
@@ -596,8 +590,10 @@ proc Game.Initialize
         mov     [Game.Playing], TRUE;temp!!FALSE
 
         ;mov     [Game.CurSoundTick], 0
+        ; set music pos to start
+        mov      [SoundPlayer.NextSound], 0
         ;invoke  PlaySound, _wav_play_tetris, 0, 8 + 1;SND_LOOP + SND_ASYNC
-        mov     [Game.CurSoundTick], 0
+        ;mov     [Game.CurSoundTick], 0
 
         ;fld     [Game.SpeedMul]
         mov     [Game.FigsPlaced], 0

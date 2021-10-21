@@ -37,6 +37,22 @@ proc SoundPlayer.Close
         ret
 endp
 
+proc SoundPlayer.Update
+
+        ; in eax is cur tick
+        ; define sound tick update
+        sub     ax, [SoundPlayer.CurTick]
+        cmp     ax, [SoundPlayer.DeltaTick]; temp//180
+        jb      @F
+        add     [SoundPlayer.CurTick], ax
+        ; play single snd tmp
+        stdcall SoundPlayer.PlayNext
+@@:
+
+        ret
+endp
+
+
 proc SoundPlayer.PlayNext uses ebx
 
         ; sound here
@@ -47,12 +63,18 @@ proc SoundPlayer.PlayNext uses ebx
         push     ecx
         ; get midi message
         mov      edi, dword [SoundPlayer.Notes + ebx]
+        ;mov      eax, edi ; TMPPP
+        ;and      eax, $00'FF'FF'FF; rm elder byte
         ; play midi message
-        invoke   midiOutShortMsg, [midihandle],  edi; 0x007F1090;
+        invoke   midiOutShortMsg, [midihandle],  edi;0x007F1090;
         add      ebx, NOTES_PACK_BYTES
         pop      ecx
         loop     .PlayPackOfNotes
         ; read byte of wait time??
+        ; get delta tick
+        mov      eax, edi
+        shr      eax, 24 - 1
+        mov      [SoundPlayer.DeltaTick], ax
 
         cmp      bx, word [SoundPlayer.NotesNum - 2]
         jl       @F
