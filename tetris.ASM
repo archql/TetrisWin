@@ -28,6 +28,9 @@ entry start
 
         NUM_OF_CHARACTERS = 128
 
+        MY_FALSE          = 0
+        MY_TRUE           = 1
+
         INC_EVERY_FIGS=15;15;2^N-1
 
         _style equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
@@ -35,12 +38,12 @@ entry start
 section '.data' data readable writable
         Caption          db 'ERROR',0
         Text             db 'Error occured while window creation', 0;,0
-        Text.Random      db 16 dup ?, 0
-        _wav_play        db 'play c:\windows\media\tada.wav',0 ; 'play c:\windows\media\tada.wav wait'
+        ;Text.Random      db 16 dup ?, 0
+        ;_wav_play        db 'play c:\windows\media\tada.wav',0 ; 'play c:\windows\media\tada.wav wait'
         ;_wav_play_tetris db 'tetris.wav',0
 
-        buf_format       db '%d', 0
-        buffer           db 16 dup 'A', 0
+        ;buf_format       db '%d', 0
+        ;buffer           db 16 dup 'A', 0
 
         _font_name       db "Verdana", 0  ;
 
@@ -61,12 +64,12 @@ section '.data' data readable writable
         hwnd            dd      ?
         hrc             dd      ?
                 ;соотношение разрешений экрана по горизонтали и вертикали
-        ratio           dq      ?
+        ;ratio           dq      ?
 
         ;Rect            RECT    10, 10, 110, 110
         rc              RECT
 
-        length          dd      120
+        ;length          dd      120
 
         ;========
         ;FIELD_H         dd      23
@@ -138,6 +141,9 @@ section '.data' data readable writable
         Game.Pause              dw      ?
         Game.FigsPlaced         dw      ?
         Game.SpeedMul           dq      0.96;96
+        Game.Holded             dw      ?
+        Game.HoldedFigNum       dw      ?
+        Game.HoldedFig          dw      ?
 
         ;========Game Settings==============
         Settings.strFilename      db    'settings.txt', 0
@@ -148,11 +154,13 @@ section '.data' data readable writable
 
 
         ; =======TEXT==============================
-        font_size                 dd    30
+        font_size                 dd    ?
 
         SCOLE_LEN_CONST           = 6
         Str.NextFig               db    'NEXT FIGURE'
         Str.NextFig.Len           dd    $ - Str.NextFig
+        Str.HoldedFig             db    'HOLDED FIGURE'
+        Str.HoldedFig.Len         dd    $ - Str.HoldedFig
         Str.HighScore             db    SCOLE_LEN_CONST dup ' '
         Str.Score                 db    SCOLE_LEN_CONST dup ' '
         Str.Score.Format          db    '%5d', 0
@@ -162,10 +170,8 @@ section '.data' data readable writable
         tmp_tmp                   dd    0.0
         tmp_tmp_delta             dd    20.0
         Glow.SZ_delta             dd    0.05
-        Glow.SZ_cur               dd    ?
         Glow.right                dd    ?
         Glow.left                 dd    ?
-        Glow.Neg                  dd    -1.0
         
 ;===========================
 
@@ -178,13 +184,13 @@ start:
 
         call    Random.Initialize
 
-        mov     ecx, 16
-        mov     ebx, Text.Random
-.RandTextLoop:
-        stdcall Random.Get, $41, $5A
-        mov     [ebx], al
-        inc     ebx
-        loop    .RandTextLoop
+        ;mov     ecx, 16
+        ;mov     ebx, Text.Random
+;.RandTextLoop:
+        ;stdcall Random.Get, $41, $5A
+        ;mov     [ebx], al
+        ;inc     ebx
+        ;loop    .RandTextLoop
 
         ; setup game
         ;call    Game.Initialize
@@ -412,7 +418,14 @@ proc WindowProc uses ebx esi edi,\
         mov     esi, FIELD_W + 3; X
         mov     edi, 2  ; Y
         stdcall View.DrawFigure, 3;//????
-
+        ; draw holded figure
+        ;cmp     word [Game.HoldedFigNum],  -1
+        ;je      @F
+        mov     bx,  word [Game.HoldedFig]
+        mov     esi, FIELD_W + 3; X
+        mov     edi, 2  +  4  +  2 ; Y
+        stdcall View.DrawFigure, 3;//????
+;@@:
         ; setup rotation
         fld     [tmp_tmp]
         fld     [tmp_tmp_delta]
@@ -491,11 +504,14 @@ proc WindowProc uses ebx esi edi,\
         ; draw text NEXT FIG
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2;
         invoke  glCallLists, dword[Str.NextFig.Len], GL_UNSIGNED_BYTE, Str.NextFig
+        ; draw text HOLDED FIG
+        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 6;
+        invoke  glCallLists, dword[Str.HoldedFig.Len], GL_UNSIGNED_BYTE, Str.HoldedFig
         ; DRAW text SCORE
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 2;
+        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 6 + 2;
         invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.Score
         ; DRAW text SCORE HIGH
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 3;
+        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 6 + 3;
         invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.HighScore
 
         cmp     [Game.Playing], 1
@@ -610,6 +626,11 @@ proc Game.Initialize
         ;fld     [Game.SpeedMul]
         mov     [Game.FigsPlaced], 0
 
+        ; setup holded
+        and     word [Game.Holded], MY_FALSE; set ifhold to true
+        mov     word [Game.HoldedFigNum], -1
+        mov     word [Game.HoldedFig], 0
+
         ; update screen
                 ; CLEAR
                 ; WRITE SCORE
@@ -662,10 +683,38 @@ endp
 proc Game.KeyEvent uses eax
 
         ; LD figure data and save initial fig state
+        movzx   ecx, [Game.CurFigNumber]
+        ; check if holded fig used
+        cmp     eax, 'H'
+        jne     .skipHold
+        cmp     [Game.Holded], MY_TRUE
+        je      .skipHold
+        ; hold
+        or      word [Game.Holded], TRUE; set ifhold to true (1 hold per fig)
+        movzx   ebx, cx; save cur fig num
+        shl     bx, 3
+        mov     bx, word [figArr + ebx]
+        mov     word [Game.HoldedFig], bx
+
+        ; swap cur and buffered
+        xchg    word [Game.HoldedFigNum], cx
+        cmp     cx, -1 ; if holded fig isnt set yet
+        jne     @F
+        push    eax
+        stdcall Game.GenNewFig;; REGISTERS!!!!
+        pop     eax
+        movzx   ecx, word [Game.CurFigNumber]
+@@:
+        mov     word [Game.FigX], FIELD_W/2-2
+        mov     word [Game.FigY], 0
+        mov     word [Game.CurFigNumber], cx
+.skipHold:
         xor     ebx, ebx
+        ; get cords
         movzx   esi, word [Game.FigX] ; initial X
         movzx   edi, word [Game.FigY] ; initial Y
-        movzx   ecx, [Game.CurFigNumber]
+
+        ; get figure place at fig array
         shl     cx, 2; bc figs are stored as 2 bytes * 4 states
         mov     bx, cx; save cx
         mov     dx, [Game.CurFigRotation]
@@ -783,6 +832,8 @@ proc Game.KeyEvent uses eax
         stdcall Game.End
         jmp     .End_key_event
 @@:
+        ; unblock hold usage
+        and     word [Game.Holded], MY_FALSE; set ifhold to true
 
         ; speed up
         ; inc counts of figure
@@ -1243,7 +1294,7 @@ import winmm,\
         ;include 'api\kernel32.inc'
         ;include 'api\user32.inc'
 
-        include 'units/random.h'
+        include 'units\random.h'
         include 'music.h'
 
 ;import glut,\
