@@ -84,7 +84,7 @@ section '.data' data readable writable
 
         Color_Table     dd      0.0, 0.0, 0.0,\   ;0.271, 0.271, 0.271,\
                                 0.7, 0.7, 0.7,\
-                                0.45, 0.45, 0.45,\
+                                0.25, 0.25, 0.25,\
                                 1.0, 0.5098, 0.0,\
                                 0.0, 0.0, 1.0,\
                                 0.2549, 0.0, 1.0,\
@@ -156,6 +156,8 @@ section '.data' data readable writable
         Str.HighScore             db    SCOLE_LEN_CONST dup ' '
         Str.Score                 db    SCOLE_LEN_CONST dup ' '
         Str.Score.Format          db    '%5d', 0
+        Str.Pause                 db    'PAUSED'
+        Str.Loose                 db    'GAME OVER'
         ;========ANIMATIONS========================
         tmp_tmp                   dd    0.0
         tmp_tmp_delta             dd    20.0
@@ -311,7 +313,7 @@ proc WindowProc uses ebx esi edi,\
         fmul    [RECT_MODIFIER]; modify (rect should be < than cell on screen)
         frndint  ; round
         fst     [rect_size]
-        ;fchs
+        fchs
         fistp   [font_size]
 
         ; get width ratio
@@ -329,7 +331,7 @@ proc WindowProc uses ebx esi edi,\
         ;delete old fonts
         invoke  glDeleteLists, ebx, NUM_OF_CHARACTERS
         ; create font "Lucida Console" sz
-        invoke  CreateFontA,[font_size], ebx, ebx, ebx, ebx,\
+        invoke  CreateFontA,[font_size], ebx, ebx, ebx, 600,\
                           ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, _font_name
         invoke  SelectObject, [hdc], eax
 
@@ -350,6 +352,11 @@ proc WindowProc uses ebx esi edi,\
   .wmpaint:
         invoke  GetTickCount
         push    eax; copy res
+
+        ;stdcall SoundPlayer.LineEventUpdate; got eax in [esp] as param
+        mov     eax, dword [esp]
+        stdcall SoundPlayer.EndEventUpdate; got eax in [esp] as param
+
         ; CHECK IF GAME RUNNING
         cmp     [Game.Playing], TRUE
         jne     .animation
@@ -357,6 +364,7 @@ proc WindowProc uses ebx esi edi,\
         jne     .animation
 
         ; check on snd
+        mov     eax, dword [esp]
         stdcall SoundPlayer.Update ; got eax in [esp] as param
 
         ; define game tick update
@@ -490,16 +498,20 @@ proc WindowProc uses ebx esi edi,\
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 3;
         invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.HighScore
 
-        ; test text draW
-        ;invoke  glPushMatrix
-        ;invoke  glLoadIdentity
-        ;invoke  glRasterPos2i, 10, 1014 ;  // move in 10 pixels from the left and bottom edges
-        ;mov     ecx, 10
-    ;.draw_text:
-        ;invoke  glutBitmapCharacter, 2, 'A' ;GLUT_BITMAP_TIMES_ROMAN_10
-        ;loop    .draw_text
-        ;tEST text draw end
-
+        cmp     [Game.Playing], 1
+        je      @F
+        ; DRAW text GAME OVER
+        invoke  glRasterPos2i, FIELD_W / 2 - 2, 2;
+        invoke  glCallLists, 9, GL_UNSIGNED_BYTE, Str.Loose
+        jmp     .end_draw
+@@:
+        cmp     [Game.Pause], 1
+        jne     @F
+        ; DRAW text PAUSE
+        invoke  glRasterPos2i, FIELD_W / 2 - 1, 2;
+        invoke  glCallLists, 6, GL_UNSIGNED_BYTE, Str.Pause
+@@:
+.end_draw:
         invoke  SwapBuffers,[hdc]
 
         xor     eax,eax
@@ -743,18 +755,31 @@ proc Game.KeyEvent uses eax
         jmp     .End_key_event
 
 .Collided:
-
         ; 1st place figure
         mov     cl, byte [Game.CurFigColor]
         push    ebx esi edi edx
         stdcall Game.PlaceFigure
+        ; temp playsnd
+        ;push    eax
+        ;invoke  midiOutShortMsg, [midihandle], 0x004F5291
+        ;pop     eax
+
         pop     edx edi esi ebx
+        ; score?
+        ;sub     di, [Game.FigY]
+        ;add     [Game.Score], di
+        ; print res
+        ;movzx   eax, word [Game.Score]
+        ;cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
 
         ; check on loose
         stdcall Game.CheckOnEnd
         xor     ax, 1
         test    ax, ax ; temp snd off
         jnz     @F
+        ; play end snd temp
+        mov     [SoundPlayer.EndGameTick], 4
+        ;;;;;;;;;;;
         stdcall Game.End
         jmp     .End_key_event
 @@:
@@ -846,16 +871,33 @@ proc Game.CheckOnLine uses dx ebx ecx
         test    ax, ax  ; add score
         jz      .EndProc
 
-        mov     cx, 2   ; count
+        ;push    ax
+        ;add     ax, 2
+        ;mov     word [SoundPlayer.LineGameTick], ax
+        ;pop     ax
+        ; sound eff
+        ;push    eax ecx edx
+        ;mov     ecx, 0x007F0099
+        ;mov     ch, al
+        ;shl     ch, 2
+        ;add     ch, 50
+        ;mov     word [SoundPlayer.LineGameTick], ax
+        ;invoke   midiOutShortMsg, [midihandle],  0x007F3799  ;'ecx ;
+        ;pop     edx ecx eax
+        ;  == == =
+
+        mov     cx, 2;50   ; count
         xchg    ax, cx
         shl     ax, cl
         dec     ax
         shl     ax, 2
+        ;mov     cx, [Game.Level]
+        ;mul     CX
 
         add     [Game.Score], ax ; add
 
         ; play snd
-        invoke  mciSendString, _wav_play, 0, 0, 0
+        ;invoke  mciSendString, _wav_play, 0, 0, 0
 
         ;write score
         movzx   eax, word [Game.Score]
@@ -1195,7 +1237,8 @@ import winmm,\
         PlaySound , 'PlaySound',\
         midiOutOpen,'midiOutOpen',\
         midiOutShortMsg, 'midiOutShortMsg',\
-        midiOutClose, 'midiOutClose'
+        midiOutClose, 'midiOutClose',\
+        midiOutLongMsg, 'midiOutLongMsg'
 
         ;include 'api\kernel32.inc'
         ;include 'api\user32.inc'

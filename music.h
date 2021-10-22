@@ -37,6 +37,38 @@ proc SoundPlayer.Close
         ret
 endp
 
+proc SoundPlayer.EndEventUpdate; got eax in [esp] as param
+
+        movzx   ebx, word [SoundPlayer.EndGameTick]
+        test    ebx, ebx
+        jz      @F
+
+        ; define sound tick update
+        sub     ax, [SoundPlayer.CurTick]
+        cmp     ax, 260; temp//180
+        jb      @F
+        add     [SoundPlayer.CurTick], ax
+
+        ; get midi message
+        mov      eax, 0x007F2590
+        mov      ah, bl
+        shl      ah, 2
+        add      ah, 22
+        ; play midi message
+        invoke   midiOutShortMsg, [midihandle],  eax;
+
+        mov      eax, 0x007F2591
+        mov      ah, bl
+        add      ah, 36
+        invoke   midiOutShortMsg, [midihandle],  eax;
+
+
+        dec     ebx
+        mov     word [SoundPlayer.EndGameTick], bx
+@@:
+        ret
+endp
+
 proc SoundPlayer.Update
 
         ; in eax is cur tick
