@@ -7,7 +7,8 @@ To compile it requires fasm.
 This tetris version tested on Windows 10. 
 Graphics based on OpenGL lib.
 All rectangular screen resolutions supported.
-###CONTROLS:
+
+CONTROLS:
  - move left          -- <
  - move right         -- > 
  - rotate clockwise   -- ^
@@ -16,7 +17,9 @@ All rectangular screen resolutions supported.
  - force push down    -- SPACE
  - pause              -- P
  - restart            -- R
-###What is '.amid' files?
+ - hold               -- H
+
+What is '.amid' files?
 '.amid' file -- its file with short midi messages, every message is 4 bytes long,
 format is control + track num byte ,note_num byte, note_velocity byte, zero byte (now delay to next note in ms / 2)
 This file is generated using my another progmam, written on delphi,
