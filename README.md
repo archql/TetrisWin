@@ -25,4 +25,10 @@ format is control + track num byte ,note_num byte, note_velocity byte, zero byte
 This file is generated using my another progmam, written on delphi,
 that converts notes into midi messages.
 
+Now executable file size is 9kBytes.
+Goal is to reduce it to 8kBytes.
+
+ WARNING!
+ if somebody want to test or play this tetris
+ antiviruses dont like asm programms, especcially when code section is writable (its to reduce size)
  
