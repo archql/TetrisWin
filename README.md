@@ -24,6 +24,7 @@ What is '.amid' files?
 format is control + track num byte ,note_num byte, note_velocity byte, zero byte (now delay to next note in ms / 2)
 This file is generated using my another progmam, written on delphi,
 that converts notes into midi messages.
+(new version removes 2 elder bytes, and delay is placed as last byte in pack of midi messages)
 
 Now executable file size is 9kBytes.
 Goal is to reduce it to 8kBytes.
