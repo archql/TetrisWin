@@ -6,7 +6,7 @@ SoundPlayer.DeltaTick           dw      180;?
 SoundPlayer.EndGameTick         dw      ?
 ;SoundPlayer.LineGameTick        dw      ?
 
-NOTES_PACK_BYTES        = 4; 9
+NOTES_PACK_BYTES                = 2; 9
 
 proc SoundPlayer.Ini
 
@@ -16,8 +16,7 @@ proc SoundPlayer.Ini
         invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments]
         invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 4]
         invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 8]
-        ;invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 12]
-        ;invoke  midiOutLongMsg, [midihandle], SoundPlayer.Instruments, 16
+        invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 12]
 
         ;/* Close the MIDI device */
         ;invoke  midiOutClose, [midihandle];
@@ -78,41 +77,51 @@ proc SoundPlayer.Update
         jb      @F
         add     [SoundPlayer.CurTick], ax
         ; play single snd tmp
-        stdcall SoundPlayer.PlayNext
+        stdcall SoundPlayer.PlayNextEx
 @@:
 
         ret
 endp
 
 
-proc SoundPlayer.PlayNext uses ebx
+proc SoundPlayer.Pause
 
+        invoke  midiOutShortMsg, [midihandle], 0x00007BB0
+        invoke  midiOutShortMsg, [midihandle], 0x00007BB1
+        invoke  midiOutShortMsg, [midihandle], 0x00007BB2
+        invoke  midiOutShortMsg, [midihandle], 0x00007BB9
+
+        ret
+endp
+
+
+proc SoundPlayer.PlayNextEx uses ebx
         ; sound here
         movzx    ebx, word [SoundPlayer.NextSound]
 
         mov      ecx, 4; num of players
 .PlayPackOfNotes:
         push     ecx
-        ; get midi message
-        mov      edi, dword [SoundPlayer.Notes + ebx]
-        ;mov      eax, edi ; TMPPP
-        ;and      eax, $00'FF'FF'FF; rm elder byte
-        ; play midi message
-        invoke   midiOutShortMsg, [midihandle],  edi;0x007F1090;
-        add      ebx, NOTES_PACK_BYTES
+        movzx    ecx, word [SoundPlayer.Notes + ebx]
+        or       ecx, 0x007F0000
+        invoke   midiOutShortMsg, [midihandle],  ecx
+
+        add      ebx, NOTES_PACK_BYTES; 2 bytes per note
         pop      ecx
         loop     .PlayPackOfNotes
-        ; read byte of wait time??
+
         ; get delta tick
-        mov      eax, edi
-        shr      eax, 24 - 1
+        movzx    ax, byte [SoundPlayer.Notes + ebx]
+        shl      ax, 1
         mov      [SoundPlayer.DeltaTick], ax
+        inc      ebx
 
         cmp      bx, word [SoundPlayer.NotesNum - 2]
         jl       @F
         xor      ebx, ebx
 @@:
         mov      [SoundPlayer.NextSound], bx
+
         ret
 endp
 
@@ -122,12 +131,13 @@ SoundPlayer.NextSound        dw      0
                         ; 1001 -- play; 1000 - stop; kkk - note num, vvv - volume
                         ;format 1001'nnnn   kk  0vvvvvvvv
 
-SoundPlayer.Notes         file    'tetris.amid'
+SoundPlayer.Notes         file    'tetris_ex.amid'
 SoundPlayer.NotesNum:     ; this pos - 2 bytes
 
-SoundPlayer.Instruments   db    1100'0000b or 0, 32, 0, 0,\
+SoundPlayer.Instruments   db    1100'0000b or 0, 32, 0, 0,\ ; 32 25 25 10
                                 1100'0000b or 1, 25, 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
-                                1100'0000b or 2, 25, 0, 0
+                                1100'0000b or 2, 25, 0, 0,\
+                                1100'0000b or 3, 10, 0, 0
 
 
 

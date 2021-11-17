@@ -6,9 +6,6 @@ format PE GUI 5.0
 include '%fasminc%/macro/proc32.inc'
 include 'win32ax.inc'
 
-
-
-
 entry start
 
 ;===========================
@@ -16,142 +13,55 @@ entry start
         FIELD_W = 12; 12
         FIELD_H = 23
 
-        TOP_LINE= 3
-
-        BLOCK_W = 7
-
         TRUE    = 1
         FALSE   = 0
 
         START_TICK_SPEED = 500;500
+        ;KEY_EVENT_UPDATE = 40
         GLOW_TIME_TICKS  = 15
 
         NUM_OF_CHARACTERS = 128
 
-        MY_FALSE          = 0
-        MY_TRUE           = 1
+        ;MY_FALSE          = 0
+        ;MY_TRUE           = 1
 
         INC_EVERY_FIGS=15;15;2^N-1
 
         _style equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 ;===========================
 section '.data' data readable writable
-        Caption          db 'ERROR',0
-        Text             db 'Error occured while window creation', 0;,0
-        ;Text.Random      db 16 dup ?, 0
-        ;_wav_play        db 'play c:\windows\media\tada.wav',0 ; 'play c:\windows\media\tada.wav wait'
-        ;_wav_play_tetris db 'tetris.wav',0
+        Caption         db 'ERROR',0
+        Text            db 'Window creation fail', 0;,0
 
-        ;buf_format       db '%d', 0
-        ;buffer           db 16 dup 'A', 0
-
-        _font_name       db "Verdana", 0  ;
+        _font_name      db "Verdana", 0  ;
 
 
         _class          TCHAR    'FASMW32',0
         _title          TCHAR    'TETRIS WIN v.1.2.0 by Artiom Drankevich',0
 
-        ;wc              WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, NULL, NULL, _class ;COLOR_BTNFACE + 1
         wc              WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, NULL, NULL, _class
 
         msg             MSG
-
-        hdc             dd      ?
         paintstruct     PAINTSTRUCT
         pfd             PIXELFORMATDESCRIPTOR
-        ; Windowproc is proc, where window events handled
 
         hwnd            dd      ?
         hrc             dd      ?
-                ;соотношение разрешений экрана по горизонтали и вертикали
-        ;ratio           dq      ?
+        hdc             dd      ?
 
-        ;Rect            RECT    10, 10, 110, 110
         rc              RECT
 
-        ;length          dd      120
-
         ;========
-        ;FIELD_H         dd      23
-        DFIELD_H        dq      24.0
+        DFIELD_H        dq      24.0 ; FIELD_H + 1
         DFIELD_W        dq      ?
-        RECT_MODIFIER   dq      0.9
+        RECT_MODIFIER   dq      0.90;0.9
         clock           dd      ?
         rect_size       dd      10.0
 
         blocksArr:      times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
                 db    FIELD_W dup $01
-        blocksArrCopy:  times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
-                db    FIELD_W dup $01
-        glowArr:        db     FIELD_H dup $00
-
-        Color_Table     dd      0.0, 0.0, 0.0,\   ;0.271, 0.271, 0.271,\
-                                0.7, 0.7, 0.7,\
-                                0.25, 0.25, 0.25,\
-                                1.0, 0.5098, 0.0,\
-                                0.0, 0.0, 1.0,\
-                                0.2549, 0.0, 1.0,\
-                                0.5098, 0.0, 1.0,\
-                                0.745, 0.0, 1.0,\
-                                1.0, 0.0, 0.745,\
-                                1.0, 0.0, 0.5098,\
-                                1.0, 0.0, 0.2549,\
-                                1.0, 0.0, 0.0,\
-                                1.0, 0.2549, 0.0,\;;;;
-                                1.0, 0.745, 0.0,\
-                                1.0, 1.0, 0.0,\
-                                0.745, 1.0, 0.0,\
-                                0.5098, 1.0, 0.0,\
-                                0.2549, 1.0, 0.0,\
-                                0.0, 1.0, 0.2549,\
-                                0.0, 1.0, 0.5098,\
-                                0.0, 1.0, 0.745,\
-                                0.0, 1.0, 1.0,\
-                                0.0, 0.745, 1.0,\
-                                0.0, 0.5098, 1.0,\
-                                0.0, 0.2549, 1.0
-        colorsNum       dw      ($ - Color_Table)/12 - 1
-
-        figArr          dw      0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\
-                        0100'0100_0100'0100b, 0000'1111_0000'0000b, 0100'0100_0100'0100b, 0000'1111_0000'0000b,\
-                        0100'0100_0110'0000b, 0010'1110_0000'0000b, 1100'0100_0100'0000b, 0000'1110_1000'0000b,\
-                        0100'0100_1100'0000b, 0000'1110_0010'0000b, 0110'0100_0100'0000b, 1000'1110_0000'0000b,\
-                        0100'1110_0000'0000b, 0100'0110_0100'0000b, 0000'1110_0100'0000b, 0100'1100_0100'0000b,\
-                        1000'1100_0100'0000b, 0000'0110_1100'0000b, 1000'1100_0100'0000b, 0000'0110_1100'0000b,\
-                        0100'1100_1000'0000b, 0000'1100_0110'0000b, 0100'1100_1000'0000b, 0000'1100_0110'0000b;,\
-                        ;0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b,\
-                        ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b;,\;
-        figNum          dw      ($ - figArr)/8 - 1
-
-        ;========Game model==============
-        Game.CurFig             dw      ?
-        Game.CurFigColor        dw      ?
-        Game.CurFigRotation     dw      ?
-        Game.CurFigNumber       dw      ?
-        Game.NextFig            dw      ?
-        Game.NextFigNumber      dw      ?
-        Game.FigX               dw      ?
-        Game.FigY               dw      ?
-        Game.FigPreviewY        dw      ?
-        Game.TickSpeed          dw      ?
-        Game.CurTick            dw      ?
-        Game.Score              dw      ?
-        Game.HighScore          dw      ?
-        Game.Playing            dw      ?
-        Game.Pause              dw      ?
-        Game.FigsPlaced         dw      ?
-        Game.SpeedMul           dq      0.96;96
-        Game.Holded             dw      ?
-        Game.HoldedFigNum       dw      ?
-        Game.HoldedFig          dw      ?
-
-        ;========Game Settings==============
-        Settings.strFilename      db    'settings.txt', 0
-        Settings.fileHandle       dd    -1; INVALIF_FILE_HANDLE
-        Settings.buffer           db    64 dup ?
-        Settings.fileSize         dd    ?
-        Settings.BytesProceed     dd    ?
-
+        ;blocksArrCopy:  times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
+        ;        db    FIELD_W dup $01
 
         ; =======TEXT==============================
         font_size                 dd    ?
@@ -172,38 +82,17 @@ section '.data' data readable writable
         Glow.SZ_delta             dd    0.05
         Glow.right                dd    ?
         Glow.left                 dd    ?
+        glowArr:                  db     FIELD_H dup $00
+        ;========KEYBOARD==========================
+        ;Keyboard.Pressed          db    ?
+        ;Keyboard.Clock            dw    0
         
 ;===========================
 
-section '.code' code executable readable  ; code section
+section '.code' code executable readable writable  ; code section
 
 start:
-        ; test playsound
-        ;invoke  mciSendString, _wav_play, 0, 0, 0
-
-
-        call    Random.Initialize
-
-        ;mov     ecx, 16
-        ;mov     ebx, Text.Random
-;.RandTextLoop:
-        ;stdcall Random.Get, $41, $5A
-        ;mov     [ebx], al
-        ;inc     ebx
-        ;loop    .RandTextLoop
-
-        ; setup game
-        ;call    Game.Initialize
         xor      ebx, ebx
-
-        ; params:
-        ; - handle of owner
-        ; - adress of message text 1st letter
-        ; - adress of caption text 1st letter
-        ; - window style
-        ;invoke  MessageBox, ebx, Text, Caption, MB_OK; invoke -- special windows macro; waits for user reaction!!;
-
-
         ; window creation process
         invoke  GetModuleHandle, ebx
         mov     [wc.hInstance],  eax
@@ -236,6 +125,7 @@ start:
         ; call music ini
         stdcall SoundPlayer.Ini
         ; call game initialization
+        call    Random.Initialize
         stdcall Game.GenNewFig; its for ini new fig -> cur fig
         stdcall Game.Initialize
 
@@ -244,7 +134,7 @@ start:
         invoke  GetMessage, msg, NULL, 0, 0
         or      eax, eax
         jz      end_loop
-        invoke  TranslateMessage, msg
+        ;invoke  TranslateMessage, msg
         invoke  DispatchMessage, msg
         jmp     msg_loop
 
@@ -255,22 +145,26 @@ creation_error:
 
 proc WindowProc uses ebx esi edi,\
                 hwnd,wmsg,wparam,lparam
-        cmp     [wmsg],WM_CREATE
+        mov     ebx, [wmsg]
+        cmp     ebx, WM_CREATE
         je      .wmcreate
-        cmp     [wmsg],WM_SIZE
+        cmp     ebx, WM_SIZE
         je      .wmsize
-        cmp     [wmsg],WM_PAINT
+        cmp     ebx, WM_PAINT
         je      .wmpaint
-        cmp     [wmsg],WM_KEYDOWN
+        cmp     ebx, WM_KEYDOWN
         je      .wmkeydown
-        cmp     [wmsg],WM_DESTROY
+        ;cmp     ebx, WM_KEYUP
+        ;je      .wmkeyup
+        cmp     ebx, WM_DESTROY
         je      .wmdestroy
   .defwndproc:
-        invoke  DefWindowProc,[hwnd],[wmsg],[wparam],[lparam]
+        invoke  DefWindowProc,[hwnd],ebx,[wparam],[lparam]
         jmp     .finish
   .wmcreate:
         invoke  GetDC,[hwnd]
         mov     [hdc], eax
+        mov     ebx, eax  ; hdc
 
         ; initialize OpenGL
         ;mov     edi,pfd
@@ -286,13 +180,13 @@ proc WindowProc uses ebx esi edi,\
         mov     [pfd.cDepthBits], 16
         mov     [pfd.cAccumBits], 0
         mov     [pfd.cStencilBits], 0
-        invoke  ChoosePixelFormat,[hdc], pfd
-        invoke  SetPixelFormat,[hdc],eax, pfd
+        invoke  ChoosePixelFormat,ebx, pfd
+        invoke  SetPixelFormat,ebx,eax, pfd
 
         ; create gl context
-        invoke  wglCreateContext, [hdc]
+        invoke  wglCreateContext, ebx
         mov     [hrc], eax
-        invoke  wglMakeCurrent, [hdc], eax;[hrc]
+        invoke  wglMakeCurrent, ebx, eax;[hrc]
 
         ; set fone color
         invoke  glClearColor, 0.0,0.0,0.0,1.0;0.07, 0.13, 0.17, 1.0
@@ -369,6 +263,16 @@ proc WindowProc uses ebx esi edi,\
         cmp     [Game.Pause], FALSE
         jne     .animation
 
+        ; update keypress
+        ;mov     eax, dword [esp]
+        ;sub     ax, [Keyboard.Clock]
+        ;cmp     ax, KEY_EVENT_UPDATE;300; temp
+        ;jb      @F
+        ;add     [Keyboard.Clock], ax
+        ;xor     ax, ax
+        ;stdcall Game.KeyEvent
+    ;@@:
+
         ; check on snd
         mov     eax, dword [esp]
         stdcall SoundPlayer.Update ; got eax in [esp] as param
@@ -390,8 +294,6 @@ proc WindowProc uses ebx esi edi,\
         cmp     eax, 10
         jb      .finish
         add     [clock], eax; reset timer
-        ;invoke  glRotatef,[theta],0.0,0.0,1.0
-
 
       ;.animation_ok:
         invoke  glClear,GL_COLOR_BUFFER_BIT
@@ -399,7 +301,8 @@ proc WindowProc uses ebx esi edi,\
 
         invoke  glPointSize, [rect_size] ; pixels!!!!
 
-
+        ; draw
+        invoke  glBegin, GL_POINTS
         ; draw field
         stdcall View.DrawField
         ; draw figure figure
@@ -419,13 +322,12 @@ proc WindowProc uses ebx esi edi,\
         mov     edi, 2  ; Y
         stdcall View.DrawFigure, 3;//????
         ; draw holded figure
-        ;cmp     word [Game.HoldedFigNum],  -1
-        ;je      @F
         mov     bx,  word [Game.HoldedFig]
         mov     esi, FIELD_W + 3; X
         mov     edi, 2  +  4  +  2 ; Y
         stdcall View.DrawFigure, 3;//????
-;@@:
+
+        invoke  glEnd
         ; setup rotation
         fld     [tmp_tmp]
         fld     [tmp_tmp_delta]
@@ -538,21 +440,32 @@ proc WindowProc uses ebx esi edi,\
 
         cmp     eax, 'R' ; restart
         jne     @F
-        ;mov     [Game.Playing], TRUE
         stdcall Game.End
         stdcall Game.Initialize
 @@:
         cmp     eax, 'P'
         jne     @F
+        stdcall SoundPlayer.Pause
         xor     [Game.Pause], 1
 @@:
+        ; TEMP
         cmp     [Game.Playing], TRUE
         jne     @F
         cmp     [Game.Pause], FALSE
         jne     @F
         stdcall Game.KeyEvent
 @@:
-
+        ;cmp     eax, VK_LEFT
+        ;jb      @F
+        ;cmp     eax, VK_RIGHT
+        ;ja      @F
+        ; check press of key
+        ;mov     ecx, eax
+        ;sub     ecx, VK_LEFT
+        ;mov     dl, 1
+        ;shl     dl, cl
+        ;or      byte [Keyboard.Pressed], dl
+;@@:
         cmp     eax, VK_ESCAPE
         jne     .defwndproc
         cmp     [Game.Playing], FALSE
@@ -560,7 +473,20 @@ proc WindowProc uses ebx esi edi,\
         ; stop game
         stdcall Game.End
         jmp     .defwndproc
-
+  ;.wmkeyup:
+        ;mov     eax, [wparam]
+        ;cmp     eax, VK_LEFT
+        ;jb      @F
+        ;cmp     eax, VK_RIGHT
+        ;ja      @F
+        ; check press of key
+        ;mov     ecx, eax
+        ;sub     ecx, VK_LEFT
+        ;mov     dl, 1
+        ;shl     dl, cl
+        ;xor     byte [Keyboard.Pressed], dl
+;@@:
+        ;jmp     .defwndproc
   .wmdestroy:
         ; misuc
         stdcall SoundPlayer.Close
@@ -579,654 +505,11 @@ endp
 
 
 
-
-
-
-;#############GAME INITIALIZATION####################
-proc Game.Initialize
-
-        call    Random.Initialize
-
-        ; clear screen
-
-        ; clear field
-        mov     esi, blocksArrCopy
-        mov     edi, blocksArr
-        mov     ecx, FIELD_W*FIELD_H
-        rep movsb
-
-        ; write score
-        ;mov     word [Game.ScoreStrEnd - 3], $0000; clear string for score
-        ;mov     word [Game.ScoreStrEnd - 1], $0000
-
-        mov     word [Game.Score], 0; set score to 0
-        stdcall Settings.GetHigh
-
-        ; write high score
-        movzx   eax, word [Game.HighScore]
-        cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
-        ;write score
-        movzx   eax, word [Game.Score]
-        cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
-
-        ; gen new fig
-        stdcall Game.GenNewFig
-
-        ; setup timer
-        mov     [Game.TickSpeed], START_TICK_SPEED
-        mov     [Game.Pause], TRUE;
-        mov     [Game.Playing], TRUE;temp!!FALSE
-
-        ;mov     [Game.CurSoundTick], 0
-        ; set music pos to start
-        mov      [SoundPlayer.NextSound], 0
-        ;invoke  PlaySound, _wav_play_tetris, 0, 8 + 1;SND_LOOP + SND_ASYNC
-        ;mov     [Game.CurSoundTick], 0
-
-        ;fld     [Game.SpeedMul]
-        mov     [Game.FigsPlaced], 0
-
-        ; setup holded
-        and     word [Game.Holded], MY_FALSE; set ifhold to true
-        mov     word [Game.HoldedFigNum], -1
-        mov     word [Game.HoldedFig], 0
-
-        ; update screen
-                ; CLEAR
-                ; WRITE SCORE
-                ; WRITE HIGH
-        ; DRAW FIELD
-                ; DRAW NEXT FIGURE
-        ;stdcall Screen.Update
-
-        ret
-endp
-
-;#############GEN NEW FIGURE####################
-proc Game.GenNewFig
-
-        ; setup start place
-        mov     [Game.FigX], FIELD_W/2-2
-        mov     [Game.FigY], 0
-        mov     [Game.CurFigRotation], 0
-        mov     [Game.FigPreviewY], 0
-
-        ; setup new color
-        movzx   eax, [colorsNum]
-        stdcall Random.Get, 3, eax
-        mov     [Game.CurFigColor], ax
-
-        ; setup cur fig
-        mov     ax, [Game.NextFigNumber]
-        mov     [Game.CurFigNumber], ax
-        mov     ax, [Game.NextFig]
-        mov     [Game.CurFig], ax
-
-        ; setup next fig
-        movzx   eax, [figNum]
-        stdcall Random.Get, 0, eax
-        mov     [Game.NextFigNumber], ax
-        movzx   ebx, ax
-        shl     ebx, 3
-        mov     ax, [figArr + ebx]
-        mov     [Game.NextFig], ax
-
-        ; update screen
-        xor      eax, eax
-        stdcall  Game.KeyEvent
-
-        ret
-endp
-
-;############### KEY EVENT ############
-; - processes a key code, stored in eax
-proc Game.KeyEvent uses eax
-
-        ; LD figure data and save initial fig state
-        movzx   ecx, [Game.CurFigNumber]
-        ; check if holded fig used
-        cmp     eax, 'H'
-        jne     .skipHold
-        cmp     [Game.Holded], MY_TRUE
-        je      .skipHold
-        ; hold
-        or      word [Game.Holded], TRUE; set ifhold to true (1 hold per fig)
-        movzx   ebx, cx; save cur fig num
-        shl     bx, 3
-        mov     bx, word [figArr + ebx]
-        mov     word [Game.HoldedFig], bx
-
-        ; swap cur and buffered
-        xchg    word [Game.HoldedFigNum], cx
-        cmp     cx, -1 ; if holded fig isnt set yet
-        jne     @F
-        push    eax
-        stdcall Game.GenNewFig;; REGISTERS!!!!
-        pop     eax
-        movzx   ecx, word [Game.CurFigNumber]
-@@:
-        mov     word [Game.FigX], FIELD_W/2-2
-        mov     word [Game.FigY], 0
-        mov     word [Game.CurFigNumber], cx
-.skipHold:
-        xor     ebx, ebx
-        ; get cords
-        movzx   esi, word [Game.FigX] ; initial X
-        movzx   edi, word [Game.FigY] ; initial Y
-
-        ; get figure place at fig array
-        shl     cx, 2; bc figs are stored as 2 bytes * 4 states
-        mov     bx, cx; save cx
-        mov     dx, [Game.CurFigRotation]
-
-        ; game logics here
-        ; move left-right-rotate
-        cmp     eax, VK_LEFT;'a'
-        jne     @F
-        dec     si
-@@:
-        cmp     eax, VK_RIGHT ;'d'
-        jne     @F
-        inc     si
-@@:
-        ; decode key and apply rotation
-        cmp     eax, VK_UP  ; rotation
-        jne     @F
-        inc     dx
-        and     dx, 0000'0000'0000'0011b
-@@:
-        cmp     eax, VK_DOWN ; rotation
-        jne     @F
-        dec     dx
-        and     dx, 0000'0000'0000'0011b
-@@:
-        ; get figure (duplicated!)
-        add     bx, dx ; apply rotation
-        shl     bx, 1  ; each fig is 2 bytes long
-        ; TEST
-        ;cmp     si, $FFFF
-        ;je      .EndKeyEvent
-
-        mov     bx, [figArr + ebx] ; is cur figure
-
-        ; check collisions
-        push    ebx esi edi edx eax ecx
-        stdcall Game.CollideFigure
-        test    ax, ax
-        pop     ecx eax edx edi esi ebx
-
-        jz      @F
-        ; restore changes if collided
-        ; get figure
-        mov     dx, [Game.CurFigRotation]
-        add     cx, dx  ; apply rotation
-        shl     cx, 1  ; each fig is 2 bytes long
-        mov     bx, [figArr + ecx] ; is cur figure
-        ; restore x cord
-        mov     si, [Game.FigX] ; initial X
-
-@@:
-        ; check timer update
-        cmp     eax, 7; reserved for timer update
-        jne     @F
-        inc     di
-@@:
-        ; save old di
-        mov     word [Game.FigY], di
-        dec     di
-        ; go down loop
-.GoDownLoop:
-        inc     di
-        ; check on collision
-        push    eax ebx esi edx di
-        stdcall Game.CollideFigure; esi - X edi - Y bx - FIG
-        ;pop     edi ; reset Y to new
-        ;inc     edi
-        test    ax, ax
-        pop     di edx esi ebx eax
-        jz      .GoDownLoop
-        ; collided
-        dec     di
-        ; speed up on space
-        cmp     eax, ' '
-        je      .Collided
-        cmp     di, [Game.FigY]
-        jb      .Collided
-        ; save new di as preview Y
-        mov     [Game.FigPreviewY], di
-
-
-        ; noncollided
-        ; EVERYTHING IS GOOD
-        mov     [Game.FigX], si
-        mov     [Game.CurFig], bx
-        mov     [Game.CurFigRotation], dx
-        jmp     .End_key_event
-
-.Collided:
-        ; 1st place figure
-        mov     cl, byte [Game.CurFigColor]
-        push    ebx esi edi edx
-        stdcall Game.PlaceFigure
-        ; temp playsnd
-        ;push    eax
-        ;invoke  midiOutShortMsg, [midihandle], 0x004F5291
-        ;pop     eax
-
-        pop     edx edi esi ebx
-        ; score?
-        ;sub     di, [Game.FigY]
-        ;add     [Game.Score], di
-        ; print res
-        ;movzx   eax, word [Game.Score]
-        ;cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
-
-        ; check on loose
-        stdcall Game.CheckOnEnd
-        xor     ax, 1
-        test    ax, ax ; temp snd off
-        jnz     @F
-        ; play end snd temp
-        mov     [SoundPlayer.EndGameTick], 4
-        ;;;;;;;;;;;
-        stdcall Game.End
-        jmp     .End_key_event
-@@:
-        ; unblock hold usage
-        and     word [Game.Holded], MY_FALSE; set ifhold to true
-
-        ; speed up
-        ; inc counts of figure
-        inc     [Game.FigsPlaced]
-        ; encount new speed
-        test    [Game.FigsPlaced], INC_EVERY_FIGS; 111; every 16 figs
-        jnz     @F
-        fild    [Game.TickSpeed]
-        fld     [Game.SpeedMul]
-        fmulp   st1, st0
-        fistp   [Game.TickSpeed]
-@@:
-        ; check on scrore
-        stdcall Game.CheckOnLine
-        ; gen new fig (temp)
-        stdcall Game.GenNewFig
-        ;mov     [Game.FigY], 0
-
-.End_key_event:
-        ret
-endp
-
-;#############CHECK ON END OF GAME ####################
-; - rets TRUE in ax if game ends
-proc Game.CheckOnEnd uses ebx ecx
-
-        xor     eax, eax
-
-        mov     ecx, FIELD_W - 2
-        mov     ebx, FIELD_W * TOP_LINE + 1; from TOP_LINE line
-.CheckLoop:
-        cmp     byte [ebx + blocksArr], 0
-        je      @F
-        mov     eax, TRUE
-        jmp     .EndProc
-@@:
-        inc     ebx
-        loop    .CheckLoop
-.EndProc:
-        ret
-endp
-
-;#############CHECK ON FULL LINES AND ENCOUNT SCORE ####################
-proc Game.CheckOnLine uses dx ebx ecx
-
-        xor     ax, ax; score
-        mov     ebx, 1           ; full w
-        mov     ecx, FIELD_H - 1 ; full hei - 1
-.CheckLoop:
-        push    ecx
-        push    ebx
-
-        mov     ecx, FIELD_W - 2
-.InnerCheckLoop:
-        cmp     byte [ebx + blocksArr], 0
-        je      .skipLine
-
-        inc     ebx
-        loop    .InnerCheckLoop
-        ; if non skipped -- do changes
-        ; make line glow (line mecanics)
-        mov     edx, FIELD_H
-        sub     edx, [esp + 4]; get ecx
-        mov     byte [edx + glowArr], GLOW_TIME_TICKS
-        ; rm line
-        sub     ebx, FIELD_W
-        mov     ecx, ebx
-.RmLineLoop:
-        mov     dl, byte [ebx + blocksArr]
-        cmp     dl, $01; check if it is border block
-        je      @F
-        mov     [ebx + blocksArr + FIELD_W], dl
-@@:
-        dec     ebx
-        loop    .RmLineLoop
-        ; rm line end
-        inc     ax; add score
-
-.skipLine:
-        pop     ebx
-        add     ebx, FIELD_W
-
-        pop     ecx
-        loop    .CheckLoop
- ; END LOOP
-        test    ax, ax  ; add score
-        jz      .EndProc
-
-        ;push    ax
-        ;add     ax, 2
-        ;mov     word [SoundPlayer.LineGameTick], ax
-        ;pop     ax
-        ; sound eff
-        ;push    eax ecx edx
-        ;mov     ecx, 0x007F0099
-        ;mov     ch, al
-        ;shl     ch, 2
-        ;add     ch, 50
-        ;mov     word [SoundPlayer.LineGameTick], ax
-        ;invoke   midiOutShortMsg, [midihandle],  0x007F3799  ;'ecx ;
-        ;pop     edx ecx eax
-        ;  == == =
-
-        mov     cx, 2;50   ; count
-        xchg    ax, cx
-        shl     ax, cl
-        dec     ax
-        shl     ax, 2
-        ;mov     cx, [Game.Level]
-        ;mul     CX
-
-        add     [Game.Score], ax ; add
-
-        ; play snd
-        ;invoke  mciSendString, _wav_play, 0, 0, 0
-
-        ;write score
-        movzx   eax, word [Game.Score]
-        cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
-
-.EndProc:
-        ret
-endp
-
-
-;#############MOVES FIGURE TO FIELD ARRAY ####################
-; - fig   -- 2 bytes figure
-; - x     -- x cord
-; - y     -- y cord
-; - color -- fig color
-;Game.PlaceFigure.Fig            bx
-;Game.PlaceFigure.X              esi
-;Game.PlaceFigure.Y              edi
-;Game.PlaceFigure.Color          cl
-;Game.PlaceFigure.Field          ???
-
-proc Game.PlaceFigure ;uses eax ecx esi edi ebx
-
-        ; prep cords
-        mov     eax, FIELD_W
-        mul     di
-        add     si, ax; esi is cord in matrix
-
-
-        xchg    al, cl ; mov color to al
-        mov     ecx, 16; setup loop
-
-        ; inner loop -- line of matrix
-.DrawLoop:
-        shl     bx, 1
-        jae     @F ; CF = 0 => exit
-        ; paste figure
-        mov     byte [esi + blocksArr], al
-@@:
-        inc     esi ; setup cords
-        dec     ecx
-        test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b; if % 4 => move to next line
-        jnz     @F
-        add     esi, FIELD_W - 4
-@@:
-        inc     ecx
-        loop    .DrawLoop
-
-        ret
-endp
-
-;#############CHECK ON COLLISION####################
-; - fig   -- 2 bytes figure
-; - x     -- x cord
-; - y     -- y cord
-;View.CollideFigure.Fig             bx
-;View.CollideFigure.X               esi
-;View.CollideFigure.Y               edi;dw      ?
-
-proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
-        ; prep cords
-        mov     eax, FIELD_W
-        mul     di
-        add     si, ax; esi is cord in matrix
-
-        ; result set
-        xor     eax, eax
-
-        mov     ecx, 16
-
-        ; inner loop -- draw line of matrix
-.DrawLoop:
-        shl     bx, 1
-        jae     @F ; CF = 0 => exit
-        ; check collision
-        cmp     byte [esi + blocksArr], 0
-        jne     .Collided
-@@:
-        inc     esi; setup cords
-        dec     ecx
-        test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b
-        jnz     @F
-        add     esi, FIELD_W - 4
-@@:
-        inc     ecx
-        loop    .DrawLoop
-
-        jmp     .EndProc
-.Collided:
-        mov     eax, TRUE
-.EndProc:
-        ret
-endp
-
-
-;#############DRAW FIGURE####################
-; - fig    -- 2 bytes fig data
-; - x,y    -- x,y cord
-;View.DrawFigure.Fig             bx
-;View.DrawFigure.X               esi
-;View.DrawFigure.Y               edi;dw      ?
-;View.DrawFigure.Color           (stack)
-proc View.DrawFigure uses ecx,\
-                     color
-        ; begin paint
-        invoke  glBegin, GL_POINTS
-        ; get color
-        mov     eax, [color]
-        ; set x pos
-        ;mov     si, [View.DrawFigure.X]
-        inc     esi
-        ; set y pos
-        ;mov     di, [View.DrawFigure.Y]
-        inc     edi
-        ; set fig info
-        ;mov     bx, [View.DrawFigure.Fig]
-        ;mov     ebx, [View.DrawFigure.Color]
-        ; setup loop
-        mov     ecx, 16
-
-        ; inner loop -- draw line of matrix
-.DrawLoop:
-        shl     bx, 1
-        jae     @F ; CF = 0 => exit
-        ; draw rect (esi is X, edi is Y, eax - color pos in table)
-        push    ecx eax
-        stdcall View.DrawRect ; uses eax edx ecx
-        pop     eax ecx
-@@:
-        inc     esi; setup cords
-        dec     ecx
-        test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b
-        jnz     @F
-        sub     esi, 4
-        inc     edi
-@@:
-        inc     ecx
-        loop    .DrawLoop
-
-        invoke  glEnd
-
-        ret
-endp
-
-
-
-;#############DRAW FIELD####################
-proc    View.DrawField uses esi edi ebx;ecx ebx edx
-
-        invoke  glBegin, GL_POINTS
-
-        mov     edi, FIELD_H ; Y
-        mov     ebx, FIELD_H*FIELD_W-1
-
-DrawLoopW:
-        mov     esi, FIELD_W ; X
-; innnr start
-.DrawLoopH:
-        ; get color
-        movzx   eax, byte [blocksArr + ebx]
-        ; draw rect (esi is X, edi is Y, ebx - color pos in table)
-        stdcall View.DrawRect
-        ; go next
-        dec     ebx
-        dec     esi
-        test    esi, esi
-        jnz     .DrawLoopH
-; inner end
-        dec     edi
-        test    edi, edi
-; outer end
-        jnz     DrawLoopW
-
-        invoke  glEnd
-
-        ret
-endp
-
-;#############DRAW RECT####################
-; (TO DO THIS YOU MUST DO GlBegin!!!!!!!!!!!!!)
-; - x,y    -- x,y cord
-; - color
-;View.DrawRect.X                    ; esi
-;View.DrawRect.Y                    ; edi
-;View.DrawRect.Color  (ID)          ; eax
-
-proc View.DrawRect ;uses ecx, edx
-        ; get color
-
-        mov     dx,  12; 4 bytes for clr * 3
-        mul     dx
-        ; set color
-        invoke  glColor3f, dword [Color_Table + eax], dword [Color_Table + eax + 4], dword [Color_Table + eax + 8]
-        ; draw point
-        invoke  glVertex2i, esi, edi
-        ret
-endp
-
-;#############GAME END ##############################
-proc Game.End
-        ; set playing false
-        mov     [Game.Playing], FALSE
-        ; stop music
-        invoke  PlaySound, 0, 0, 1;SND_LOOP + SND_ASYNC
-        ; check score if new high
-        mov     cx, [Game.HighScore]
-        mov     ax, word [Game.Score]
-        cmp     ax, cx
-        jle     @F
-        ; save high scrore
-        mov    [Game.HighScore], ax
-        stdcall Settings.SetHigh
-        ; write high score
-        movzx   eax, word [Game.HighScore]
-        cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
-@@:
-        ret
-
-endp
-
-
-;#############GET HIGH SCORE####################
-; high score in ax
-proc Settings.GetHigh
-
-        ; check if created handle still valid
-        cmp     [Settings.fileHandle], INVALID_HANDLE_VALUE
-        jne     @F
-        ; createfile
-        invoke  CreateFileA, Settings.strFilename, GENERIC_WRITE + GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL
-        cmp     eax, INVALID_HANDLE_VALUE
-        je      .EndProc
-        mov     [Settings.fileHandle], eax ; save file handler
-@@:
-        ; temp set pos!!!!!
-        invoke  SetFilePointer, [Settings.fileHandle] , 0, 0, FILE_BEGIN
-        ; get sz
-        invoke GetFileSize, [Settings.fileHandle], 0;
-        inc eax
-        ;mov [nSize], eax
-        ; read high
-        invoke  ReadFile, [Settings.fileHandle], Settings.buffer, eax, Settings.BytesProceed, 0 ; [nSize]
-
-        cmp     [Settings.BytesProceed], 0
-        je      .EndProc
-        ; !!!!
-        ;invoke CloseHandle, [Settings.fileHandle]
-        ; set high
-        mov     ax, word [Settings.buffer]
-        jmp     @F ; skip reset score
-.EndProc:
-        xor     ax, ax
-@@:
-        mov     word [Game.HighScore], ax  ;[Settings.strHighScore]
-
-        ret
-endp
-
-;#############SET HIGH SCORE####################
-; high score in ax
-proc Settings.SetHigh
-        ; convert num to str
-        ;cinvoke wsprintfA, Settings.buffer, buf_format, eax
-        ; mov high to buffer
-        mov     word [Settings.buffer], ax
-        ; temp set pos!!!!!
-        invoke  SetFilePointer, [Settings.fileHandle] , 0, 0, FILE_BEGIN
-        ; write high
-        invoke  WriteFile, [Settings.fileHandle], Settings.buffer, 2, Settings.BytesProceed, 0 ; [nSize]
-        ;invoke  GetLastError
-        ;xor     ax, ax
-        ; !!!!
-        jmp     @F ; skip reset score
-.EndProc:
-        xor     ax, ax
-@@:
-        ret
-endp
+        include 'game.asm'
+        include 'view.asm'
+        include 'settings.asm'
+        include 'music.asm'
+        include 'units\random.h'
 
 
 
@@ -1239,50 +522,15 @@ section '.idata' import data readable writeable
         user32,'USER32.DLL',\
         winmm,'WINMM.DLL',\
         opengl,'OPENGL32.DLL',\
-        glu, 'GLU32.DLL';,\
-        ;glut, 'GL/GLUT32.DLL'
-
-
+        glu, 'GLU32.DLL'
 
         include 'api\gdi32.inc'
         include 'api\kernel32.inc'
         include 'api\user32.inc'
-        ;include 'api\winmm.inc'
-        ;include 'windows.inc'
-        ;include 'lib\gdi32.lib'
                 
         include 'opengl.inc'
         include 'glut.inc'
 
-        ;import  opengl,\
-        ;wglCreateContext,'wglCreateContext'
-        ;include 'include\imports.inc'
-        ;include '..\include\opengl_const.inc'
-        ;include '..\include\opengl_macros.inc'
-        ;import kernel32,\
-        ;ExitProcess,'ExitProcess',\
-        ;GetTickCount,'GetTickCount',\
-        ;GetModuleHandle, 'GetModuleHandle'
-
-        ;import user32,\
-        ;MessageBox,'MessageBoxA',\
-        ;LoadCursor, 'LoadCursor',\
-        ;LoadIcon, 'loadIcon',\
-        ;RegisterClass, 'RegisterClass',\
-        ;CreateWindowEx, 'CreateWindowEx',\
-        ;DefWindowProc, 'DefWindowProc',\
-        ;PostQuitMessage, 'PostQuitMessage'
-
-
-        ;include 'GDIplusEffects.inc'
-        ;include
-        ;import  gdi,\
-        ;TextOutA,'TextOutA',\
-        ;CreatePen, 'CreatePen',\
-        ;SelectObject, 'SelectObject',\
-        ;MoveToEx, 'MoveToEx',\
-        ;LineTo, 'LineTo',\
-        ;CreateSolidBrush, 'CreateSolidBrush'
 import winmm,\
         mciSendString,'mciSendStringA',\
         PlaySound , 'PlaySound',\
@@ -1290,15 +538,6 @@ import winmm,\
         midiOutShortMsg, 'midiOutShortMsg',\
         midiOutClose, 'midiOutClose',\
         midiOutLongMsg, 'midiOutLongMsg'
-
-        ;include 'api\kernel32.inc'
-        ;include 'api\user32.inc'
-
-        include 'units\random.h'
-        include 'music.h'
-
-;import glut,\
-         ;glutBitmapCharacter, 'glutBitmapCharacter'
 
 import opengl,\
          glAccum,'glAccum',\
