@@ -29,7 +29,8 @@ entry start
 
         _style equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 ;===========================
-section '.data' data readable writable
+;section '.data' data readable writable
+section '.code' code executable readable writable  ; code section
         Caption         db 'ERROR',0
         Text            db 'Window creation fail', 0;,0
 
@@ -88,9 +89,7 @@ section '.data' data readable writable
         ;Keyboard.Clock            dw    0
         
 ;===========================
-
 section '.code' code executable readable writable  ; code section
-
 start:
         xor      ebx, ebx
         ; window creation process
@@ -334,7 +333,8 @@ proc WindowProc uses ebx esi edi,\
         faddp
         fstp    [tmp_tmp]
         ; set Special color
-        invoke  glColor3f, 0.9, 0.9, 0.9
+        mov     eax, 0.9
+        invoke  glColor3f, eax, eax, eax
         ; draw special effect
         mov     ecx, FIELD_H-1
      .glow_draw:

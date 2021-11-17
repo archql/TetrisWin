@@ -125,13 +125,57 @@ proc SoundPlayer.PlayNextEx uses ebx
         ret
 endp
 
+proc SoundPlayer.PlayNextSEx uses ebx
+        ; sound here
+        movzx    ebx, word [SoundPlayer.NextSound]
+
+        mov      ecx, 4; num of players
+.PlayPackOfNotes:
+        push     ecx
+        dec      ecx
+        neg      ecx
+        test     ecx, ecx
+        jnz      @F
+        add      ecx, 6
+@@:
+        add      ecx, 3
+
+        ;movzx    ecx, byte [SoundPlayer.Notes + ebx]
+        or       ecx, 0x007F0090  ; regulat midi msg
+        or       ch, byte [SoundPlayer.Notes + ebx]
+        test     ch, 1000'0000b
+        jnz      @F
+        xor      cl, 0x30
+@@:
+        and      ch, 0111'1111b
+        invoke   midiOutShortMsg, [midihandle],  ecx
+
+        inc      ebx ;add      ebx, NOTES_PACK_BYTES / 2; 1 byte per note
+        pop      ecx
+        loop     .PlayPackOfNotes
+
+        ; get delta tick
+        movzx    ax, byte [SoundPlayer.Notes + ebx]
+        shl      ax, 1
+        mov      [SoundPlayer.DeltaTick], ax
+        inc      ebx
+
+        cmp      bx, word [SoundPlayer.NotesNum - 2]
+        jl       @F
+        xor      ebx, ebx
+@@:
+        mov      [SoundPlayer.NextSound], bx
+
+        ret
+endp
+
 
 
 SoundPlayer.NextSound        dw      0
                         ; 1001 -- play; 1000 - stop; kkk - note num, vvv - volume
                         ;format 1001'nnnn   kk  0vvvvvvvv
 
-SoundPlayer.Notes         file    'tetris_ex.amid'
+SoundPlayer.Notes         file    'tetris_ex.amid' ; ex
 SoundPlayer.NotesNum:     ; this pos - 2 bytes
 
 SoundPlayer.Instruments   db    1100'0000b or 0, 32, 0, 0,\ ; 32 25 25 10
