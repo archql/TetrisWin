@@ -459,19 +459,6 @@ proc WindowProc uses ebx esi edi,\
 
         ; get new symbol place
         movzx   edi, word [Settings.tempLen]
-        ; if >= 8 -- stop!
-        cmp     edi, 8
-        jb      @F
-        ; ld new file
-        mov     [Settings.fileHandle], -1; INVALIF_FILE_HANDLE
-        stdcall Settings.GetHigh
-        ;TEMP WRITE HIGH
-        movzx   eax, word [Game.HighScore]
-        cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
-        ;
-        xor     edi, edi
-        jmp     .endFileNameGet
-@@:
         ; ld new symbol
         push    edi
         add     edi, Settings.strFilename
@@ -479,6 +466,17 @@ proc WindowProc uses ebx esi edi,\
         pop     edi
         ; go to next
         inc     edi
+        ; if >= 8 -- stop!
+        cmp     edi, 8
+        jb      .endFileNameGet
+        ; ld new file
+        mov     [Settings.fileHandle], -1; INVALID_FILE_HANDLE
+        stdcall Settings.GetHigh
+        ;TEMP WRITE HIGH
+        movzx   eax, word [Game.HighScore]
+        cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
+        ;
+        xor     edi, edi
         ; return
 .endFileNameGet:
         mov     word [Settings.tempLen], di
