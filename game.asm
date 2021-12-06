@@ -214,13 +214,13 @@ proc Game.KeyEvent uses eax
 
         jz      @F
         ; restore changes if collided
-        ; get figure
         mov     dx, [Game.CurFigRotation]
         add     cx, dx  ; apply rotation
         shl     cx, 1  ; each fig is 2 bytes long
         mov     bx, [figArr + ecx] ; is cur figure
         ; restore x cord
         mov     si, [Game.FigX] ; initial X
+
 
 @@:
         ; check timer update
@@ -248,7 +248,14 @@ proc Game.KeyEvent uses eax
         cmp     eax, ' '
         je      .Collided
         cmp     di, [Game.FigY]
-        jl      .Collided ; jb
+        jl      .Collided
+        ;jge     @F  ;  (were jb -- but error with neg nmbs)
+        ; collided at initial cord
+        ;cmp     eax, 7
+        ;je      .Collided
+        ; restore x cord
+        ;mov     si, [Game.FigX] ; initial X
+@@:
         ; save new di as preview Y
         mov     [Game.FigPreviewY], di
 

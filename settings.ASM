@@ -1,14 +1,14 @@
 ;========Game Settings==============
         Settings.strFilename      db    'settings.txt', 0
-        Settings.fileHandle       dd    -1; INVALIF_FILE_HANDLE
+        Settings.tempLen          dw    0
+        Settings.fileHandle       dd    -1; INVALID_FILE_HANDLE
         Settings.buffer           db    4 dup ?
-        Settings.fileSize         dd    ?
         Settings.BytesProceed     dd    ?
 
 
 
 ;#############GET HIGH SCORE####################
-; high score in ax
+; ret high score in ax
 proc Settings.GetHigh
 
         ; check if created handle still valid
@@ -57,9 +57,58 @@ proc Settings.SetHigh
         ;invoke  GetLastError
         ;xor     ax, ax
         ; !!!!
-        jmp     @F ; skip reset score
+        jmp     @F ; skip reset score   
 .EndProc:
         xor     ax, ax
 @@:
         ret
 endp
+
+; addl data to ld scoreboard
+Settings.strFileFilter      db    '*.txt', 0
+Settings.fileData           WIN32_FIND_DATAA
+
+LB_RCDS_AMOUNT              = 5
+LB_NAME_STR_LEN             = 8
+
+Settings.LeaderBoardArr:    times (LB_RCDS_AMOUNT) db (LB_NAME_STR_LEN) dup ' ', ':', (SCOLE_LEN_CONST) dup ' ', 0
+
+;#############GET ALL RCD FILES####################
+proc Settings.LdScoreboard
+        invoke  FindFirstFile, Settings.strFileFilter, Settings.fileData
+        xchg    eax, ebx
+        test    ebx, ebx
+        jz      @F
+        mov     ecx, 0
+.Loop_Find:
+        push    ecx
+        ; write got str
+        mov     esi, Settings.fileData.cFileName
+        mov     edi, ecx
+        shl     edi, 4
+        add     edi, Settings.LeaderBoardArr
+        mov     ecx, LB_NAME_STR_LEN
+        rep     movsb
+        ; get score
+        push    eax ; save file handler
+        ; read file
+        ;mov     [Settings.fileHandle], -1; INVALID_FILE_HANDLE
+        ;stdcall Settings.GetHigh         ; It ll kill all file logics!!!
+
+        ; reset stack
+        pop     eax
+@@:
+        ; write cur
+        ; invoke  MessageBox, 0, Settings.LeaderBoardArr, Caption, MB_OK or MB_ICONERROR;
+        ; find next
+        invoke  FindNextFile, ebx, Settings.fileData
+        ; loop
+        pop     ecx
+        inc     ecx
+        test    eax, eax
+        jnz     .Loop_Find
+@@:
+
+        ret
+endp
+
