@@ -69,6 +69,10 @@ proc Game.Initialize
         movzx   eax, word [Game.Score]
         cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
 
+        ; TESTTESTTEST!!!!
+        stdcall Settings.LdScoreboard
+        ; ========================
+
         ; gen new fig
         stdcall Game.GenNewFig
 
@@ -340,7 +344,7 @@ proc Game.CheckOnEnd uses ebx ecx
         ret
 endp
 
-;#############CHECK ON FULL LINES AND ENCOUNT SCORE ####################
+;#############CHECK ON FULL LINES AND COUNT SCORE ####################
 proc Game.CheckOnLine uses dx ebx ecx
 
         xor     ax, ax; score

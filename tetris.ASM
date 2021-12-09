@@ -34,7 +34,7 @@ section '.code' code executable readable writable  ; code section
         Caption         db 'ERROR',0
         Text            db 'Window creation fail', 0;,0
 
-        _font_name      db "Verdana", 0  ;
+        _font_name      db "Lucida Sans Typewriter", 0  ; "Verdana"
 
 
         _class          TCHAR    'FASMW32',0
@@ -72,6 +72,7 @@ section '.code' code executable readable writable  ; code section
         Str.NextFig.Len           dd    $ - Str.NextFig
         Str.HoldedFig             db    'HOLDED FIGURE'
         Str.HoldedFig.Len         dd    $ - Str.HoldedFig
+        Str.Scoreboard            db    '--<SCOREBOARD>--'
         Str.HighScore             db    SCOLE_LEN_CONST dup ' '
         Str.Score                 db    SCOLE_LEN_CONST dup ' '
         Str.Score.Format          db    '%5d', 0
@@ -92,11 +93,6 @@ section '.code' code executable readable writable  ; code section
 ;===========================
 section '.code' code executable readable writable  ; code section
 start:
-
-        ; TESTTESTTEST!!!!
-        stdcall Settings.LdScoreboard
-        ; ========================
-
 
         xor      ebx, ebx
         ; window creation process
@@ -423,6 +419,36 @@ proc WindowProc uses ebx esi edi,\
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 6 + 3;
         invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.HighScore
 
+        ; DRAW text SCOREBOARD
+        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, 2;
+        invoke  glCallLists, 16, GL_UNSIGNED_BYTE, Str.Scoreboard
+        ; DRAW Scoreboard
+        mov     ecx, LB_RCDS_AMOUNT
+        mov     edi, Settings.LeaderBoardArr
+.DrawScoreboardLoop:
+        cmp     byte [edi], ' '
+        je      .loopSkipLine
+
+        push    ecx
+        neg     ecx
+        add     ecx, LB_RCDS_AMOUNT
+        add     ecx, 3
+
+        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, ecx;dword [esp + 4];
+        invoke  glCallLists, 16, GL_UNSIGNED_BYTE, edi
+
+        pop     ecx
+.loopSkipLine:
+        add     edi, 16
+        loop    .DrawScoreboardLoop
+
+        ; Draw CurNickName
+        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, FIELD_H - 2;
+        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strFilename
+        ; Draw TmpNickName
+        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, FIELD_H - 1;
+        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempFilename
+
         cmp     [Game.Playing], 1
         je      @F
         ; DRAW text GAME OVER
@@ -451,32 +477,74 @@ proc WindowProc uses ebx esi edi,\
         ; check if keyboard mode activated
         test    ebx, 0x00'00'80'00
         jz      .regularKeyEvent
-        ; check if normal key pressed
-        cmp     eax, 'A'
-        jb      .defwndproc
-        cmp     eax, 'Z'
-        ja      .defwndproc
-
-        ; get new symbol place
-        movzx   edi, word [Settings.tempLen]
-        ; ld new symbol
-        push    edi
-        add     edi, Settings.strFilename
-        stosb
-        pop     edi
-        ; go to next
-        inc     edi
-        ; if >= 8 -- stop!
-        cmp     edi, 8
-        jb      .endFileNameGet
+        ; check if control key
+        cmp     eax, VK_RETURN
+        jne     @F
+        ; set cur name
+        mov     esi, Settings.strTempFilename
+        mov     edi, Settings.strFilename
+        mov     ecx, LB_NAME_STR_LEN
+        rep movsb
         ; ld new file
-        mov     [Settings.fileHandle], -1; INVALID_FILE_HANDLE
         stdcall Settings.GetHigh
         ;TEMP WRITE HIGH
         movzx   eax, word [Game.HighScore]
         cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
         ;
         xor     edi, edi
+        jmp     .endFileNameGet
+@@:
+        ; get new symbol place
+        movzx   edi, word [Settings.tempLen]
+
+        ; continue event work
+        cmp     eax, VK_BACK
+        jne     @F
+        ; clear one symbol if can
+        test    edi, edi
+        jz      .defwndproc
+        ; dec to cur symbol
+        dec     edi
+        ; ld new symbol
+        mov     al, '_'
+        push    edi
+        add     edi, Settings.strTempFilename
+        stosb
+        pop     edi
+
+        jmp     .endFileNameGet
+@@:
+        cmp     eax, VK_LEFT ; go one smbl left
+        jne     @F
+        test    edi, edi; if can go left
+        jz      .defwndproc
+        dec     di
+        jmp     .endFileNameGet
+@@:
+        cmp     eax, VK_RIGHT ; go one smbl right
+        jne     @F
+        cmp     edi, LB_NAME_STR_LEN; if can go right
+        jae     .defwndproc
+        inc     di
+        jmp     .endFileNameGet
+@@:
+
+        ; check if normal key pressed
+        cmp     eax, 'A'
+        jb      .defwndproc
+        cmp     eax, 'Z'
+        ja      .defwndproc
+        ; if >= 8 -- stop!
+        cmp     edi, LB_NAME_STR_LEN
+        jae     .defwndproc
+
+        ; ld new symbol
+        push    edi
+        add     edi, Settings.strTempFilename
+        stosb
+        pop     edi
+        ; go to next
+        inc     edi
         ; return
 .endFileNameGet:
         mov     word [Settings.tempLen], di
@@ -536,8 +604,7 @@ proc WindowProc uses ebx esi edi,\
   .wmdestroy:
         ; misuc
         stdcall SoundPlayer.Close
-        ; file
-        invoke  CloseHandle, [Settings.fileHandle]
+        ; font lists
         invoke  glDeleteLists, 0, NUM_OF_CHARACTERS
         ; gl & window
         invoke  wglMakeCurrent, 0, 0

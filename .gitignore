@@ -1,3 +1,6 @@
 /tetris.EXE
 NEXT
 OLD
+*.ttr
+*.zip
+tetris-surface.EXE
