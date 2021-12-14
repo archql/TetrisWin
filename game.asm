@@ -1,6 +1,9 @@
         TOP_LINE                = 1
         FIG_START_Y             = -2
 
+        SPECIAL_PRICE           = 10
+        SPECIAL_NUM_LINES_RM    = 10
+
 ;========Game model==============
         Game.CurFig             dw      ?
         Game.CurFigColor        dw      ?
@@ -140,6 +143,45 @@ proc Game.KeyEvent uses eax
         invoke  midiOutShortMsg, [midihandle], 0x006F2B99
         mov     eax, [esp]
 @@:
+        ; Check if special used
+        cmp     eax, VK_RETURN
+        jne     .skipSpecial
+        cmp     [Game.Score], SPECIAL_PRICE
+        jl      .skipSpecial
+        ; Special effect
+        ; block buffer
+        ;or      word [Game.Holded], TRUE
+        ; rm some score
+        sub     [Game.Score], SPECIAL_PRICE
+        ;write score
+        movzx   eax, word [Game.Score]
+        cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
+
+        ; Do special
+        invoke  midiOutShortMsg, [midihandle], 0x007F2594
+        ; rm N random lines
+        mov     edx, FIELD_W
+        mov     ecx, SPECIAL_NUM_LINES_RM; N
+.rmRandomLinesLoop:
+        push    ecx ; save loop ctr
+        stdcall Random.Get, TOP_LINE + 1, FIELD_H - 1 ; line num in eax
+        push    eax ; save line num (specific stack depth required)
+        neg     dword [esp]
+        add     dword [esp], FIELD_H
+        push    eax
+        mov     eax, [esp]
+        ; mul by FIELD_W
+        mov     edx, FIELD_W
+        mul     edx
+        xchg    ebx, eax
+
+        stdcall Game.RmLine ;req eax -- line num & ebx -- pos in field arr
+        pop     eax eax
+        pop     ecx
+        loop    .rmRandomLinesLoop
+
+.skipSpecial:
+
         ; LD figure data and save initial fig state
         movzx   ecx, [Game.CurFigNumber]
         ; check if holded fig used
@@ -344,6 +386,30 @@ proc Game.CheckOnEnd uses ebx ecx
         ret
 endp
 
+;#############REMOVES SINGLE LINE  ###################################
+; - line num         -- as param in stack
+; - pos in field arr -- ebx
+proc Game.RmLine
+
+        ; make line glow (line mecanics)
+        mov     edx, FIELD_H
+        sub     edx, [esp + 4 + 4]; get ecx (line num) (secondary '+' is for stack frame)
+        mov     byte [edx + glowArr], GLOW_TIME_TICKS
+        ; rm line
+        sub     ebx, FIELD_W
+        mov     ecx, ebx
+.RmLineLoop:
+        mov     dl, byte [ebx + blocksArr]
+        cmp     dl, $01; check if it is border block
+        je      @F
+        mov     [ebx + blocksArr + FIELD_W], dl
+@@:
+        dec     ebx
+        loop    .RmLineLoop
+
+        ret
+endp
+
 ;#############CHECK ON FULL LINES AND COUNT SCORE ####################
 proc Game.CheckOnLine uses dx ebx ecx
 
@@ -362,21 +428,8 @@ proc Game.CheckOnLine uses dx ebx ecx
         inc     ebx
         loop    .InnerCheckLoop
         ; if non skipped -- do changes
-        ; make line glow (line mecanics)
-        mov     edx, FIELD_H
-        sub     edx, [esp + 4]; get ecx
-        mov     byte [edx + glowArr], GLOW_TIME_TICKS
-        ; rm line
-        sub     ebx, FIELD_W
-        mov     ecx, ebx
-.RmLineLoop:
-        mov     dl, byte [ebx + blocksArr]
-        cmp     dl, $01; check if it is border block
-        je      @F
-        mov     [ebx + blocksArr + FIELD_W], dl
-@@:
-        dec     ebx
-        loop    .RmLineLoop
+        stdcall Game.RmLine
+
         ; rm line end
         inc     ax; add score
 

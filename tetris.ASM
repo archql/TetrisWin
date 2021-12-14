@@ -16,7 +16,7 @@ entry start
         TRUE    = 1
         FALSE   = 0
 
-        START_TICK_SPEED = 500;500
+        START_TICK_SPEED = 500
         ;KEY_EVENT_UPDATE = 40
         GLOW_TIME_TICKS  = 15
 

@@ -17,6 +17,8 @@ proc SoundPlayer.Ini
         invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 4]
         invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 8]
         invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 12]
+        ; gunshot
+        invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 16]
 
         ;/* Close the MIDI device */
         ;invoke  midiOutClose, [midihandle];
@@ -77,6 +79,7 @@ proc SoundPlayer.Update
         jb      @F
         add     [SoundPlayer.CurTick], ax
         ; play single snd tmp
+        ;stdcall SoundPlayer.Pause
         stdcall SoundPlayer.PlayNextEx
 @@:
 
@@ -181,7 +184,8 @@ SoundPlayer.NotesNum:     ; this pos - 2 bytes
 SoundPlayer.Instruments   db    1100'0000b or 0, 32, 0, 0,\ ; 32 25 25 10
                                 1100'0000b or 1, 25, 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
                                 1100'0000b or 2, 25, 0, 0,\
-                                1100'0000b or 3, 10, 0, 0
+                                1100'0000b or 3, 10, 0, 0,\
+                                1100'0000b or 4, 127, 0, 0; gunshot
 
 
 
