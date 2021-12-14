@@ -2,7 +2,6 @@
         Settings.strFilename      db    '_ARCHQL_.ttr', 0
         Settings.strTempFilename  db    '________'
         Settings.tempLen          dw    0
-        ;Settings.fileHandle       dd    -1; INVALID_FILE_HANDLE
         Settings.buffer           db    4 dup ?
         Settings.BytesProceed     dd    ?
         FILE_SZ_TO_READ           = 2
@@ -65,12 +64,19 @@ endp
 
 ; addl data to ld scoreboard
 Settings.strFileFilter      db    '*.ttr', 0
+Settings.PlaceFormat        db    '#%X', 0
 Settings.fileData           WIN32_FIND_DATAA
 
 LB_RCDS_AMOUNT              = 16
 LB_NAME_STR_LEN             = 8
 
-Settings.LeaderBoardArr:    times (LB_RCDS_AMOUNT) db (LB_NAME_STR_LEN) dup ' ', ':', (SCOLE_LEN_CONST) dup ' ', 0
+
+
+Settings.LeaderBoardArr:    times (LB_RCDS_AMOUNT) db '#', ' ',' ',(LB_NAME_STR_LEN) dup ' ', (SCOLE_LEN_CONST) dup ' ', '15 EMPTYBYTES**'
+         LB_ISTR_RCD_LEN      = 17
+         LB_ISTR_RCD_LEN_POW  = 5; Real mem sz allocated 2^LB_RCDS_AMOUNT
+Settings.LeaderBoardPrio:   times (LB_RCDS_AMOUNT) dw 0, 0 ; place, score
+         LB_INFO_RCD_LEN      = 4
 
 ;#############GET ALL RCD FILES####################
 proc Settings.LdScoreboard
@@ -79,13 +85,13 @@ proc Settings.LdScoreboard
         test    ebx, ebx
         jz      @F
         mov     ecx, 0
-.Loop_Find:
+.Loop_Find:     ; WARN!!!!! LENGTH OF SCOREBOARD IS LIMITED AND ITS UNCONTROLLED!!!!
         push    ecx; loop ctr
-        ; write got str
+        ; write got str to rcd
         mov     esi, Settings.fileData.cFileName; ptr to filename str
         mov     edi, ecx
-        shl     edi, 4                          ; get cur pos in rcds
-        add     edi, Settings.LeaderBoardArr
+        shl     edi, LB_ISTR_RCD_LEN_POW ; get cur pos in rcds (dep on LB_ISTR_RCD_LEN)
+        add     edi, Settings.LeaderBoardArr + 3; 3 reserved sumbols
         push    edi ; save adr to write it on screen
         mov     ecx, LB_NAME_STR_LEN
         rep     movsb
@@ -101,11 +107,41 @@ proc Settings.LdScoreboard
         invoke  CloseHandle, eax
         ; check if smth readed
         cmp     [Settings.BytesProceed], 0
-        je      .EndTryLdFile
+        jne     @F; jmp if good
+        mov     word [Settings.buffer], 0
+@@:
         ; set high
         inc     edi
         movzx   eax, word [Settings.buffer]
+        push    eax ; save score sa num
+        ; write score
         cinvoke wsprintfA, edi, Str.Score.Format, eax
+        ; save score and rcd nmb
+        pop     eax
+        mov     esi, [esp + LB_INFO_RCD_LEN]; get rcd place
+        mov     edi, esi ; save it
+        shl     esi, LB_INFO_RCD_LEN / 2
+        add     esi, Settings.LeaderBoardPrio
+        mov     [esi], ax
+        mov     [esi + LB_INFO_RCD_LEN / 2], di ;??
+        ; sort loop
+        mov     edi, esi ; same value ptr to cur rcd
+.SortLoop:
+        sub     esi, LB_INFO_RCD_LEN; go back
+        cmp     esi, Settings.LeaderBoardPrio
+        jl      .EndTryLdFile
+        ; here is sort loop
+        mov     eax, [esi]
+        mov     ecx, [edi]
+        cmp     ax, cx
+        jge     @F ; if inorder skip
+        ; swap
+        mov     [esi], ecx
+        mov     [edi], eax
+@@:
+        ; sort loop end
+        mov     edi, esi
+        jmp     .SortLoop
 
 .EndTryLdFile:
         ; reset stack
@@ -118,10 +154,12 @@ proc Settings.LdScoreboard
         ; loop
         pop     ecx
         inc     ecx
+        test    ecx, LB_RCDS_AMOUNT
+        jnz     .EndProc ; protection if 16 rcds exeeded
         test    eax, eax
         jnz     .Loop_Find
 @@:
-
+.EndProc:
         ret
 endp
 

@@ -35,6 +35,7 @@ section '.code' code executable readable writable  ; code section
         Text            db 'Window creation fail', 0;,0
 
         _font_name      db "Lucida Sans Typewriter", 0  ; "Verdana"
+        _nFontBase      dd ?
 
 
         _class          TCHAR    'FASMW32',0
@@ -72,7 +73,7 @@ section '.code' code executable readable writable  ; code section
         Str.NextFig.Len           dd    $ - Str.NextFig
         Str.HoldedFig             db    'HOLDED FIGURE'
         Str.HoldedFig.Len         dd    $ - Str.HoldedFig
-        Str.Scoreboard            db    '--<SCOREBOARD>--'
+        Str.Scoreboard            db    '--<LEADERBOARD>--'
         Str.HighScore             db    SCOLE_LEN_CONST dup ' '
         Str.Score                 db    SCOLE_LEN_CONST dup ' '
         Str.Score.Format          db    '%5d', 0
@@ -237,7 +238,9 @@ proc WindowProc uses ebx esi edi,\
                           ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, _font_name
         invoke  SelectObject, [hdc], eax
 
-        invoke  wglUseFontBitmapsA, [hdc], ebx, NUM_OF_CHARACTERS, ebx ; if errors ret 0
+        invoke  glGenLists, NUM_OF_CHARACTERS
+        mov     [_nFontBase], eax ; save place where bitmaps created
+        invoke  wglUseFontBitmapsA, [hdc], ebx, NUM_OF_CHARACTERS, eax ; if errors ret 0
         ;invoke  GetLastError
 
         ; set projection
@@ -404,8 +407,10 @@ proc WindowProc uses ebx esi edi,\
         dec     ecx
         test    ecx, ecx
         jnz  .glow_draw
-
         ; end test glow draw
+
+        ; BEGIN text draw
+        invoke  glListBase, [_nFontBase]
         ; draw text NEXT FIG
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2;
         invoke  glCallLists, dword[Str.NextFig.Len], GL_UNSIGNED_BYTE, Str.NextFig
@@ -421,25 +426,41 @@ proc WindowProc uses ebx esi edi,\
 
         ; DRAW text SCOREBOARD
         invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, 2;
-        invoke  glCallLists, 16, GL_UNSIGNED_BYTE, Str.Scoreboard
+        invoke  glCallLists, LB_ISTR_RCD_LEN, GL_UNSIGNED_BYTE, Str.Scoreboard
         ; DRAW Scoreboard
-        mov     ecx, LB_RCDS_AMOUNT
+        ; 1st: find amount of actual strings
+        mov     esi, Settings.LeaderBoardPrio
         mov     edi, Settings.LeaderBoardArr
+        mov     ecx, LB_RCDS_AMOUNT
 .DrawScoreboardLoop:
-        cmp     byte [edi], ' '
-        je      .loopSkipLine
+        mov     ebx, [esi]
+        test    bx, bx
+        jz      .loopSkipLine
+        ; save base pos
+        shr     ebx, 16 - LB_ISTR_RCD_LEN_POW; got real place
+        and     bx, 1111'0000b
+        push    edi
+        add     edi, ebx
 
-        push    ecx
-        neg     ecx
-        add     ecx, LB_RCDS_AMOUNT
-        add     ecx, 3
+        ; count Y pos
+        push    ecx; save loop ctr
+        xchg    ebx, ecx
+        neg     ebx
+        add     ebx, LB_RCDS_AMOUNT + 1
+        ; print cur place
+        cinvoke wsprintfA, edi, Settings.PlaceFormat, ebx
+        ; mov Y cord
+        add     ebx, 2 ; 3 - 1
 
-        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, ecx;dword [esp + 4];
-        invoke  glCallLists, 16, GL_UNSIGNED_BYTE, edi
+        ; draw
+        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, ebx;dword [esp + 4];
+        invoke  glCallLists, LB_ISTR_RCD_LEN, GL_UNSIGNED_BYTE, edi
 
         pop     ecx
+        pop     edi
+
 .loopSkipLine:
-        add     edi, 16
+        add     esi, LB_INFO_RCD_LEN; LEN_OF_LB_INFO_RCD
         loop    .DrawScoreboardLoop
 
         ; Draw CurNickName
@@ -677,7 +698,8 @@ import opengl,\
          wglCreateContext,'wglCreateContext',\
          wglDeleteContext,'wglDeleteContext',\
          wglMakeCurrent,'wglMakeCurrent',\
-         wglUseFontBitmapsA,'wglUseFontBitmapsA'
+         wglUseFontBitmapsA,'wglUseFontBitmapsA',\
+         glListBase, 'glListBase'
 
 
 
