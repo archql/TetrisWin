@@ -71,12 +71,19 @@ LB_RCDS_AMOUNT              = 16
 LB_NAME_STR_LEN             = 8
 
 
-
+Settings.AllocatedMem       dd  ?
 Settings.LeaderBoardArr:    times (LB_RCDS_AMOUNT) db '#', ' ',' ',(LB_NAME_STR_LEN) dup ' ', (SCOLE_LEN_CONST) dup ' ', '15 EMPTYBYTES**'
          LB_ISTR_RCD_LEN      = 17
          LB_ISTR_RCD_LEN_POW  = 5; Real mem sz allocated 2^LB_RCDS_AMOUNT
 Settings.LeaderBoardPrio:   times (LB_RCDS_AMOUNT) dw 0, 0 ; place, score
          LB_INFO_RCD_LEN      = 4
+         
+struct AllocatedMem
+        ;blocksArr1:          db     FIELD_W*FIELD_H dup ?
+        ;glowArr:            db     FIELD_H dup ?
+        leaderBoardSz       dd     ?
+        leaderBoardArr      db     400000*(2 shl LB_ISTR_RCD_LEN_POW) dup ? ; 4 is base sz
+ends        
 
 ;#############GET ALL RCD FILES####################
 proc Settings.LdScoreboard

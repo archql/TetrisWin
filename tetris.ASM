@@ -39,7 +39,7 @@ section '.code' code executable readable writable  ; code section
 
 
         _class          TCHAR    'FASMW32',0
-        _title          TCHAR    'TETRIS WIN v.1.4.0 by Artiom Drankevich',0
+        _title          TCHAR    'TETRIS WIN v.1.5.0 by Artiom Drankevich',0
 
         wc              WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, NULL, NULL, _class
 
@@ -62,6 +62,7 @@ section '.code' code executable readable writable  ; code section
 
         blocksArr:      times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
                 db    FIELD_W dup $01
+        BLOCKSARR_SZ    =  FIELD_H*FIELD_W
         ;blocksArrCopy:  times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
         ;        db    FIELD_W dup $01
 
@@ -124,6 +125,13 @@ start:
         test    eax, eax ; check if success
         jz      creation_error; err_reg_class
         mov     [hwnd], eax
+
+        ; alloc mem
+        invoke  GetProcessHeap
+        invoke  HeapAlloc, eax, HEAP_ZERO_MEMORY, sizeof.AllocatedMem
+        test    eax, eax
+        jz      creation_error
+        mov     [Settings.AllocatedMem], eax
 
         ; call music ini
         stdcall SoundPlayer.Ini
@@ -340,17 +348,41 @@ proc WindowProc uses ebx esi edi,\
         fstp    [tmp_tmp]
         ; set Special color
         mov     eax, 0.9
+        ;mov     edi, [Settings.AllocatedMem] ; where mem allocated?
         invoke  glColor3f, eax, eax, eax
         ; draw special effect
         mov     ecx, FIELD_H-1
      .glow_draw:
-        movzx  ebx, byte [ecx + glowArr]
+        movzx  ebx, byte [ecx + glowArr] ;AllocatedMem.glowArr
         ;mov     ebx, 5; tmp
         cmp    ebx, 0
-        je     @F
-        push   ebx ; copy for fld mul (sp-=4)
+        je     .glow_skip
         ; dec effect
-        dec    byte [ecx + glowArr]
+        dec    byte [ecx + glowArr]  ; where mem allocated?
+        ; check if effect is too big
+        cmp    ebx, GLOW_TIME_TICKS+1
+        jg     .glow_skip
+        cmp    ebx, GLOW_TIME_TICKS+1
+        jl     @F
+        ; equal -- so delete line (uses eax, edi, edx)
+
+        mov     edi, blocksArr + 1
+        mov     dx, FIELD_W
+        mov     eax, ecx
+        dec     eax
+        mul     dx ; ax is cur cord
+        add     edi, eax
+
+        ; clear line
+        xor     eax, eax
+        push    ecx
+        mov     ecx, FIELD_W - 2
+        rep stosb
+        pop     ecx
+
+@@:
+        ; DO EFFECT
+        push   ebx ; copy for fld mul (sp-=4)
         ; count cur effect sz
         fld    [Glow.SZ_delta]
         fild   dword [esp]
@@ -403,7 +435,7 @@ proc WindowProc uses ebx esi edi,\
         ; free stack (from reserved for X and Y cord)
         add     esp, 8 ;(sp+=8)
         ; go next
-      @@:
+      .glow_skip:
         dec     ecx
         test    ecx, ecx
         jnz  .glow_draw
@@ -623,6 +655,9 @@ proc WindowProc uses ebx esi edi,\
 ;@@:
         ;jmp     .defwndproc
   .wmdestroy:
+        ; free mem
+        invoke  GetProcessHeap
+        invoke  HeapFree, eax, HEAP_ZERO_MEMORY, [Settings.AllocatedMem]
         ; misuc
         stdcall SoundPlayer.Close
         ; font lists

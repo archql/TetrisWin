@@ -2,5 +2,8 @@
 NEXT
 OLD
 *.ttr
+*.ttr.real
 *.zip
+*.notexe
 tetris-surface.EXE
+tetris-surface-2.EXE

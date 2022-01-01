@@ -1,8 +1,8 @@
         TOP_LINE                = 1
         FIG_START_Y             = -2
 
-        SPECIAL_PRICE           = 10
-        SPECIAL_NUM_LINES_RM    = 10
+        SPECIAL_PRICE           = 0
+        SPECIAL_NUM_LINES_RM    = 2
 
 ;========Game model==============
         Game.CurFig             dw      ?
@@ -38,27 +38,47 @@
         figNum          dw      ($ - figArr)/8 - 1
 
 
+;#############GAME FIELD CLR ########################
+proc Game.ClearField
 
+        ; clear screen
+        mov     esi, FIELD_W - 2
+        xor     al, al
+        mov     ecx, FIELD_H - 1
+        mov     edi, blocksArr + 1
+        mov     edx, GLOW_TIME_TICKS
+.Clearloop:
+        push    ecx
+        ; clear line
+        mov     ecx, esi
+        ;!!rep stosb
+        pop     ecx
+        ; make line glow (line mecanics)
+        ; set glow time
+        mov     ebx, FIELD_H
+        sub     ebx, ecx
+        ; count glow time
+        push    edx
+        ;shl     ebx, 1
+        add     edx, ebx
+        ;shr     ebx, 1
+        mov     byte [ebx + glowArr], dl
+        pop     edx
+    @@:
+        ; go next line
+        inc     edi
+        inc     edi
+        loop    .Clearloop
+
+        ret
+endp
 
 ;#############GAME INITIALIZATION####################
 proc Game.Initialize
 
         call    Random.Initialize
 
-        ; clear screen
-        mov     edx, FIELD_W - 2
-        xor     al, al
-        mov     ecx, FIELD_H - 1
-        mov     edi, blocksArr + 1
-.Clearloop:
-        push    ecx
-        mov     ecx, edx
-        rep stosb
-        pop     ecx
-
-        inc     edi
-        inc     edi
-        loop    .Clearloop
+        stdcall Game.ClearField
 
 
         ; write score
@@ -78,6 +98,8 @@ proc Game.Initialize
 
         ; gen new fig
         stdcall Game.GenNewFig
+        ; set preview Y to max (prevent bugs)
+        mov     [Game.FigPreviewY], FIG_START_Y
 
         ; setup timer
         mov     [Game.TickSpeed], START_TICK_SPEED
@@ -159,26 +181,29 @@ proc Game.KeyEvent uses eax
 
         ; Do special
         invoke  midiOutShortMsg, [midihandle], 0x007F2594
-        ; rm N random lines
-        mov     edx, FIELD_W
-        mov     ecx, SPECIAL_NUM_LINES_RM; N
-.rmRandomLinesLoop:
-        push    ecx ; save loop ctr
-        stdcall Random.Get, TOP_LINE + 1, FIELD_H - 1 ; line num in eax
-        push    eax ; save line num (specific stack depth required)
-        neg     dword [esp]
-        add     dword [esp], FIELD_H
-        push    eax
-        mov     eax, [esp]
-        ; mul by FIELD_W
-        mov     edx, FIELD_W
-        mul     edx
-        xchg    ebx, eax
 
-        stdcall Game.RmLine ;req eax -- line num & ebx -- pos in field arr
-        pop     eax eax
-        pop     ecx
-        loop    .rmRandomLinesLoop
+        ; rm lines
+        stdcall Game.ClearField
+        ; rm N random lines
+        ;mov     edx, FIELD_W
+        ;mov     ecx, SPECIAL_NUM_LINES_RM; N
+;.rmRandomLinesLoop:
+        ;push    ecx ; save loop ctr
+        ;stdcall Random.Get, TOP_LINE + 1, FIELD_H - 1 ; line num in eax
+        ;push    eax ; save line num (specific stack depth required)
+        ;neg     dword [esp]
+        ;add     dword [esp], FIELD_H
+        ;push    eax
+        ;mov     eax, [esp]
+        ; mul by FIELD_W
+        ;mov     edx, FIELD_W
+        ;mul     edx
+        ;xchg    ebx, eax
+
+        ;stdcall Game.RmLine ;req eax -- line num & ebx -- pos in field arr
+        ;pop     eax eax
+        ;pop     ecx
+        ;loop    .rmRandomLinesLoop
 
 .skipSpecial:
 
