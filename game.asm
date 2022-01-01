@@ -107,7 +107,7 @@ proc Game.Initialize
         mov     [Game.Playing], TRUE;temp!!FALSE
 
         ; set music pos to start
-        mov      [SoundPlayer.NextSound], 0
+        mov     [SoundPlayer.NextSound], 0
 
         mov     [Game.FigsPlaced], 0
 

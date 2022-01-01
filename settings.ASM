@@ -67,38 +67,40 @@ Settings.strFileFilter      db    '*.ttr', 0
 Settings.PlaceFormat        db    '#%X', 0
 Settings.fileData           WIN32_FIND_DATAA
 
-LB_RCDS_AMOUNT              = 16
 LB_NAME_STR_LEN             = 8
 
 
 Settings.AllocatedMem       dd  ?
-Settings.LeaderBoardArr:    times (LB_RCDS_AMOUNT) db '#', ' ',' ',(LB_NAME_STR_LEN) dup ' ', (SCOLE_LEN_CONST) dup ' ', '15 EMPTYBYTES**'
          LB_ISTR_RCD_LEN      = 17
          LB_ISTR_RCD_LEN_POW  = 5; Real mem sz allocated 2^LB_RCDS_AMOUNT
-Settings.LeaderBoardPrio:   times (LB_RCDS_AMOUNT) dw 0, 0 ; place, score
-         LB_INFO_RCD_LEN      = 4
-         
+;Settings.LeaderBoardPrio:   times (LB_BASE_RCDS_AMOUNT) dw 0, 0 ; place, score
+         LB_PRIO_RCD_LEN      = 4
+
+LB_BASE_RCDS_AMOUNT         = 16
 struct AllocatedMem
-        ;blocksArr1:          db     FIELD_W*FIELD_H dup ?
-        ;glowArr:            db     FIELD_H dup ?
-        leaderBoardSz       dd     ?
-        leaderBoardArr      db     400000*(2 shl LB_ISTR_RCD_LEN_POW) dup ? ; 4 is base sz
+        ;blocksArr1:        db     FIELD_W*FIELD_H dup ?
+        ;glowArr:           db     FIELD_H dup ?
+        LeaderBoardSz       dd     ?
+        LeaderBoardArr      db     LB_BASE_RCDS_AMOUNT*(1 shl LB_ISTR_RCD_LEN_POW) dup ? ; 4 is base sz, last 4 bytes is for place & score sort
 ends        
 
 ;#############GET ALL RCD FILES####################
-proc Settings.LdScoreboard
+proc Settings.LdScoreboard uses ebp
+        mov     ebp, [Settings.AllocatedMem] ; save ptr to allocated mem on stack
+
         invoke  FindFirstFile, Settings.strFileFilter, Settings.fileData
         xchg    eax, ebx; ebx is file lookup handle
         test    ebx, ebx
         jz      @F
         mov     ecx, 0
-.Loop_Find:     ; WARN!!!!! LENGTH OF SCOREBOARD IS LIMITED AND ITS UNCONTROLLED!!!!
+.Loop_Find:
         push    ecx; loop ctr
         ; write got str to rcd
         mov     esi, Settings.fileData.cFileName; ptr to filename str
         mov     edi, ecx
         shl     edi, LB_ISTR_RCD_LEN_POW ; get cur pos in rcds (dep on LB_ISTR_RCD_LEN)
-        add     edi, Settings.LeaderBoardArr + 3; 3 reserved sumbols
+        add     edi, AllocatedMem.LeaderBoardArr + 3;Settings.LeaderBoardArr + 3; 3 reserved symbols
+        add     edi, ebp
         push    edi ; save adr to write it on screen
         mov     ecx, LB_NAME_STR_LEN
         rep     movsb
@@ -110,8 +112,8 @@ proc Settings.LdScoreboard
         push    eax ; save handle
         invoke  ReadFile, eax, Settings.buffer, FILE_SZ_TO_READ, Settings.BytesProceed, 0 ; [nSize]
         ; close file handle
-        pop     eax
-        invoke  CloseHandle, eax
+        ;pop     eax
+        invoke  CloseHandle
         ; check if smth readed
         cmp     [Settings.BytesProceed], 0
         jne     @F; jmp if good
@@ -125,17 +127,19 @@ proc Settings.LdScoreboard
         cinvoke wsprintfA, edi, Str.Score.Format, eax
         ; save score and rcd nmb
         pop     eax
-        mov     esi, [esp + LB_INFO_RCD_LEN]; get rcd place
-        mov     edi, esi ; save it
-        shl     esi, LB_INFO_RCD_LEN / 2
-        add     esi, Settings.LeaderBoardPrio
+        mov     edi, [esp + 4]; get loop counter
+        mov     esi, [esp]; get rcd place in arr
+        add     esi, (1 shl LB_ISTR_RCD_LEN_POW) - LB_PRIO_RCD_LEN - 3 ;3 reserved symbols
         mov     [esi], ax
-        mov     [esi + LB_INFO_RCD_LEN / 2], di ;??
+        mov     [esi + LB_PRIO_RCD_LEN / 2], di ;??
+        ; set start of arr
+        push    ebp
+        add     ebp, AllocatedMem.LeaderBoardArr
         ; sort loop
         mov     edi, esi ; same value ptr to cur rcd
 .SortLoop:
-        sub     esi, LB_INFO_RCD_LEN; go back
-        cmp     esi, Settings.LeaderBoardPrio
+        sub     esi, (1 shl LB_ISTR_RCD_LEN_POW); go back
+        cmp     esi, ebp; while not less than begining of arr
         jl      .EndTryLdFile
         ; here is sort loop
         mov     eax, [esi]
@@ -152,8 +156,7 @@ proc Settings.LdScoreboard
 
 .EndTryLdFile:
         ; reset stack
-        pop     edi
-@@:
+        pop     ebp edi
         ; write cur
         ; invoke  MessageBox, 0, Settings.LeaderBoardArr, Caption, MB_OK or MB_ICONERROR;
         ; find next
@@ -161,11 +164,24 @@ proc Settings.LdScoreboard
         ; loop
         pop     ecx
         inc     ecx
-        test    ecx, LB_RCDS_AMOUNT
-        jnz     .EndProc ; protection if 16 rcds exeeded
+        mov     esi, [ebp + AllocatedMem.LeaderBoardSz]; get cur sz
+        test    ecx, esi
+        jz      @F ; protection if 16 rcds exeeded
+        ; realloc heap
+        invoke  GetProcessHeap
+        mov     edx, esi
+        shl     edx, LB_ISTR_RCD_LEN_POW
+        add     edx, sizeof.AllocatedMem - LB_BASE_RCDS_AMOUNT*(1 shl LB_ISTR_RCD_LEN_POW); sz wout dynamic array
+        invoke  HeapReAlloc, eax, ebp, edx; new sz
+        test    eax, eax
+        jz      .EndProc ; if fails its just skips
+        ; heap allocated successfully
+        mov     [Settings.AllocatedMem], eax
+        shl     [ebp + AllocatedMem.LeaderBoardSz], 1
+        shl     esi, LB_ISTR_RCD_LEN_POW
+@@:
         test    eax, eax
         jnz     .Loop_Find
-@@:
 .EndProc:
         ret
 endp

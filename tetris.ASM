@@ -132,6 +132,8 @@ start:
         test    eax, eax
         jz      creation_error
         mov     [Settings.AllocatedMem], eax
+        ; if allocated -- set it sz
+        mov     dword [eax + AllocatedMem.LeaderBoardSz], LB_BASE_RCDS_AMOUNT
 
         ; call music ini
         stdcall SoundPlayer.Ini
@@ -461,16 +463,18 @@ proc WindowProc uses ebx esi edi,\
         invoke  glCallLists, LB_ISTR_RCD_LEN, GL_UNSIGNED_BYTE, Str.Scoreboard
         ; DRAW Scoreboard
         ; 1st: find amount of actual strings
-        mov     esi, Settings.LeaderBoardPrio
-        mov     edi, Settings.LeaderBoardArr
-        mov     ecx, LB_RCDS_AMOUNT
+        mov     edi, [Settings.AllocatedMem];Settings.LeaderBoardArr
+        add     edi, AllocatedMem.LeaderBoardArr
+        mov     esi, edi
+        add     esi, (1 shl LB_ISTR_RCD_LEN_POW) - LB_PRIO_RCD_LEN
+        mov     ecx, LB_BASE_RCDS_AMOUNT - 1
 .DrawScoreboardLoop:
         mov     ebx, [esi]
         test    bx, bx
         jz      .loopSkipLine
         ; save base pos
+        and     ebx, $FF'FF'00'00
         shr     ebx, 16 - LB_ISTR_RCD_LEN_POW; got real place
-        and     bx, 1111'0000b
         push    edi
         add     edi, ebx
 
@@ -478,7 +482,7 @@ proc WindowProc uses ebx esi edi,\
         push    ecx; save loop ctr
         xchg    ebx, ecx
         neg     ebx
-        add     ebx, LB_RCDS_AMOUNT + 1
+        add     ebx, LB_BASE_RCDS_AMOUNT
         ; print cur place
         cinvoke wsprintfA, edi, Settings.PlaceFormat, ebx
         ; mov Y cord
@@ -492,7 +496,7 @@ proc WindowProc uses ebx esi edi,\
         pop     edi
 
 .loopSkipLine:
-        add     esi, LB_INFO_RCD_LEN; LEN_OF_LB_INFO_RCD
+        add     esi, (1 shl LB_ISTR_RCD_LEN_POW); LEN_OF_LB_INFO_RCD
         loop    .DrawScoreboardLoop
 
         ; Draw CurNickName
