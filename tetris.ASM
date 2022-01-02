@@ -17,102 +17,209 @@ entry start
         FALSE   = 0
 
         START_TICK_SPEED = 500
-        ;KEY_EVENT_UPDATE = 40
         GLOW_TIME_TICKS  = 15
 
         NUM_OF_CHARACTERS = 128
 
-        ;MY_FALSE          = 0
-        ;MY_TRUE           = 1
+        INC_EVERY_FIGS=15 ;2^N-1
 
-        INC_EVERY_FIGS=15;15;2^N-1
-
-        _style equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 ;===========================
-;section '.data' data readable writable
-section '.code' code executable readable writable  ; code section
-        Caption         db 'ERROR',0
-        Text            db 'Window creation fail', 0;,0
+section '.data' data readable writable
+;section '.code' code executable readable writable  ; code section
+        Wnd.Caption     db 'ERROR',0
+        Wnd.Text        db 'Window creation fail', 0
 
-        _font_name      db "Lucida Sans Typewriter", 0  ; "Verdana"
-        _nFontBase      dd ?
+        Wnd.font_name   db "Lucida Sans Typewriter", 0
+        ;Wnd.nFontBase      dd ?
 
 
-        _class          TCHAR    'FASMW32',0
-        _title          TCHAR    'TETRIS WIN v.1.5.0 by Artiom Drankevich',0
+        Wnd.class       TCHAR    'FASMW32',0
+        Wnd.title       TCHAR    'TETRIS WIN v.1.5.0 by Artiom Drankevich',0
 
-        wc              WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, NULL, NULL, _class
-
-        msg             MSG
-        paintstruct     PAINTSTRUCT
-        pfd             PIXELFORMATDESCRIPTOR
-
-        hwnd            dd      ?
-        hrc             dd      ?
-        hdc             dd      ?
-
-        rc              RECT
+        Wnd.style       equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 
         ;========
         DFIELD_H        dq      24.0 ; FIELD_H + 1
-        DFIELD_W        dq      ?
-        RECT_MODIFIER   dq      0.90;0.9
-        clock           dd      ?
-        rect_size       dd      10.0
-
-        blocksArr:      times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
-                db    FIELD_W dup $01
-        BLOCKSARR_SZ    =  FIELD_H*FIELD_W
-        ;blocksArrCopy:  times (FIELD_H-1) db $01, (FIELD_W-2) dup $00, $01    ;1A
-        ;        db    FIELD_W dup $01
+        RECT_MODIFIER   dq      0.90
+        ;DFIELD_W        dq      ?
+        ;clock           dd      ?
+        ;rect_size       dd      ?
 
         ; =======TEXT==============================
-        font_size                 dd    ?
-
         SCOLE_LEN_CONST           = 6
         Str.NextFig               db    'NEXT FIGURE'
-        Str.NextFig.Len           dd    $ - Str.NextFig
+        Str.NextFig.Len           =     $ - Str.NextFig
         Str.HoldedFig             db    'HOLDED FIGURE'
-        Str.HoldedFig.Len         dd    $ - Str.HoldedFig
+        Str.HoldedFig.Len         =     $ - Str.HoldedFig
         Str.Scoreboard            db    '--<LEADERBOARD>--'
         Str.HighScore             db    SCOLE_LEN_CONST dup ' '
         Str.Score                 db    SCOLE_LEN_CONST dup ' '
         Str.Score.Format          db    '%5d', 0
         Str.Pause                 db    'PAUSED'
         Str.Loose                 db    'GAME OVER'
+        Settings.strFilename      db    '_ARCHQL_.ttr', 0
+        Settings.strTempFilename  db    '________'
         ;========ANIMATIONS========================
-        tmp_tmp                   dd    0.0
-        tmp_tmp_delta             dd    20.0
+        Glow.AnimAngle            dd    0.0
+        Glow.AnimDeltaAngle       dd    20.0
         Glow.SZ_delta             dd    0.05
-        Glow.right                dd    ?
-        Glow.left                 dd    ?
-        glowArr:                  db     FIELD_H dup $00
-        ;========KEYBOARD==========================
-        ;Keyboard.Pressed          db    ?
-        ;Keyboard.Clock            dw    0
-        ;
+        ;Glow.right                dd    ?
+        ;Glow.left                 dd    ?
+        ;Glow.Arr                  db    FIELD_H dup 0
+        ;========VIEW==============================
+        Color_Table     dd      0.0, 0.0, 0.0,\   ;0.271, 0.271, 0.271,\
+                                0.7, 0.7, 0.7,\
+                                0.25, 0.25, 0.25,\
+                                1.0, 0.5098, 0.0,\
+                                0.0, 0.0, 1.0,\
+                                0.2549, 0.0, 1.0,\
+                                0.5098, 0.0, 1.0,\
+                                0.745, 0.0, 1.0,\
+                                1.0, 0.0, 0.745,\
+                                1.0, 0.0, 0.5098,\
+                                1.0, 0.0, 0.2549,\
+                                1.0, 0.0, 0.0,\
+                                1.0, 0.2549, 0.0,\;;;;
+                                1.0, 0.745, 0.0,\
+                                1.0, 1.0, 0.0,\
+                                0.745, 1.0, 0.0,\
+                                0.5098, 1.0, 0.0,\
+                                0.2549, 1.0, 0.0,\
+                                0.0, 1.0, 0.2549,\
+                                0.0, 1.0, 0.5098,\
+                                0.0, 1.0, 0.745,\
+                                0.0, 1.0, 1.0,\
+                                0.0, 0.745, 1.0,\
+                                0.0, 0.5098, 1.0,\
+                                0.0, 0.2549, 1.0
+        colorsNum       =       ($ - Color_Table)/12 - 1
+
+        ;========Game model==============
+        Game.SpeedMul           dq      0.96;96
+
+        figArr          dw      0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\
+                                0100'0100_0100'0100b, 0000'1111_0000'0000b, 0100'0100_0100'0100b, 0000'1111_0000'0000b,\
+                                0100'0100_0110'0000b, 0010'1110_0000'0000b, 1100'0100_0100'0000b, 0000'1110_1000'0000b,\
+                                0100'0100_1100'0000b, 0000'1110_0010'0000b, 0110'0100_0100'0000b, 1000'1110_0000'0000b,\
+                                0100'1110_0000'0000b, 0100'0110_0100'0000b, 0000'1110_0100'0000b, 0100'1100_0100'0000b,\
+                                1000'1100_0100'0000b, 0000'0110_1100'0000b, 1000'1100_0100'0000b, 0000'0110_1100'0000b,\
+                                0100'1100_1000'0000b, 0000'1100_0110'0000b, 0100'1100_1000'0000b, 0000'1100_0110'0000b;,\
+                                ;0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b,\
+                                ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b;,\;
+        figNum          =       ($ - figArr)/8 - 1
+
+        ; # SETTINGS
+        ; addl data to ld scoreboard
+        Settings.strFileFilter      db    '*.ttr', 0
+        Settings.PlaceFormat        db    '#%X', 0
+
+; ################################################
+; ####### UNINITIALIZED MEMORY HERE!!!!! #########
+; ################################################
+Unitialized_mem:
+        ; # Windows
+        Wnd.nFontBase                   dd                      ?
+        Wnd.msg                         MSG                     ?
+        Wnd.paintstruct                 PAINTSTRUCT             ?
+        Wnd.pfd                         PIXELFORMATDESCRIPTOR   ?
+
+        font_size                       dd    ?
+
+        Wnd.hwnd                        dd      ?
+        Wnd.hrc                         dd      ?
+        Wnd.hdc                         dd      ?
+
+        Wnd.wc                          WNDCLASS        ?
+
+        Wnd.rc                          RECT    ?
+        ; # Glow data
+        Glow.right                      dd      ?
+        Glow.left                       dd      ?
+        Glow.Arr                        db      FIELD_H dup ? ; initialization!
+        ; # Draw
+        DFIELD_W                        dq      ?
+        clock                           dd      ?
+        rect_size                       dd      ? ; initialization
+        ; # Game
+        Game.BlocksArr:                 db      FIELD_W*FIELD_H dup ? ; initialization!
+        Game.CurFig                     dw      ?
+        Game.CurFigColor                dw      ?
+        Game.CurFigRotation             dw      ?
+        Game.CurFigNumber               dw      ?
+        Game.NextFig                    dw      ?
+        Game.NextFigNumber              dw      ?
+        Game.FigX                       dw      ?
+        Game.FigY                       dw      ?
+        Game.FigPreviewY                dw      ?
+        Game.TickSpeed                  dw      ?
+        Game.CurTick                    dw      ?
+        Game.Score                      dw      ?
+        Game.HighScore                  dw      ?
+        Game.Playing                    dw      ?
+        Game.Pause                      dw      ?
+        Game.FigsPlaced                 dw      ?
+        Game.Holded                     dw      ?
+        Game.HoldedFigNum               dw      ?
+        Game.HoldedFig                  dw      ?
+
+        ; # Music
+        midihandle                      dd      ?
+        SoundPlayer.CurTick             dw      ?
+        SoundPlayer.DeltaTick           dw      ?
+
+        ;SoundPlayer.CurEventTick        dw      ?
+        SoundPlayer.EndGameTick         dw      ?
+        ;SoundPlayer.LineGameTick        dw      ?
+
+        ; # Settings
+        Settings.strTempLen             dw      ?
+
+        Settings.buffer                 db    4 dup ?
+        Settings.BytesProceed           dd    ?
+        FILE_SZ_TO_READ                 = 2
+
+        Settings.fileData               WIN32_FIND_DATAA            ?
+        LB_NAME_STR_LEN                 = 8
+        LB_ISTR_RCD_LEN                 = 17
+        LB_ISTR_RCD_LEN_POW             = 5; Real mem sz allocated 2^LB_RCDS_AMOUNT
+        LB_PRIO_RCD_LEN                 = 4
+        LB_BASE_RCDS_AMOUNT             = 16
+        LB_MAX_RCDS_AMOUNT              = 1024
+
+        UNINI_MEM_LEN                   = $ - Unitialized_mem
+
+        Settings.LeaderBoardArr         db     (LB_MAX_RCDS_AMOUNT)*(1 shl LB_ISTR_RCD_LEN_POW) dup ?
         
 ;===========================
 section '.code' code executable readable writable  ; code section
 start:
+        ; zero allocated memory
+        xor     eax, eax
+        mov     ecx, UNINI_MEM_LEN
+        mov     edi, Unitialized_mem
+        rep     stosb
+        ; =====
 
         xor      ebx, ebx
+        ; setup Wnd.wc
+        mov     [Wnd.wc.lpfnWndProc], WindowProc
+        mov     [Wnd.wc.lpszClassName], Wnd.class
         ; window creation process
         invoke  GetModuleHandle, ebx
-        mov     [wc.hInstance],  eax
+        mov     [Wnd.wc.hInstance],  eax
 
         invoke  LoadCursor, ebx, IDC_ARROW
-        mov     [wc.hCursor], eax
+        mov     [Wnd.wc.hCursor], eax
 
         invoke  LoadIcon, ebx, IDI_APPLICATION
-        mov     [wc.hIcon], eax
+        mov     [Wnd.wc.hIcon], eax
 
-        invoke  RegisterClass, wc
+        invoke  RegisterClass, Wnd.wc
         test    eax, eax ; check if success
         jz      creation_error; err_reg_class
 
         ; push wnd data
-        push    ebx [wc.hInstance] ebx ebx
+        push    ebx [Wnd.wc.hInstance] ebx ebx
         ; push wnd szs
         ; get screen ratio
         invoke  GetSystemMetrics, SM_CYSCREEN   ; hei
@@ -120,44 +227,40 @@ start:
         invoke  GetSystemMetrics, ebx  ; width
         push    eax
 
-        invoke  CreateWindowEx, ebx, _class, _title,WS_POPUP+WS_VISIBLE+WS_SYSMENU,\          ;+WS_VISIBLE+WS_OVERLAPPEDWINDOW+WS_CLIPCHILDREN+WS_CLIPSIBLINGS
+        invoke  CreateWindowEx, ebx, Wnd.class, Wnd.title,WS_POPUP+WS_VISIBLE+WS_SYSMENU,\          ;+WS_VISIBLE+WS_OVERLAPPEDWINDOW+WS_CLIPCHILDREN+WS_CLIPSIBLINGS
                                      ebx, ebx
         test    eax, eax ; check if success
         jz      creation_error; err_reg_class
-        mov     [hwnd], eax
-
-        ; alloc mem
-        invoke  GetProcessHeap
-        invoke  HeapAlloc, eax, HEAP_ZERO_MEMORY, sizeof.AllocatedMem
-        test    eax, eax
-        jz      creation_error
-        mov     [Settings.AllocatedMem], eax
-        ; if allocated -- set it sz
-        mov     dword [eax + AllocatedMem.LeaderBoardSz], LB_BASE_RCDS_AMOUNT
+        mov     [Wnd.hwnd], eax
 
         ; call music ini
         stdcall SoundPlayer.Ini
         ; call game initialization
+        call    Game.IniField
+
         call    Random.Initialize
         stdcall Game.GenNewFig; its for ini new fig -> cur fig
         stdcall Game.Initialize
 
         ; loop
   msg_loop:
-        invoke  GetMessage, msg, NULL, 0, 0
+        xor     ebx, ebx; NULL = zero
+        invoke  GetMessage, Wnd.msg, ebx, ebx, ebx
         or      eax, eax
         jz      end_loop
-        invoke  TranslateMessage, msg
-        invoke  DispatchMessage, msg
+        invoke  TranslateMessage, Wnd.msg
+        invoke  DispatchMessage, Wnd.msg
         jmp     msg_loop
 
 creation_error:
-        invoke  MessageBox, ebx, Text, Caption, MB_OK or MB_ICONERROR;
+        invoke  MessageBox, ebx, Wnd.Text, Wnd.Caption, MB_OK or MB_ICONERROR;
   end_loop:
-        invoke  ExitProcess,[msg.wParam]
+        invoke  ExitProcess, [Wnd.msg.wParam]
+
+;############# WindowProc ####################
 
 proc WindowProc uses ebx esi edi,\
-                hwnd,wmsg,wparam,lparam
+                hwnd, wmsg, wparam, lparam
         mov     ebx, [wmsg]
         cmp     ebx, WM_CREATE
         je      .wmcreate
@@ -176,7 +279,7 @@ proc WindowProc uses ebx esi edi,\
         jmp     .finish
   .wmcreate:
         invoke  GetDC,[hwnd]
-        mov     [hdc], eax
+        mov     [Wnd.hdc], eax
         mov     ebx, eax  ; hdc
 
         ; initialize OpenGL
@@ -184,21 +287,21 @@ proc WindowProc uses ebx esi edi,\
         ;mov     ecx,sizeof.PIXELFORMATDESCRIPTOR shr 2
         ;xor     eax,eax
         ;rep     stosd
-        mov     [pfd.nSize], sizeof.PIXELFORMATDESCRIPTOR
-        mov     [pfd.nVersion], 1
-        mov     [pfd.dwFlags], PFD_SUPPORT_OPENGL+PFD_DOUBLEBUFFER+PFD_DRAW_TO_WINDOW
-        mov     [pfd.iLayerType], PFD_MAIN_PLANE
-        mov     [pfd.iPixelType], PFD_TYPE_RGBA
-        mov     [pfd.cColorBits], 16
-        mov     [pfd.cDepthBits], 16
-        mov     [pfd.cAccumBits], 0
-        mov     [pfd.cStencilBits], 0
-        invoke  ChoosePixelFormat,ebx, pfd
-        invoke  SetPixelFormat,ebx,eax, pfd
+        mov     [Wnd.pfd.nSize], sizeof.PIXELFORMATDESCRIPTOR
+        mov     [Wnd.pfd.nVersion], 1
+        mov     [Wnd.pfd.dwFlags], PFD_SUPPORT_OPENGL+PFD_DOUBLEBUFFER+PFD_DRAW_TO_WINDOW
+        mov     [Wnd.pfd.iLayerType], PFD_MAIN_PLANE
+        mov     [Wnd.pfd.iPixelType], PFD_TYPE_RGBA
+        mov     [Wnd.pfd.cColorBits], 16
+        mov     [Wnd.pfd.cDepthBits], 16
+        ;mov     [Wnd.pfd.cAccumBits], 0 ; ALREADY ZERO
+        ;mov     [Wnd.pfd.cStencilBits], 0
+        invoke  ChoosePixelFormat, ebx, Wnd.pfd
+        invoke  SetPixelFormat, ebx, eax, Wnd.pfd
 
         ; create gl context
         invoke  wglCreateContext, ebx
-        mov     [hrc], eax
+        mov     [Wnd.hrc], eax
         invoke  wglMakeCurrent, ebx, eax;[hrc]
 
         ; set fone color
@@ -214,12 +317,12 @@ proc WindowProc uses ebx esi edi,\
         jmp     .finish
   .wmsize:
         xor     ebx, ebx
-        invoke  GetClientRect, [hwnd], rc
-        invoke  glViewport, ebx, ebx, [rc.right], [rc.bottom]
+        invoke  GetClientRect, [hwnd], Wnd.rc
+        invoke  glViewport, ebx, ebx, [Wnd.rc.right], [Wnd.rc.bottom]
 
         sub     esp, 4; reserve stack for cell width
         ; get rect size
-        fild    dword [rc.bottom]
+        fild    dword [Wnd.rc.bottom]
         fdiv    [DFIELD_H]
         fst     dword [esp]; save cell width
 
@@ -230,7 +333,7 @@ proc WindowProc uses ebx esi edi,\
         fistp   [font_size]
 
         ; get width ratio
-        fild    [rc.right]
+        fild    [Wnd.rc.right]
         ; use saved cell width
         fdiv    dword [esp]
         ; move stack back
@@ -245,12 +348,12 @@ proc WindowProc uses ebx esi edi,\
         invoke  glDeleteLists, ebx, NUM_OF_CHARACTERS
         ; create font "Lucida Console" sz
         invoke  CreateFontA,[font_size], ebx, ebx, ebx, 600,\
-                          ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, _font_name
-        invoke  SelectObject, [hdc], eax
+                          ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, Wnd.font_name
+        invoke  SelectObject, [Wnd.hdc], eax
 
         invoke  glGenLists, NUM_OF_CHARACTERS
-        mov     [_nFontBase], eax ; save place where bitmaps created
-        invoke  wglUseFontBitmapsA, [hdc], ebx, NUM_OF_CHARACTERS, eax ; if errors ret 0
+        mov     [Wnd.nFontBase], eax ; save place where bitmaps created
+        invoke  wglUseFontBitmapsA, [Wnd.hdc], ebx, NUM_OF_CHARACTERS, eax ; if errors ret 0
         ;invoke  GetLastError
 
         ; set projection
@@ -344,10 +447,10 @@ proc WindowProc uses ebx esi edi,\
 
         invoke  glEnd
         ; setup rotation
-        fld     [tmp_tmp]
-        fld     [tmp_tmp_delta]
+        fld     [Glow.AnimAngle]
+        fld     [Glow.AnimDeltaAngle]
         faddp
-        fstp    [tmp_tmp]
+        fstp    [Glow.AnimAngle]
         ; set Special color
         mov     eax, 0.9
         ;mov     edi, [Settings.AllocatedMem] ; where mem allocated?
@@ -355,12 +458,12 @@ proc WindowProc uses ebx esi edi,\
         ; draw special effect
         mov     ecx, FIELD_H-1
      .glow_draw:
-        movzx  ebx, byte [ecx + glowArr] ;AllocatedMem.glowArr
+        movzx  ebx, byte [ecx + Glow.Arr] ;AllocatedMem.glowArr
         ;mov     ebx, 5; tmp
         cmp    ebx, 0
         je     .glow_skip
         ; dec effect
-        dec    byte [ecx + glowArr]  ; where mem allocated?
+        dec    byte [ecx + Glow.Arr]  ; where mem allocated?
         ; check if effect is too big
         cmp    ebx, GLOW_TIME_TICKS+1
         jg     .glow_skip
@@ -368,7 +471,7 @@ proc WindowProc uses ebx esi edi,\
         jl     @F
         ; equal -- so delete line (uses eax, edi, edx)
 
-        mov     edi, blocksArr + 1
+        mov     edi, Game.BlocksArr + 1
         mov     dx, FIELD_W
         mov     eax, ecx
         dec     eax
@@ -418,7 +521,7 @@ proc WindowProc uses ebx esi edi,\
         ; test rotating rect draw
         invoke  glPushMatrix;
         invoke  glTranslatef, dword [esp + 16], dword [esp + 16], 0.0  ;  esp -= 4 happened 2xtimes
-        invoke  glRotatef, [tmp_tmp], 0.0, 0.0, 5.0;
+        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 5.0;
         invoke  glBegin, GL_QUADS
 
                 invoke  glVertex2f, edi, edi
@@ -444,13 +547,13 @@ proc WindowProc uses ebx esi edi,\
         ; end test glow draw
 
         ; BEGIN text draw
-        invoke  glListBase, [_nFontBase]
+        invoke  glListBase, [Wnd.nFontBase]
         ; draw text NEXT FIG
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2;
-        invoke  glCallLists, dword[Str.NextFig.Len], GL_UNSIGNED_BYTE, Str.NextFig
+        invoke  glCallLists, Str.NextFig.Len, GL_UNSIGNED_BYTE, Str.NextFig
         ; draw text HOLDED FIG
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 6;
-        invoke  glCallLists, dword[Str.HoldedFig.Len], GL_UNSIGNED_BYTE, Str.HoldedFig
+        invoke  glCallLists, Str.HoldedFig.Len, GL_UNSIGNED_BYTE, Str.HoldedFig
         ; DRAW text SCORE
         invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 6 + 2;
         invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.Score
@@ -463,8 +566,8 @@ proc WindowProc uses ebx esi edi,\
         invoke  glCallLists, LB_ISTR_RCD_LEN, GL_UNSIGNED_BYTE, Str.Scoreboard
         ; DRAW Scoreboard
         ; 1st: find amount of actual strings
-        mov     edi, [Settings.AllocatedMem];Settings.LeaderBoardArr
-        add     edi, AllocatedMem.LeaderBoardArr
+        ; ERROR!!
+        mov     edi, Settings.LeaderBoardArr
         mov     esi, edi
         add     esi, (1 shl LB_ISTR_RCD_LEN_POW) - LB_PRIO_RCD_LEN
         mov     ecx, LB_BASE_RCDS_AMOUNT - 1
@@ -520,7 +623,7 @@ proc WindowProc uses ebx esi edi,\
         invoke  glCallLists, 6, GL_UNSIGNED_BYTE, Str.Pause
 @@:
 .end_draw:
-        invoke  SwapBuffers,[hdc]
+        invoke  SwapBuffers,[Wnd.hdc]
 
         xor     eax,eax
         jmp     .finish
@@ -552,7 +655,7 @@ proc WindowProc uses ebx esi edi,\
         jmp     .endFileNameGet
 @@:
         ; get new symbol place
-        movzx   edi, word [Settings.tempLen]
+        movzx   edi, word [Settings.strTempLen]
 
         ; continue event work
         cmp     eax, VK_BACK
@@ -604,7 +707,7 @@ proc WindowProc uses ebx esi edi,\
         inc     edi
         ; return
 .endFileNameGet:
-        mov     word [Settings.tempLen], di
+        mov     word [Settings.strTempLen], di
         jmp     .defwndproc
 
 .regularKeyEvent:
@@ -659,17 +762,14 @@ proc WindowProc uses ebx esi edi,\
 ;@@:
         ;jmp     .defwndproc
   .wmdestroy:
-        ; free mem
-        invoke  GetProcessHeap
-        invoke  HeapFree, eax, HEAP_ZERO_MEMORY, [Settings.AllocatedMem]
-        ; misuc
+        ; music
         stdcall SoundPlayer.Close
         ; font lists
         invoke  glDeleteLists, 0, NUM_OF_CHARACTERS
         ; gl & window
         invoke  wglMakeCurrent, 0, 0
-        invoke  wglDeleteContext,[hrc]
-        invoke  ReleaseDC,[hwnd],[hdc]
+        invoke  wglDeleteContext, [Wnd.hrc]
+        invoke  ReleaseDC, [hwnd], [Wnd.hdc]
         invoke  PostQuitMessage, 0
         xor     eax, eax
   .finish:

@@ -1,9 +1,9 @@
-midihandle                      dd      ?
-SoundPlayer.CurTick             dw      ?
-SoundPlayer.DeltaTick           dw      180;?
+;midihandle                      dd      ?
+;SoundPlayer.CurTick             dw      ?
+;SoundPlayer.DeltaTick           dw      ?
 
 ;SoundPlayer.CurEventTick        dw      ?
-SoundPlayer.EndGameTick         dw      ?
+;SoundPlayer.EndGameTick         dw      ?
 ;SoundPlayer.LineGameTick        dw      ?
 
 NOTES_PACK_BYTES                = 2; 9

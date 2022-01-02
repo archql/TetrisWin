@@ -4,55 +4,35 @@
         SPECIAL_PRICE           = 0
         SPECIAL_NUM_LINES_RM    = 2
 
-;========Game model==============
-        Game.CurFig             dw      ?
-        Game.CurFigColor        dw      ?
-        Game.CurFigRotation     dw      ?
-        Game.CurFigNumber       dw      ?
-        Game.NextFig            dw      ?
-        Game.NextFigNumber      dw      ?
-        Game.FigX               dw      ?
-        Game.FigY               dw      ?
-        Game.FigPreviewY        dw      ?
-        Game.TickSpeed          dw      ?
-        Game.CurTick            dw      ?
-        Game.Score              dw      ?
-        Game.HighScore          dw      ?
-        Game.Playing            dw      ?
-        Game.Pause              dw      ?
-        Game.FigsPlaced         dw      ?
-        Game.SpeedMul           dq      0.96;96
-        Game.Holded             dw      ?
-        Game.HoldedFigNum       dw      ?
-        Game.HoldedFig          dw      ?
+;#############GAME FIELD CLR ########################
+proc Game.IniField
 
-        figArr          dw      0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\
-                        0100'0100_0100'0100b, 0000'1111_0000'0000b, 0100'0100_0100'0100b, 0000'1111_0000'0000b,\
-                        0100'0100_0110'0000b, 0010'1110_0000'0000b, 1100'0100_0100'0000b, 0000'1110_1000'0000b,\
-                        0100'0100_1100'0000b, 0000'1110_0010'0000b, 0110'0100_0100'0000b, 1000'1110_0000'0000b,\
-                        0100'1110_0000'0000b, 0100'0110_0100'0000b, 0000'1110_0100'0000b, 0100'1100_0100'0000b,\
-                        1000'1100_0100'0000b, 0000'0110_1100'0000b, 1000'1100_0100'0000b, 0000'0110_1100'0000b,\
-                        0100'1100_1000'0000b, 0000'1100_0110'0000b, 0100'1100_1000'0000b, 0000'1100_0110'0000b;,\
-                        ;0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b,\
-                        ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b;,\;
-        figNum          dw      ($ - figArr)/8 - 1
+        ; clear screen
+        mov     edi, Game.BlocksArr
+        xor     eax, eax; set edx to 0
+        inc     eax     ; set eax to 1
+        mov     ecx, FIELD_H - 1
+.Clearloop:
+        stosb
+        add     edi, FIELD_W - 2
+        stosb
+
+        loop    .Clearloop
+
+        mov     ecx, FIELD_W
+        rep stosb
+
+        ret
+endp
 
 
 ;#############GAME FIELD CLR ########################
 proc Game.ClearField
 
         ; clear screen
-        mov     esi, FIELD_W - 2
-        xor     al, al
         mov     ecx, FIELD_H - 1
-        mov     edi, blocksArr + 1
         mov     edx, GLOW_TIME_TICKS
 .Clearloop:
-        push    ecx
-        ; clear line
-        mov     ecx, esi
-        ;!!rep stosb
-        pop     ecx
         ; make line glow (line mecanics)
         ; set glow time
         mov     ebx, FIELD_H
@@ -62,12 +42,9 @@ proc Game.ClearField
         ;shl     ebx, 1
         add     edx, ebx
         ;shr     ebx, 1
-        mov     byte [ebx + glowArr], dl
+        mov     byte [ebx + Glow.Arr], dl
         pop     edx
-    @@:
-        ; go next line
-        inc     edi
-        inc     edi
+
         loop    .Clearloop
 
         ret
@@ -79,7 +56,6 @@ proc Game.Initialize
         call    Random.Initialize
 
         stdcall Game.ClearField
-
 
         ; write score
         mov     word [Game.Score], 0; set score to 0
@@ -129,7 +105,7 @@ proc Game.GenNewFig
         mov     [Game.FigPreviewY], 0
 
         ; setup new color
-        movzx   eax, [colorsNum]
+        mov     eax, colorsNum
         stdcall Random.Get, 3, eax
         mov     [Game.CurFigColor], ax
 
@@ -140,7 +116,7 @@ proc Game.GenNewFig
         mov     [Game.CurFig], ax
 
         ; setup next fig
-        movzx   eax, [figNum]
+        mov     eax, figNum
         stdcall Random.Get, 0, eax
         mov     [Game.NextFigNumber], ax
         movzx   ebx, ax
@@ -400,7 +376,7 @@ proc Game.CheckOnEnd uses ebx ecx
         mov     ecx, FIELD_W - 2
         mov     ebx, FIELD_W * TOP_LINE + 1; from TOP_LINE line
 .CheckLoop:
-        cmp     byte [ebx + blocksArr], 0
+        cmp     byte [ebx + Game.BlocksArr], 0
         je      @F
         mov     eax, TRUE
         jmp     .EndProc
@@ -419,15 +395,15 @@ proc Game.RmLine
         ; make line glow (line mecanics)
         mov     edx, FIELD_H
         sub     edx, [esp + 4 + 4]; get ecx (line num) (secondary '+' is for stack frame)
-        mov     byte [edx + glowArr], GLOW_TIME_TICKS
+        mov     byte [edx + Glow.Arr], GLOW_TIME_TICKS
         ; rm line
         sub     ebx, FIELD_W
         mov     ecx, ebx
 .RmLineLoop:
-        mov     dl, byte [ebx + blocksArr]
+        mov     dl, byte [ebx + Game.BlocksArr]
         cmp     dl, $01; check if it is border block
         je      @F
-        mov     [ebx + blocksArr + FIELD_W], dl
+        mov     [ebx + Game.BlocksArr + FIELD_W], dl
 @@:
         dec     ebx
         loop    .RmLineLoop
@@ -447,7 +423,7 @@ proc Game.CheckOnLine uses dx ebx ecx
 
         mov     ecx, FIELD_W - 2
 .InnerCheckLoop:
-        cmp     byte [ebx + blocksArr], 0
+        cmp     byte [ebx + Game.BlocksArr], 0
         je      .skipLine
 
         inc     ebx
@@ -534,7 +510,7 @@ proc Game.PlaceFigure ;uses eax ecx esi edi ebx
         test    si, 0x80'00 ; check if Y cord < 0
         jnz     @F
         ; paste figure
-        mov     byte [esi + blocksArr], al
+        mov     byte [esi + Game.BlocksArr], al
 @@:
         inc     si ; setup cords
         dec     ecx
@@ -574,7 +550,7 @@ proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
         test    si, 0x80'00 ; check if Y cord < 0
         jnz     @F
         ; check collision
-        cmp     byte [esi + blocksArr], 0
+        cmp     byte [esi + Game.BlocksArr], 0
         jne     .Collided
 @@:
         inc     si; setup cords
