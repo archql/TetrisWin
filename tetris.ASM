@@ -55,6 +55,7 @@ section '.data' data readable writable
         Str.HighScore             db    SCOLE_LEN_CONST dup ' '
         Str.Score                 db    SCOLE_LEN_CONST dup ' '
         Str.Score.Format          db    '%5d', 0
+        Str.ScoreCorrypted.Format db    '#$&*!', 0
         Str.Pause                 db    'PAUSED'
         Str.Loose                 db    'GAME OVER'
         Settings.strFilename      db    '_ARCHQL_.ttr', 0
@@ -161,6 +162,7 @@ Unitialized_mem:
         Game.Holded                     dw      ?
         Game.HoldedFigNum               dw      ?
         Game.HoldedFig                  dw      ?
+        Game.MusicOff                   dw      ?
 
         ; # Music
         midihandle                      dd      ?
@@ -174,9 +176,9 @@ Unitialized_mem:
         ; # Settings
         Settings.strTempLen             dw      ?
 
-        Settings.buffer                 db    4 dup ?
+        FILE_SZ_TO_READ                 = 4
+        Settings.buffer                 db    FILE_SZ_TO_READ dup ?
         Settings.BytesProceed           dd    ?
-        FILE_SZ_TO_READ                 = 2
 
         Settings.fileData               WIN32_FIND_DATAA            ?
         LB_NAME_STR_LEN                 = 8
@@ -392,8 +394,11 @@ proc WindowProc uses ebx esi edi,\
     ;@@:
 
         ; check on snd
+        test    [Game.MusicOff], 1
+        jnz     @F
         mov     eax, dword [esp]
         stdcall SoundPlayer.Update ; got eax in [esp] as param
+@@:
 
         ; define game tick update
         mov     eax, dword [esp]
@@ -721,6 +726,11 @@ proc WindowProc uses ebx esi edi,\
         jne     @F
         stdcall SoundPlayer.Pause
         xor     [Game.Pause], 1
+@@:
+        cmp     eax, 'M'
+        jne     @F
+        stdcall SoundPlayer.Pause
+        xor     [Game.MusicOff], 1
 @@:
         ; TEMP
         cmp     [Game.Playing], TRUE

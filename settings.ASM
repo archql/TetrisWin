@@ -7,7 +7,20 @@
         ;Settings.BytesProceed     dd    ?
         ;FILE_SZ_TO_READ           = 2
 
+proc Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
 
+        mov     bx, word [Settings.buffer + 2]
+        movzx   eax, word [Settings.buffer]
+        ; decode control byte in buffer
+        mov     cl, 0x45
+        xor     cl, al
+        rol     bx, cl
+        xor     bx, 0x4CB3
+
+        xor     bx, ax
+
+        ret
+endp
 
 ;#############GET HIGH SCORE####################
 ; ret high score in ax
@@ -27,8 +40,12 @@ proc Settings.GetHigh
         ; check if smth readed
         cmp     [Settings.BytesProceed], 0
         je      .EndProc
+        ; decode high score
+        stdcall Settings.DecodeWord
+        test    bx, bx
+        jnz     .EndProc
         ; set high
-        mov     ax, word [Settings.buffer]
+        ;mov     ax, word [Settings.buffer]
         jmp     @F ; skip reset score
 .EndProc:
         xor     ax, ax
@@ -45,6 +62,13 @@ proc Settings.SetHigh
         ;cinvoke wsprintfA, Settings.buffer, buf_format, eax
         ; mov high to buffer
         mov     word [Settings.buffer], ax
+        ; encode control byte
+        mov     bx, ax
+        xor     bx, 0x4CB3
+        mov     cl, 0x45
+        xor     cl, al
+        ror     bx, cl
+        mov     word [Settings.buffer + 2], bx
         ; temp set pos!!!!!
         xor     ebx, ebx
         ; createfile
@@ -100,11 +124,16 @@ proc Settings.LdScoreboard
         ; check if smth readed
         cmp     [Settings.BytesProceed], 0
         jne     @F; jmp if good
-        mov     word [Settings.buffer], 0
+        mov     dword [Settings.buffer], 0
 @@:
+        ; check on score protection
+        push    ebx ecx
+        stdcall Settings.DecodeWord
+        test    bx, bx
+        pop     ecx ebx ; save flags!!! vvv
+        jnz     .EndTryLdFile; corrypted
         ; set high
         inc     edi
-        movzx   eax, word [Settings.buffer]
         push    eax ; save score sa num
         ; write score
         cinvoke wsprintfA, edi, Str.Score.Format, eax

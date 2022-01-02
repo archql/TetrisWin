@@ -1,8 +1,7 @@
         TOP_LINE                = 1
         FIG_START_Y             = -2
 
-        SPECIAL_PRICE           = 0
-        SPECIAL_NUM_LINES_RM    = 2
+        SPECIAL_PRICE           = 100
 
 ;#############GAME FIELD CLR ########################
 proc Game.IniField
@@ -450,6 +449,12 @@ proc Game.CheckOnLine uses dx ebx ecx
         ;pop     ax
         ; sound eff
         push    eax ecx edx
+        cmp     al, 4
+        jl      @F
+        push    eax
+        invoke  midiOutShortMsg, [midihandle], 0x007F2594
+        pop     eax
+@@:
         mov     ecx, 0x007F0093
         mov     ch, al
         shl     ch, 2
