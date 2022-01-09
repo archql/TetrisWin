@@ -22,6 +22,8 @@ CONTROLS:
  - mute music	      -- M
  - increase volume    -- ']'
  - decrease volume    -- '\['
+ 
+
 NICKNAME CONTROLS:
  to activate edit mode -- hold CTRL
  with all keys pressed
