@@ -174,10 +174,6 @@ proc SoundPlayer.PlayNextSEx uses ebx
 
         ret
 endp
-
-
-
-SoundPlayer.NextSound        dw      0
                         ; 1001 -- play; 1000 - stop; kkk - note num, vvv - volume
                         ;format 1001'nnnn   kk  0vvvvvvvv
 

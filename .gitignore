@@ -6,6 +6,7 @@ RCDS_SAVE
 *.ttr.real
 *.zip
 *.notexe
+*.png
 ConvertTTRtoNewVersion.exe
 tetris-surface.EXE
 tetris-surface-2.EXE

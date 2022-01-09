@@ -26,7 +26,7 @@ entry start
 ;===========================
 ;section '.data' data readable writable
 ;===========================
-section '.code' code executable readable writable  ; code section
+section '.code' code executable readable ;writable  ; code section
 start:
         ; zero allocated memory
         xor     eax, eax
@@ -264,6 +264,7 @@ proc WindowProc uses ebx esi edi,\
         cmp     eax, edx;300; temp
         jb      @F
         add     [Game.CurTick], eax
+        add     [Game.TicksPlayed], eax
         ; call game update
         mov     eax, 7; key with ID 7 is undefined
         stdcall Game.KeyEvent
@@ -468,9 +469,28 @@ proc WindowProc uses ebx esi edi,\
         ; Draw CurNickName
         invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, FIELD_H - 2;
         invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Game.NickName
+
         ; Draw TmpNickName
         invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, FIELD_H - 1;
+        ; If setup mode activated
+        test     [Settings.SetupNickNameActive], TRUE
+        jz       .NickNameEditDisabled
+        ; Draw
         invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickName
+        ; set Special color
+        mov     eax, 1.0
+        invoke  glColor3f, eax, ebx, ebx
+        ; Draw HighLight
+        invoke  glRasterPos2f, 22.0 , 22.7 ;FIELD_W + 3 - 1 + 8, FIELD_H - 1 + 1;
+        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickNameHighlight
+        ; set Special color
+        mov     eax, 1.0
+        invoke  glColor3f, eax, eax, eax
+        jmp     .ExitNickNameIf
+.NickNameEditDisabled:
+        ; Draw
+        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickNameBlocked
+.ExitNickNameIf:
 
         cmp     [Game.Playing], 1
         je      @F
@@ -500,78 +520,13 @@ proc WindowProc uses ebx esi edi,\
         ; check if keyboard mode activated
         test    ebx, 0x00'00'80'00
         jz      .regularKeyEvent
-        ; check if control key
-        cmp     eax, VK_RETURN
-        jne     @F
-        ; set cur name
-        mov     esi, Settings.strTempNickName
-        mov     edi, Game.NickName
-        mov     ecx, LB_NAME_STR_LEN
-        rep movsb
-        ; ld new file
-        stdcall Settings.GetHigh
-        ;TEMP WRITE HIGH
-        movzx   eax, word [Game.HighScore]
-        cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
-        ;
-        xor     edi, edi
-        jmp     .endFileNameGet
-@@:
-        ; get new symbol place
-        movzx   edi, word [Settings.strTempLen]
+        ; check if game ended
+        cmp    [Game.Score], 0
+        jnz     .regularKeyEvent
+        ; activate edit mode
+        mov     [Settings.SetupNickNameActive], TRUE
 
-        ; continue event work
-        cmp     eax, VK_BACK
-        jne     @F
-        ; clear one symbol if can
-        test    edi, edi
-        jz      .defwndproc
-        ; dec to cur symbol
-        dec     edi
-        ; ld new symbol
-        mov     al, '_'
-        push    edi
-        add     edi, Settings.strTempNickName
-        stosb
-        pop     edi
-
-        jmp     .endFileNameGet
-@@:
-        cmp     eax, VK_LEFT ; go one smbl left
-        jne     @F
-        test    edi, edi; if can go left
-        jz      .defwndproc
-        dec     di
-        jmp     .endFileNameGet
-@@:
-        cmp     eax, VK_RIGHT ; go one smbl right
-        jne     @F
-        cmp     edi, LB_NAME_STR_LEN; if can go right
-        jae     .defwndproc
-        inc     di
-        jmp     .endFileNameGet
-@@:
-
-        ; check if normal key pressed
-        cmp     eax, 'A'
-        jb      .defwndproc
-        cmp     eax, 'Z'
-        ja      .defwndproc
-        ; if >= 8 -- stop!
-        cmp     edi, LB_NAME_STR_LEN
-        jae     .defwndproc
-
-        ; ld new symbol
-        push    edi
-        add     edi, Settings.strTempNickName
-        stosb
-        pop     edi
-        ; go to next
-        inc     edi
-        ; return
-.endFileNameGet:
-        mov     word [Settings.strTempLen], di
-        jmp     .defwndproc
+        include 'nickname_setup.asm'
 
 .regularKeyEvent:
         ; check regular key events
@@ -637,6 +592,11 @@ proc WindowProc uses ebx esi edi,\
         jne     @F
         mov     [Game.SoftDrop], FALSE
 @@:
+        cmp     eax, VK_CONTROL
+        jne     @F
+        ; deactivate edit mode
+        mov     [Settings.SetupNickNameActive], FALSE
+@@:
         ;cmp     eax, VK_LEFT
         ;jb      @F
         ;cmp     eax, VK_RIGHT
@@ -669,10 +629,10 @@ endp
         include 'game.asm'
         include 'view.asm'
         include 'settings.asm'
-        include 'music.asm'
         include 'units\random.h'
+        DWORDS_TO_COUNT_CONTROL_SUM     = ($ - start) / 4
 
-DWORDS_TO_COUNT_CONTROL_SUM     = ($ - start) / 4
+        include 'music.asm'
 
 ;===========================
 
@@ -726,6 +686,7 @@ import opengl,\
          wglDeleteContext,'wglDeleteContext',\
          wglMakeCurrent,'wglMakeCurrent',\
          wglUseFontBitmapsA,'wglUseFontBitmapsA',\
-         glListBase, 'glListBase'
+         glListBase, 'glListBase',\
+         glRasterPos2f, 'glRasterPos2f'
 
          include 'tetrisdata.asm'

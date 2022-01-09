@@ -27,8 +27,9 @@
         Str.Pause                 db    'PAUSED'
         Str.Loose                 db    'GAME OVER'
 
-        Settings.strTempNickName  db    '________'
-        Str.AdminNickName         db    '_ARCHQL_'
+        Settings.strTempNickName         db    '________'
+        Str.AdminNickName                db    '_ARCHQL_'
+        Settings.strTempNickNameBlocked  db    '~~~~~~~~'
         ;========ANIMATIONS========================
         Glow.AnimAngle            dd    0.0
         Glow.AnimDeltaAngle       dd    20.0
@@ -137,7 +138,7 @@ GameBuffer:
         Game.FigY                       dw      ?
         Game.FigPreviewY                dw      ?
         Game.TickSpeed                  dw      ?
-        Game.CurTick                    dd      ?
+        Game.TicksPlayed                dd      ?
         Game.Score                      dw      ?
         Game.HighScore                  dw      ?
         Game.Playing                    dw      ?
@@ -156,10 +157,14 @@ GameBuffer:
         Game.Reserved                   dw      16 dup ?
 FILE_SZ_TO_WRITE = ($ - GameBuffer)
 
+        Game.CurTick                    dd      ?
+
         ; # Music
         midihandle                      dd      ?
         SoundPlayer.CurTick             dw      ?
         SoundPlayer.DeltaTick           dw      ?
+
+        SoundPlayer.NextSound           dw      ?
 
         SoundPlayer.VolumeMask          dd      ?
         label SoundPlayer.Volume        byte at $ - 2
@@ -169,7 +174,9 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         ;SoundPlayer.LineGameTick        dw      ?
 
         ; # Settings
-        Settings.strFilenameBuf         db    16 dup ?
+        Settings.SetupNickNameActive            dw      ?
+        Settings.strFilenameBuf                 db      16 dup ?
+        Settings.strTempNickNameHighlight       db      8  dup ?, ? ; special save byte
 
         Settings.strTempLen             dw      ?
 
@@ -206,7 +213,7 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 4
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 8
+        GAME_V_MINOR                    = 10
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

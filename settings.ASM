@@ -6,7 +6,7 @@
         ;Settings.buffer           db    4 dup ?
         ;Settings.BytesProceed     dd    ?
         ;FILE_SZ_TO_READ           = 2
-        IS_GITHUB_VERSION       = TRUE
+        IS_GITHUB_VERSION       = FALSE
 
 proc Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
 
@@ -88,10 +88,10 @@ proc Settings.SetHigh
         mov     [GameBuffer.Score], ax
         stdcall Settings.EncodeWord
         mov     [GameBuffer.ControlWord], bx
-        ; count cur state control sum
-        call    Settings.CountControlSum
         ; get player nickname filename
         cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, Game.NickName
+        ; count cur state control sum
+        call    Settings.CountControlSum
         ; temp set pos!!!!!
         xor     ebx, ebx
         ; createfile

@@ -56,6 +56,9 @@ proc Game.Initialize
 
         stdcall Game.ClearField
 
+        ; reset time
+        mov     [Game.TicksPlayed], 0
+
         ; write score
         mov     word [Game.Score], 0; set score to 0
         stdcall Settings.GetHigh
