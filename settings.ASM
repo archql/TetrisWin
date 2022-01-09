@@ -48,10 +48,12 @@ end if
 ;#############GET HIGH SCORE####################
 ; ret high score in ax
 proc Settings.GetHigh
-
+        ; get player nickname filename
+        cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, Game.NickName
+        ; reset ebx
         xor     ebx, ebx
         ; createfile
-        invoke  CreateFileA, Settings.strFilename, GENERIC_READ, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
+        invoke  CreateFileA, Settings.strFilenameBuf, GENERIC_READ, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
         xchg    eax, ebx ; save handle
         cmp     eax, INVALID_HANDLE_VALUE
         je      .EndProc
@@ -88,10 +90,12 @@ proc Settings.SetHigh
         mov     [GameBuffer.ControlWord], bx
         ; count cur state control sum
         call    Settings.CountControlSum
+        ; get player nickname filename
+        cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, Game.NickName
         ; temp set pos!!!!!
         xor     ebx, ebx
         ; createfile
-        invoke  CreateFileA, Settings.strFilename, GENERIC_WRITE, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
+        invoke  CreateFileA, Settings.strFilenameBuf, GENERIC_WRITE, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
         xchg    eax, ebx ; save handle
         cmp     eax, INVALID_HANDLE_VALUE
         je      .EndProc
