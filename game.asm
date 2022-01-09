@@ -1,4 +1,4 @@
-        TOP_LINE                = 1
+        TOP_LINE                = 0;1
         FIG_START_Y             = -2
 
         SPECIAL_PRICE           = 100
@@ -52,7 +52,7 @@ endp
 ;#############GAME INITIALIZATION####################
 proc Game.Initialize
 
-        call    Random.Initialize
+        ;call    Random.Initialize
 
         stdcall Game.ClearField
 
@@ -94,6 +94,35 @@ proc Game.Initialize
         ret
 endp
 
+;#############GEN FIG SEQUENCE #################
+proc Game.GenSequence
+
+        mov     esi, Game.NextFigNumber
+
+        mov     ecx, figNum + 1 ; i
+.gen_loop:
+        ; set loop ctr
+        dec     ecx
+        ; get j
+        stdcall Random.Get, ecx, figNum; got j
+        ; arr[i] = arr[j];
+        shl     eax, 1
+        shl     ecx, 1
+        mov     dx, word [esi + eax]
+        mov     word [esi + ecx], dx
+        ; arr[j] = i;
+        shr     ecx, 1
+        mov     [esi + eax], cx
+        ; reset loop ctr
+        inc     ecx
+        loop    .gen_loop
+
+        ; reset ctr
+        mov     [Game.NextFigCtr], figNum
+
+        ret
+endp
+
 ;#############GEN NEW FIGURE####################
 proc Game.GenNewFig
 
@@ -115,10 +144,21 @@ proc Game.GenNewFig
         mov     [Game.CurFig], ax
 
         ; setup next fig
-        mov     eax, figNum
-        stdcall Random.Get, 0, eax
-        mov     [Game.NextFigNumber], ax
-        movzx   ebx, ax
+        cmp     [Game.NextFigCtr], 0
+        jnz     .hasNextFig
+.hasNotNextFig:
+        stdcall Game.GenSequence
+        jmp     .endnext
+.hasNextFig:
+        dec     [Game.NextFigCtr]
+        ; move sequence of figs
+        mov     ecx, figNum
+        mov     esi, Game.NextFigNumber + 2
+        mov     edi, Game.NextFigNumber
+        rep movsw
+.endnext:
+        ; get fig bits
+        movzx   ebx, word [Game.NextFigNumber]
         shl     ebx, 3
         mov     ax, [figArr + ebx]
         mov     [Game.NextFig], ax
@@ -132,10 +172,15 @@ endp
 
 ;############### KEY EVENT ############
 ; - processes a key code, stored in eax
+; - Special control codes:
+;   - Game update               - 7
+;   - Ignore downward collision - 0 (only for actual figure, not preview)
 proc Game.KeyEvent uses eax
 
         ; playsound
         cmp     eax, 7
+        je      @F
+        cmp     eax, VK_SHIFT
         je      @F
         invoke  midiOutShortMsg, [midihandle], 0x006F2B99
         mov     eax, [esp]
@@ -238,12 +283,12 @@ proc Game.KeyEvent uses eax
         cmp     eax, VK_UP  ; rotation
         ;test    al, 0000'0010b
         jne     @F
-        inc     dx
+        dec     dx ; inc
 @@:
         cmp     eax, VK_DOWN ; rotation
         ;test    al, 0000'1000b
         jne     @F
-        dec     dx
+        inc     dx ; dec
 @@:
         and     dx, 0000'0000'0000'0011b ; masked rotation
         ; get figure (duplicated!)
@@ -291,10 +336,12 @@ proc Game.KeyEvent uses eax
         ; collided
         dec     di
         ; speed up on space
+        test    eax, eax ; if start update
+        jz      @F ; skip collision
         cmp     eax, ' '
         je      .Collided
         cmp     di, [Game.FigY]
-        jl      .Collided
+        jl      .Collided ; collided at initial cord
         ;jge     @F  ;  (were jb -- but error with neg nmbs)
         ; collided at initial cord
         ;cmp     eax, 7
@@ -492,8 +539,8 @@ endp
 ; - y     -- y cord
 ; - color -- fig color
 ;Game.PlaceFigure.Fig            bx
-;Game.PlaceFigure.X              esi
-;Game.PlaceFigure.Y              edi
+;Game.PlaceFigure.X              esi, hi word is zero!
+;Game.PlaceFigure.Y              edi, hi word is zero!
 ;Game.PlaceFigure.Color          cl
 ;Game.PlaceFigure.Field          ???
 
@@ -512,7 +559,7 @@ proc Game.PlaceFigure ;uses eax ecx esi edi ebx
 .DrawLoop:
         shl     bx, 1
         jae     @F ; CF = 0 => exit
-        test    si, 0x80'00 ; check if Y cord < 0
+        test    si, 0x80'00 ; check if cord < 0
         jnz     @F
         ; paste figure
         mov     byte [esi + Game.BlocksArr], al
@@ -534,8 +581,8 @@ endp
 ; - x     -- x cord
 ; - y     -- y cord
 ;View.CollideFigure.Fig             bx
-;View.CollideFigure.X               esi
-;View.CollideFigure.Y               edi;dw      ?
+;View.CollideFigure.X               esi, hi word is zero!
+;View.CollideFigure.Y               edi, hi word is zero!
 
 proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
         ; prep cords
@@ -552,7 +599,7 @@ proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
 .DrawLoop:
         shl     bx, 1
         jae     @F ; CF = 0 => exit
-        test    si, 0x80'00 ; check if Y cord < 0
+        test    si, 0x80'00 ; check if cord < 0
         jnz     @F
         ; check collision
         cmp     byte [esi + Game.BlocksArr], 0
@@ -580,9 +627,9 @@ endp
 ;#############GAME END ##############################
 proc Game.End
         ; set playing false
+        cmp     [Game.Playing], FALSE
+        je      @F
         mov     [Game.Playing], FALSE
-        ; temp CHEAT inc figy
-        ;dec     [Game.FigY]
         ; stop music
         stdcall SoundPlayer.Pause
         ; check score if new high

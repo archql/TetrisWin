@@ -1,9 +1,12 @@
 /tetris.EXE
 NEXT
 OLD
+RCDS_SAVE
 *.ttr
 *.ttr.real
 *.zip
 *.notexe
+ConvertTTRtoNewVersion.exe
 tetris-surface.EXE
 tetris-surface-2.EXE
+super_secret_settings.asm

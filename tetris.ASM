@@ -34,7 +34,7 @@ section '.data' data readable writable
 
 
         Wnd.class       TCHAR    'FASMW32',0
-        Wnd.title       TCHAR    'TETRIS WIN v.1.5.0 by Artiom Drankevich',0
+        Wnd.title       TCHAR    'TETRIS WIN ASM by Artiom Drankevich',0
 
         Wnd.style       equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 
@@ -52,10 +52,8 @@ section '.data' data readable writable
         Str.HoldedFig             db    'HOLDED FIGURE'
         Str.HoldedFig.Len         =     $ - Str.HoldedFig
         Str.Scoreboard            db    '--<LEADERBOARD>--'
-        Str.HighScore             db    SCOLE_LEN_CONST dup ' '
-        Str.Score                 db    SCOLE_LEN_CONST dup ' '
         Str.Score.Format          db    '%5d', 0
-        Str.ScoreCorrypted.Format db    '#$&*!', 0
+        ;Str.ScoreCorrypted.Format db    '#$&*!', 0
         Str.Pause                 db    'PAUSED'
         Str.Loose                 db    'GAME OVER'
         Settings.strFilename      db    '_ARCHQL_.ttr', 0
@@ -98,13 +96,13 @@ section '.data' data readable writable
         ;========Game model==============
         Game.SpeedMul           dq      0.96;96
 
-        figArr          dw      0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\
-                                0100'0100_0100'0100b, 0000'1111_0000'0000b, 0100'0100_0100'0100b, 0000'1111_0000'0000b,\
-                                0100'0100_0110'0000b, 0010'1110_0000'0000b, 1100'0100_0100'0000b, 0000'1110_1000'0000b,\
-                                0100'0100_1100'0000b, 0000'1110_0010'0000b, 0110'0100_0100'0000b, 1000'1110_0000'0000b,\
-                                0100'1110_0000'0000b, 0100'0110_0100'0000b, 0000'1110_0100'0000b, 0100'1100_0100'0000b,\
-                                1000'1100_0100'0000b, 0000'0110_1100'0000b, 1000'1100_0100'0000b, 0000'0110_1100'0000b,\
-                                0100'1100_1000'0000b, 0000'1100_0110'0000b, 0100'1100_1000'0000b, 0000'1100_0110'0000b;,\
+        figArr          dw      0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\ ; O
+                                0000'1111_0000'0000b, 0010'0010_0010'0010b, 0000'0000_1111'0000b, 0100'0100_0100'0100b,\ ; I
+                                1000_1110_0000_0000b, 0110_0100_0100_0000b, 0000_1110_0010_0000b, 0100_0100_1100_0000b,\ ; J
+                                0010_1110_0000_0000b, 0100_0100_0110_0000b, 0000_1110_1000_0000b, 1100_0100_0100_0000b,\ ; L
+                                0110_1100_0000_0000b, 0100_0110_0010_0000b, 0000_0110_1100_0000b, 1000_1100_0100_0000b,\ ; S
+                                1100_0110_0000_0000b, 0010_0110_0100_0000b, 0000_1100_0110_0000b, 0100_1100_1000_0000b,\ ; Z
+                                0100_1110_0000_0000b, 0100_0110_0100_0000b, 0000_1110_0100_0000b, 0100_1100_0100_0000b   ; T
                                 ;0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b,\
                                 ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b;,\;
         figNum          =       ($ - figArr)/8 - 1
@@ -141,14 +139,27 @@ Unitialized_mem:
         DFIELD_W                        dq      ?
         clock                           dd      ?
         rect_size                       dd      ? ; initialization
+        ; # BUFFER TO SCORE WRITE & GAME RESTORE
+GameBuffer:
+        GameBuffer.Score                dw      ?
+        GameBuffer.ControlWord          dw      ?
+        ; # Str
+        Str.HighScore                   db      SCOLE_LEN_CONST dup ?
+        Str.Score                       db      SCOLE_LEN_CONST dup ?
+        ; # Random
+        Random.dSeed                    dd      ?
+        Random.dPrewNumber              dd      ?
         ; # Game
         Game.BlocksArr:                 db      FIELD_W*FIELD_H dup ? ; initialization!
         Game.CurFig                     dw      ?
         Game.CurFigColor                dw      ?
         Game.CurFigRotation             dw      ?
         Game.CurFigNumber               dw      ?
+
         Game.NextFig                    dw      ?
-        Game.NextFigNumber              dw      ?
+        Game.NextFigNumber              dw      7 dup ?
+        Game.NextFigCtr                 dw      ?
+
         Game.FigX                       dw      ?
         Game.FigY                       dw      ?
         Game.FigPreviewY                dw      ?
@@ -163,6 +174,12 @@ Unitialized_mem:
         Game.HoldedFigNum               dw      ?
         Game.HoldedFig                  dw      ?
         Game.MusicOff                   dw      ?
+        Game.SoftDrop                   dw      ?
+
+        Game.VersionInfo                dd      ?
+        Game.VersionCode                dd      ?
+        Game.Reserved                   dw      8 dup ?
+FILE_SZ_TO_WRITE = ($ - GameBuffer)
 
         ; # Music
         midihandle                      dd      ?
@@ -191,6 +208,48 @@ Unitialized_mem:
         UNINI_MEM_LEN                   = $ - Unitialized_mem
 
         Settings.LeaderBoardArr         db     (LB_MAX_RCDS_AMOUNT)*(1 shl LB_ISTR_RCD_LEN_POW) dup ?
+
+        ; GAME VERSION
+        ; -- App?                       (3 bits)
+        GAME_V_APP_LOCAL                = 0
+        GAME_V_APP_SERVER               = 1
+        GAME_V_APP_CLIENT               = 2
+        ; Set here!
+        GAME_V_APP                      = GAME_V_APP_LOCAL
+        ; -- Platform?                  (3 bits)
+        GAME_V_PLATFORM_WIN             = 0
+        GAME_V_PLATFORM_ANDROID         = 1
+        ; Set here!
+        GAME_V_PLATFORM                 = GAME_V_PLATFORM_WIN
+        ; -- ASM used?                  (1 bit)
+        GAME_V_ASM                      = TRUE
+        ; -- Version major (max 255)
+        GAME_V_MAJOR                    = 4
+        ; -- Version minor (max 63)
+        GAME_V_MINOR                    = 7
+        ; -- Type?                      (2 bits)
+        GAME_V_TYPE_DBG                 = 0
+        GAME_V_TYPE_RELEASE             = 11b
+        GAME_V_TYPE_BRANCH              = 1
+        ; Set here!
+        GAME_V_TYPE                     = GAME_V_TYPE_BRANCH
+        ; -- Random type                (2 bits)
+        GAME_V_RND_TYPE_ORIGINAL        = 1
+        GAME_V_RND_TYPE_CLASSIC         = 0
+        ; Set here!
+        GAME_V_RND_TYPE                 = GAME_V_RND_TYPE_ORIGINAL
+        ; -- Rotation type              (2 bits)
+        GAME_V_ROT_TYPE_ORIGINAL        = 1
+        GAME_V_ROT_TYPE_FIXED           = 0
+        GAME_V_ROT_TYPE_CLASSIC         = 2
+        ; Set here!
+        GAME_V_ROT_TYPE                 = GAME_V_ROT_TYPE_FIXED
+        ; -- Speed type                 (2 bits)
+        GAME_V_SPD_TYPE_ORIGINAL        = 0
+        GAME_V_SPD_TYPE_CLASSIC         = 1
+        ; Set here!
+        GAME_V_SPD_TYPE                 = GAME_V_SPD_TYPE_ORIGINAL
+
         
 ;===========================
 section '.code' code executable readable writable  ; code section
@@ -201,6 +260,21 @@ start:
         mov     edi, Unitialized_mem
         rep     stosb
         ; =====
+        ; Setup Game Version
+        ; FORMATT: 1' Platform code' ASM? ' App type ' Version major ' Version minor ' DBG|RELEASE|BRANCH ' Random type ' Rotation type ' Speed type ' Reserved
+        ;mov     [Game.VersionCode], 1'000'0'000_00000000_000000'00_00'00'00'00b
+        mov     [Game.VersionCode], (1               shl 31) or\
+                                    (GAME_V_PLATFORM shl 28) or\
+                                    (GAME_V_ASM      shl 27) or\
+                                    (GAME_V_APP      shl 24) or\
+                                    (GAME_V_MAJOR    shl 16) or\
+                                    (GAME_V_MINOR    shl 10) or\
+                                    (GAME_V_TYPE     shl  8) or\
+                                    (GAME_V_RND_TYPE shl  6) or\
+                                    (GAME_V_ROT_TYPE shl  4) or\
+                                    (GAME_V_SPD_TYPE shl  2)
+        mov     [Game.VersionInfo], Wnd.title
+        ; ====
 
         xor      ebx, ebx
         ; setup Wnd.wc
@@ -272,8 +346,8 @@ proc WindowProc uses ebx esi edi,\
         je      .wmpaint
         cmp     ebx, WM_KEYDOWN
         je      .wmkeydown
-        ;cmp     ebx, WM_KEYUP
-        ;je      .wmkeyup
+        cmp     ebx, WM_KEYUP
+        je      .wmkeyup
         cmp     ebx, WM_DESTROY
         je      .wmdestroy
   .defwndproc:
@@ -403,7 +477,12 @@ proc WindowProc uses ebx esi edi,\
         ; define game tick update
         mov     eax, dword [esp]
         sub     ax, [Game.CurTick]
-        cmp     ax, [Game.TickSpeed];300; temp
+        mov     dx, [Game.TickSpeed]
+        and     [Game.SoftDrop], 1
+        jz      @F
+        shr     dx, 2
+@@:
+        cmp     ax, dx;300; temp
         jb      @F
         add     [Game.CurTick], ax
         ; call game update
@@ -732,6 +811,10 @@ proc WindowProc uses ebx esi edi,\
         stdcall SoundPlayer.Pause
         xor     [Game.MusicOff], 1
 @@:
+        cmp     eax, VK_SHIFT
+        jne     @F
+        mov     [Game.SoftDrop], TRUE
+@@:
         ; TEMP
         cmp     [Game.Playing], TRUE
         jne     @F
@@ -757,8 +840,12 @@ proc WindowProc uses ebx esi edi,\
         ; stop game
         stdcall Game.End
         jmp     .defwndproc
-  ;.wmkeyup:
-        ;mov     eax, [wparam]
+  .wmkeyup:
+        mov     eax, [wparam]
+        cmp     eax, VK_SHIFT
+        jne     @F
+        mov     [Game.SoftDrop], FALSE
+@@:
         ;cmp     eax, VK_LEFT
         ;jb      @F
         ;cmp     eax, VK_RIGHT
@@ -770,7 +857,7 @@ proc WindowProc uses ebx esi edi,\
         ;shl     dl, cl
         ;xor     byte [Keyboard.Pressed], dl
 ;@@:
-        ;jmp     .defwndproc
+        jmp     .defwndproc
   .wmdestroy:
         ; music
         stdcall SoundPlayer.Close
@@ -794,7 +881,7 @@ endp
         include 'music.asm'
         include 'units\random.h'
 
-
+DWORDS_TO_COUNT_CONTROL_SUM     = ($ - start) / 4
 
 ;===========================
 

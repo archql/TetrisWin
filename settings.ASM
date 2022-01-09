@@ -6,6 +6,7 @@
         ;Settings.buffer           db    4 dup ?
         ;Settings.BytesProceed     dd    ?
         ;FILE_SZ_TO_READ           = 2
+        IS_GITHUB_VERSION       = TRUE
 
 proc Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
 
@@ -21,6 +22,28 @@ proc Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
 
         ret
 endp
+
+proc Settings.EncodeWord; got in ax, res in bx
+
+        ; encode control byte
+        mov     bx, ax
+        xor     bx, 0x4CB3
+        mov     cl, 0x45
+        xor     cl, al
+        ror     bx, cl
+
+        ret
+endp
+
+if (IS_GITHUB_VERSION)
+        SPECIAL_CTR = 0
+        proc Settings.CountControlSum
+             ; Doing actually nothing here
+             ret
+        endp
+else
+        include 'super_secret_settings.asm'
+end if
 
 ;#############GET HIGH SCORE####################
 ; ret high score in ax
@@ -58,17 +81,13 @@ endp
 ;#############SET HIGH SCORE####################
 ; got high score in ax
 proc Settings.SetHigh
-        ; convert num to str
-        ;cinvoke wsprintfA, Settings.buffer, buf_format, eax
+        push    eax
         ; mov high to buffer
-        mov     word [Settings.buffer], ax
-        ; encode control byte
-        mov     bx, ax
-        xor     bx, 0x4CB3
-        mov     cl, 0x45
-        xor     cl, al
-        ror     bx, cl
-        mov     word [Settings.buffer + 2], bx
+        mov     [GameBuffer.Score], ax
+        stdcall Settings.EncodeWord
+        mov     [GameBuffer.ControlWord], bx
+        ; count cur state control sum
+        call    Settings.CountControlSum
         ; temp set pos!!!!!
         xor     ebx, ebx
         ; createfile
@@ -77,13 +96,13 @@ proc Settings.SetHigh
         cmp     eax, INVALID_HANDLE_VALUE
         je      .EndProc
         ; write high
-        invoke  WriteFile, ebx, Settings.buffer, FILE_SZ_TO_READ, Settings.BytesProceed, 0
+        invoke  WriteFile, ebx, GameBuffer, FILE_SZ_TO_WRITE, Settings.BytesProceed, 0
         ; close file
         invoke  CloseHandle, ebx
-        ;invoke  GetLastError
-        ;xor     ax, ax
-        ; !!!!
+        ; count control sum
+        call    Settings.CountControlSum + SPECIAL_CTR
 .EndProc:
+        pop     eax
         ret
 endp
 

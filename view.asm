@@ -4,8 +4,8 @@
 ; - fig    -- 2 bytes fig data
 ; - x,y    -- x,y cord
 ;View.DrawFigure.Fig             bx
-;View.DrawFigure.X               esi
-;View.DrawFigure.Y               edi;dw      ?
+;View.DrawFigure.X               esi; hi word is zero!
+;View.DrawFigure.Y               edi; hi word is zero!
 ;View.DrawFigure.Color           (stack)
 proc View.DrawFigure uses ecx,\
                      color
@@ -15,7 +15,7 @@ proc View.DrawFigure uses ecx,\
         mov     eax, [color]
         ; set x pos
         ;mov     si, [View.DrawFigure.X]
-        inc     esi
+        inc     si
         ; set y pos
         ;mov     di, [View.DrawFigure.Y]
         inc     di
@@ -36,12 +36,12 @@ proc View.DrawFigure uses ecx,\
         stdcall View.DrawRect ; uses eax edx ecx
         pop     eax ecx
 @@:
-        inc     esi; setup cords
+        inc     si; setup cords
         dec     ecx
         test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b
         jnz     @F
 .nextLine:
-        sub     esi, 4
+        sub     si, 4
         inc     di
 @@:
         inc     ecx

@@ -5,6 +5,7 @@ Random.Initialize:
         ;int     21h    ; got seed in dx  (s and ms*10)   ???
         invoke GetTickCount ; tick time in rax
 
+        mov     [Random.dSeed], eax
         mov     [Random.dPrewNumber], eax
 
         ret
@@ -38,4 +39,4 @@ endp
 
 
 ;============other data=============
-Random.dPrewNumber      dd      ?
+;Random.dPrewNumber      dd      ?
