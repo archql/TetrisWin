@@ -26,6 +26,7 @@ proc SoundPlayer.Ini
         ;mov      [SoundPlayer.CurEventTick], 0
         mov      [SoundPlayer.EndGameTick], 0
         ;mov      [SoundPlayer.LineGameTick], 0
+        mov      [SoundPlayer.Volume], 0x7F
 
         ret
 
@@ -106,7 +107,8 @@ proc SoundPlayer.PlayNextEx uses ebx
 .PlayPackOfNotes:
         push     ecx
         movzx    ecx, word [SoundPlayer.Notes + ebx]
-        or       ecx, 0x007F0000
+        ;or       ecx, 0x007F0000
+        or       ecx, [SoundPlayer.VolumeMask]
         invoke   midiOutShortMsg, [midihandle],  ecx
 
         add      ebx, NOTES_PACK_BYTES; 2 bytes per note
@@ -144,7 +146,8 @@ proc SoundPlayer.PlayNextSEx uses ebx
         add      ecx, 3
 
         ;movzx    ecx, byte [SoundPlayer.Notes + ebx]
-        or       ecx, 0x007F0090  ; regulat midi msg
+        or       ecx, [SoundPlayer.VolumeMask]
+        or       ecx, 0x00000090  ; regulat midi msg
         or       ch, byte [SoundPlayer.Notes + ebx]
         test     ch, 1000'0000b
         jnz      @F

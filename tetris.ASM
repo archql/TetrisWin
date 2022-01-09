@@ -186,6 +186,9 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         SoundPlayer.CurTick             dw      ?
         SoundPlayer.DeltaTick           dw      ?
 
+        SoundPlayer.VolumeMask          dd      ?
+        label SoundPlayer.Volume        byte at $ - 2
+
         ;SoundPlayer.CurEventTick        dw      ?
         SoundPlayer.EndGameTick         dw      ?
         ;SoundPlayer.LineGameTick        dw      ?
@@ -226,7 +229,7 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 4
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 7
+        GAME_V_MINOR                    = 8
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b
@@ -810,6 +813,18 @@ proc WindowProc uses ebx esi edi,\
         jne     @F
         stdcall SoundPlayer.Pause
         xor     [Game.MusicOff], 1
+@@:
+        cmp     eax, 0xDB ; '['
+        jne     @F
+        cmp     [SoundPlayer.Volume], 0x07
+        jbe     @F
+        sub     [SoundPlayer.Volume], 0x0F
+@@:
+        cmp     eax, 0xDD ; ']'
+        jne     @F
+        cmp     [SoundPlayer.Volume], 0x7F
+        jae     @F
+        add     [SoundPlayer.Volume], 0x0F
 @@:
         cmp     eax, VK_SHIFT
         jne     @F
