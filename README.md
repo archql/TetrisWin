@@ -8,7 +8,7 @@ This tetris version tested on Windows 10.
 Graphics based on OpenGL lib.
 All rectangular screen resolutions supported.
 
-##CONTROLS:
+#### CONTROLS:
  - move left          -- <
  - move right         -- > 
  - rotate clockwise   -- ^
@@ -24,7 +24,7 @@ All rectangular screen resolutions supported.
  - decrease volume    -- '\['
  
 
-##NICKNAME CONTROLS:
+#### NICKNAME CONTROLS:
  to activate edit mode -- hold CTRL
  with all keys pressed
  - write			  -- A..Z
@@ -33,7 +33,7 @@ All rectangular screen resolutions supported.
  - rm symbol          -- BACKSPACE
  - accept changes     -- ENTER
 
-##What is '.amid' files?
+#### What is '.amid' files?
 '.amid' file -- its file with short midi messages, every message is 4 bytes long,
  format is control + track num byte ,note_num byte, note_velocity byte, zero byte (now delay to next note in ms / 2)
  This file is generated using my another progmam, written on delphi,
@@ -48,7 +48,7 @@ Compressed super extended  '.amid' file ( _CSEx ) holds only one byte per note a
  All notes played with same delay.
  
  
-##What is '.ttr' files?
+#### What is '.ttr' files?
 '.ttr' file -- its tetris record file with max score. Its name can be only 8 bytes long and responses for nickname of a player.
 
 New version also encrypted and holds all game frame information.
@@ -62,7 +62,7 @@ Now executable file size is 10kBytes.
 
 There is minimal version with size 8kBytes.
 
-##WARNING!
+#### WARNING!
  if somebody want to test or play this tetris
  antiviruses dont like asm programms, especcially when code section is writable (its to reduce size)
  
