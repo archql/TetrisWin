@@ -6,8 +6,10 @@ RCDS_SAVE
 *.ttr.real
 *.zip
 *.notexe
+*.notzip
 *.png
 ConvertTTRtoNewVersion.exe
 tetris-surface.EXE
 tetris-surface-2.EXE
 super_secret_settings.asm
+Tetris_v_4_10

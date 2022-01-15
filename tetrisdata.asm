@@ -86,6 +86,15 @@
         Settings.Format.File.Temp   db    '%.8s.ttr.tmp', 0
         Settings.Format.File        db    '%.8s.ttr', 0
 
+        ; # CLIENT
+        if (SERVER_DEFINED)
+        Client.StrError             db    '[ OFFLINE ]'
+        CLIENT_STR_LEN              = $ - Client.StrError
+        Client.StrConnected         db    '[ ONLINE  ]'
+        Client.StrRecieved          db    '[ D RECVD ]'
+        end if
+        ;IP_4_BROADCAST_VAL      dd              0xFF'FF'FF'FF
+
 ; ################################################
 ; ####### UNINITIALIZED MEMORY HERE!!!!! #########
 ; ################################################
@@ -173,6 +182,27 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         SoundPlayer.EndGameTick         dw      ?
         ;SoundPlayer.LineGameTick        dw      ?
 
+        ; # CLIENT
+        Client.wsaData          WSADATA         ?
+        Client.psocket          dd              ?
+        Client.flag             dd              ?
+        Client.Recv_addr        sockaddr_in     ?
+        Client.Sender_addr      sockaddr_in     ?
+        Client.Broadcast_addr   sockaddr_in     ?
+        Client.State            dw              ?
+        ; 0 is error
+        ; 1 is connected
+        ; 2 is recieved packet
+
+        Client.hThread          dd              ?
+        Client.pThId            dd              ?
+        Client.thStop           dw              ?
+
+        CLIENT_RECV_BUF_LEN     =               FILE_SZ_TO_WRITE
+        Client.recvbuff         db              CLIENT_RECV_BUF_LEN dup ?
+        Client.StructLen        dd              ?
+
+
         ; # Settings
         Settings.SetupNickNameActive            dw      ?
         Settings.strFilenameBuf                 db      16 dup ?
@@ -211,15 +241,15 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         ; -- ASM used?                  (1 bit)
         GAME_V_ASM                      = TRUE
         ; -- Version major (max 255)
-        GAME_V_MAJOR                    = 4
+        GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 10
+        GAME_V_MINOR                    = 0
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b
         GAME_V_TYPE_BRANCH              = 1
         ; Set here!
-        GAME_V_TYPE                     = GAME_V_TYPE_BRANCH
+        GAME_V_TYPE                     = GAME_V_TYPE_DBG
         ; -- Random type                (2 bits)
         GAME_V_RND_TYPE_ORIGINAL        = 1
         GAME_V_RND_TYPE_CLASSIC         = 0

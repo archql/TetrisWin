@@ -10,6 +10,8 @@ entry start
 
 ;===========================
 ; consts
+        SERVER_DEFINED              = TRUE
+
         FIELD_W = 12; 12
         FIELD_H = 23
 
@@ -471,12 +473,12 @@ proc WindowProc uses ebx esi edi,\
         invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Game.NickName
 
         ; Draw TmpNickName
-        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, FIELD_H - 1;
+        mov     ebx, Settings.strTempNickNameBlocked
         ; If setup mode activated
-        test     [Settings.SetupNickNameActive], TRUE
-        jz       .NickNameEditDisabled
-        ; Draw
-        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickName
+        test    [Settings.SetupNickNameActive], TRUE
+        jz      @F
+        ; set str
+        mov     ebx, Settings.strTempNickName
         ; set Special color
         mov     eax, 1.0
         invoke  glColor3f, eax, ebx, ebx
@@ -486,11 +488,27 @@ proc WindowProc uses ebx esi edi,\
         ; set Special color
         mov     eax, 1.0
         invoke  glColor3f, eax, eax, eax
-        jmp     .ExitNickNameIf
-.NickNameEditDisabled:
-        ; Draw
-        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickNameBlocked
-.ExitNickNameIf:
+@@:
+        ; Draw Main Str
+        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, FIELD_H - 1;
+        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, ebx
+
+        if (SERVER_DEFINED)
+        ; check connection
+        mov     ebx, Client.StrError
+        movzx   eax, [Client.State]
+        cmp     eax, 1
+        jne     @F
+        mov     ebx, Client.StrConnected
+@@:
+        cmp     eax, 2
+        jne     @F
+        mov     ebx, Client.StrRecieved
+@@:
+        ; DRAW text connection
+        invoke  glRasterPos2i, FIELD_W + 2, FIELD_H;
+        invoke  glCallLists, CLIENT_STR_LEN, GL_UNSIGNED_BYTE, ebx
+        end if
 
         cmp     [Game.Playing], 1
         je      @F
@@ -505,6 +523,7 @@ proc WindowProc uses ebx esi edi,\
         invoke  glRasterPos2i, FIELD_W / 2 - 1, 2;
         invoke  glCallLists, 6, GL_UNSIGNED_BYTE, Str.Pause
 @@:
+        ; end draw;
 .end_draw:
         invoke  SwapBuffers,[Wnd.hdc]
 
@@ -540,6 +559,17 @@ proc WindowProc uses ebx esi edi,\
         stdcall SoundPlayer.Pause
         xor     [Game.Pause], 1
 @@:
+        if (SERVER_DEFINED)
+        ; CLIENT
+        cmp     eax, VK_F3
+        jne     @F
+        cmp     [Client.State], 0
+        jne     @F
+        ; ini client if not ini
+        stdcall Client.Init
+@@:
+        end if
+        ; MUSIC
         cmp     eax, 'M'
         jne     @F
         stdcall SoundPlayer.Pause
@@ -610,6 +640,10 @@ proc WindowProc uses ebx esi edi,\
 ;@@:
         jmp     .defwndproc
   .wmdestroy:
+        ; server conn
+        if (SERVER_DEFINED)
+        stdcall Client.Destroy
+        end if
         ; music
         stdcall SoundPlayer.Close
         ; font lists
@@ -630,9 +664,12 @@ endp
         include 'view.asm'
         include 'settings.asm'
         include 'units\random.h'
+
         DWORDS_TO_COUNT_CONTROL_SUM     = ($ - start) / 4
 
         include 'music.asm'
+
+        include 'client.asm'
 
 ;===========================
 
@@ -643,14 +680,13 @@ section '.idata' import data readable writeable
         user32,'USER32.DLL',\
         winmm,'WINMM.DLL',\
         opengl,'OPENGL32.DLL',\
-        glu, 'GLU32.DLL'
+        ws2_32, 'ws2_32.dll'
 
         include 'api\gdi32.inc'
         include 'api\kernel32.inc'
         include 'api\user32.inc'
                 
         include 'opengl.inc'
-        include 'glut.inc'
 
 import winmm,\
         mciSendString,'mciSendStringA',\
@@ -688,5 +724,15 @@ import opengl,\
          wglUseFontBitmapsA,'wglUseFontBitmapsA',\
          glListBase, 'glListBase',\
          glRasterPos2f, 'glRasterPos2f'
+import ws2_32,\
+        WSAStartup, 'WSAStartup',\
+        socket, 'socket',\
+        bind, 'bind',\
+        send, 'send',\
+        recvfrom, 'recvfrom',\
+        setsockopt, 'setsockopt',\
+        closesocket, 'closesocket',\
+        WSACleanup, 'WSACleanup'
 
-         include 'tetrisdata.asm'
+; ####### DATA HERE ###################
+        include 'tetrisdata.asm'
