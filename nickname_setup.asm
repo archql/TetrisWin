@@ -8,9 +8,10 @@
         mov     ecx, LB_NAME_STR_LEN
         rep movsb
         ; ld new file
-        stdcall Settings.GetHigh
+        mov     eax, Game.NickName
+        stdcall Settings.GetHigh; ret high in eax
         ;TEMP WRITE HIGH
-        movzx   eax, word [Game.HighScore]
+        mov     word [Game.HighScore], ax
         cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
         ;
         xor     edi, edi

@@ -52,8 +52,6 @@ endp
 ;#############GAME INITIALIZATION####################
 proc Game.Initialize
 
-        ;call    Random.Initialize
-
         stdcall Game.ClearField
 
         ; reset time
@@ -61,17 +59,20 @@ proc Game.Initialize
 
         ; write score
         mov     word [Game.Score], 0; set score to 0
-        stdcall Settings.GetHigh
+        mov     eax, Game.NickName
+        stdcall Settings.GetHigh ; ret in eax
+        mov     word [Game.HighScore], ax
 
         ; write high score
-        movzx   eax, word [Game.HighScore]
         cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
         ;write score
         movzx   eax, word [Game.Score]
         cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
 
         ; TESTTESTTEST!!!!
-        stdcall Settings.LdScoreboard
+        ;stdcall Settings.LdScoreboard
+        push    Settings.ListAllTTRFiles.LBline
+        stdcall Settings.ListAllTTRFiles
         ; ========================
 
         ; gen new fig
@@ -637,14 +638,16 @@ proc Game.End
         stdcall SoundPlayer.Pause
         ; check score if new high
         mov     cx, [Game.HighScore]
-        mov     ax, word [Game.Score]
+        movzx   eax, word [Game.Score]
         cmp     ax, cx
         jle     @F
         ; save high scrore
-        mov    [Game.HighScore], ax
-        stdcall Settings.SetHigh
-        ; write high score
-        movzx   eax, word [Game.HighScore]
+        mov     [Game.HighScore], ax
+        mov     edx, Game.NickName
+        push    FILE_SZ_TO_WRITE
+        ; count cur state control sum
+        stdcall Settings.SetHigh ; returns score in eax
+        ; print new high score
         cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
 @@:
         ret

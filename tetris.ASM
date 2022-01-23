@@ -36,7 +36,7 @@ start:
         mov     edi, Unitialized_mem
         rep     stosb
         ; set admin nickname
-        mov     ecx, 8
+        mov     ecx, NICKNAME_LEN
         mov     edi, Game.NickName
         mov     esi, Str.AdminNickName
         rep     movsb
@@ -189,6 +189,13 @@ proc WindowProc uses ebx esi edi,\
         fchs
         fistp   [font_size]
 
+        ; get sub rect sz
+        fld     [rect_size]
+        mov     [sub_rect_size], 5
+        fild    [sub_rect_size]
+        fdivp
+        fstp    [sub_rect_size]
+
         ; get width ratio
         fild    [Wnd.rc.right]
         ; use saved cell width
@@ -283,11 +290,54 @@ proc WindowProc uses ebx esi edi,\
         invoke  glClear,GL_COLOR_BUFFER_BIT
         invoke  glLoadIdentity
 
+
+
+        ; #####################
+        ; # draw other fields #
+        ; #####################
+        ; set projection
+        ;invoke  glMatrixMode, GL_PROJECTION
+        ;invoke  glLoadIdentity
+
+        ;invoke  glOrtho, double [DFIELD_LW_SUB], double [DFIELD_W_SUB], double [DFIELD_H_SUB], double [DFIELD_LH_SUB], double -1.0, double 1.0
+
+        ;invoke  glMatrixMode, GL_MODELVIEW
+        ; set sz
+        ;invoke  glPointSize, [sub_rect_size] ; pixels!!!!
+        ; draw
+        ;invoke  glBegin, GL_POINTS
+        ; draw field
+        ;mov     eax, Game.BlocksArr
+        ;stdcall View.DrawField
+        ; draw figure figure
+        ;mov     bx,  word [Game.CurFig]; figure
+        ;movzx   esi, word [Game.FigX]  ; X
+        ;push    bx esi ; save
+        ;movzx   edi, word [Game.FigPreviewY]  ; Y
+        ;stdcall View.DrawFigure, 2
+        ; draw figure
+        ;pop     esi bx
+        ;movzx   edi, word [Game.FigY]  ; Y
+        ;movzx   eax, byte [Game.CurFigColor]; movzx
+        ;stdcall View.DrawFigure, eax
+        ; .........
+        ;invoke  glEnd
+        ; #####################
+        ; set projection back
+        ;invoke  glMatrixMode, GL_PROJECTION
+        ;invoke  glLoadIdentity
+
+        ;invoke  glOrtho, double 0.0, double [DFIELD_W], double [DFIELD_H], double 0.0, double -1.0, double 1.0
+
+        ;invoke  glMatrixMode, GL_MODELVIEW
+        ; othre
+
         invoke  glPointSize, [rect_size] ; pixels!!!!
 
         ; draw
         invoke  glBegin, GL_POINTS
         ; draw field
+        mov     eax, Game.BlocksArr
         stdcall View.DrawField
         ; draw figure figure
         mov     bx,  word [Game.CurFig]; figure
@@ -728,7 +778,7 @@ import ws2_32,\
         WSAStartup, 'WSAStartup',\
         socket, 'socket',\
         bind, 'bind',\
-        send, 'send',\
+        sendto, 'sendto',\
         recvfrom, 'recvfrom',\
         setsockopt, 'setsockopt',\
         closesocket, 'closesocket',\

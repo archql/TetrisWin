@@ -2,6 +2,7 @@
 NEXT
 OLD
 RCDS_SAVE
+RCDS_SAVE_1
 *.ttr
 *.ttr.real
 *.zip
@@ -13,3 +14,4 @@ tetris-surface.EXE
 tetris-surface-2.EXE
 super_secret_settings.asm
 Tetris_v_4_10
+ServerTest.exe

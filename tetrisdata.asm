@@ -27,6 +27,7 @@
         Str.Pause                 db    'PAUSED'
         Str.Loose                 db    'GAME OVER'
 
+        NICKNAME_LEN                     =     8
         Settings.strTempNickName         db    '________'
         Str.AdminNickName                db    '_ARCHQL_'
         Settings.strTempNickNameBlocked  db    '~~~~~~~~'
@@ -83,8 +84,8 @@
         ; addl data to ld scoreboard
         Settings.strFileFilter      db    '*.ttr', 0
         Settings.PlaceFormat        db    '#%X', 0
-        Settings.Format.File.Temp   db    '%.8s.ttr.tmp', 0
-        Settings.Format.File        db    '%.8s.ttr', 0
+        Settings.Format.File.Temp   db    '%.8s.ttr.tmp', 0   ;NICKNAME_LEN
+        Settings.Format.File        db    '%.8s.ttr', 0       ;NICKNAME_LEN
 
         ; # CLIENT
         if (SERVER_DEFINED)
@@ -122,10 +123,35 @@ Unitialized_mem:
         DFIELD_W                        dq      ?
         clock                           dd      ?
         rect_size                       dd      ? ; initialization
+        ; sub draw data
+        sub_rect_size                   dd      ?
+        ;SUB_DFIELD_W                    dq      ?
+        ;SUB_DFIELD_H                    dq      ?
+        ;SUB_DFIELD_LH                   dq      ?
+        ;SUB_DFIELD_LW                   dq      ?
+
+        ; # MESSAGE CODES
+        MSG_CODE_BASE_SERVER            = $F000
+        MSG_CODE_KEYCONTROL             = 1 + MSG_CODE_BASE_SERVER
+
+        MSG_CODE_BASE_CLIENT            = $A000
+        MSG_CODE_REGISTER               = 1 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_REQ_TTR                = 2 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_TTR                    = 3 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_DISCONNECTED           = 4 + MSG_CODE_BASE_CLIENT
+
         ; # BUFFER TO SCORE WRITE & GAME RESTORE
+GameMessage:
+        ; # Client
+        Client.MessageCode              dw      ?
 GameBuffer:
+        ; Its defines base .ttr file data
         GameBuffer.Score                dw      ?
         GameBuffer.ControlWord          dw      ?
+        ; # Game
+        Game.NickName                   db      NICKNAME_LEN dup ?
+MESSAGE_BASE_LEN = ($ - GameMessage)
+; There can be overlapped data!
         ; # Str
         Str.HighScore                   db      SCOLE_LEN_CONST dup ?
         Str.Score                       db      SCOLE_LEN_CONST dup ?
@@ -159,12 +185,13 @@ GameBuffer:
         Game.MusicOff                   dw      ?
         Game.SoftDrop                   dw      ?
 
-        Game.NickName                   db      8 dup ?
+        ; NICKNAME
 
         Game.VersionInfo                dd      ?
         Game.VersionCode                dd      ?
-        Game.Reserved                   dw      16 dup ?
+        Game.Reserved                   dw      15 dup ?
 FILE_SZ_TO_WRITE = ($ - GameBuffer)
+FILE_SZ_TO_RCV   = ($ - GameMessage)
 
         Game.CurTick                    dd      ?
 
@@ -198,24 +225,24 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         Client.pThId            dd              ?
         Client.thStop           dw              ?
 
-        CLIENT_RECV_BUF_LEN     =               FILE_SZ_TO_WRITE
+        CLIENT_RECV_BUF_LEN     =               FILE_SZ_TO_RCV
         Client.recvbuff         db              CLIENT_RECV_BUF_LEN dup ?
         Client.StructLen        dd              ?
 
 
         ; # Settings
         Settings.SetupNickNameActive            dw      ?
-        Settings.strFilenameBuf                 db      16 dup ?
-        Settings.strTempNickNameHighlight       db      8  dup ?, ? ; special save byte
+        Settings.strFilenameBuf                 db      (NICKNAME_LEN + 10) dup ?
+        Settings.strTempNickNameHighlight       db      NICKNAME_LEN  dup ?, ? ; special save byte
 
         Settings.strTempLen             dw      ?
 
         FILE_SZ_TO_READ                 = 4
-        Settings.buffer                 db    FILE_SZ_TO_READ dup ?
-        Settings.BytesProceed           dd    ?
+        Settings.buffer                 db      FILE_SZ_TO_READ dup ?
+        Settings.BytesProceed           dd      ?
 
         Settings.fileData               WIN32_FIND_DATAA            ?
-        LB_NAME_STR_LEN                 = 8
+        LB_NAME_STR_LEN                 = NICKNAME_LEN
         LB_ISTR_RCD_LEN                 = 17
         LB_ISTR_RCD_LEN_POW             = 5; Real mem sz allocated 2^LB_RCDS_AMOUNT
         LB_PRIO_RCD_LEN                 = 4
@@ -232,7 +259,7 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         GAME_V_APP_SERVER               = 1
         GAME_V_APP_CLIENT               = 2
         ; Set here!
-        GAME_V_APP                      = GAME_V_APP_LOCAL
+        GAME_V_APP                      = GAME_V_APP_CLIENT
         ; -- Platform?                  (3 bits)
         GAME_V_PLATFORM_WIN             = 0
         GAME_V_PLATFORM_ANDROID         = 1
@@ -243,7 +270,7 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 0
+        GAME_V_MINOR                    = 1
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

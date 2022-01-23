@@ -68,7 +68,8 @@ proc Client.Init
         jz      .ErrorConnect
 
         ; send register signal
-
+        mov     [Client.MessageCode], MSG_CODE_REGISTER
+        invoke  sendto, ebx, GameMessage, MESSAGE_BASE_LEN, 0, Client.Broadcast_addr, sizeof.sockaddr_in
 
         ; set result
         mov     eax, TRUE
@@ -84,24 +85,87 @@ proc Client.Init
         ret
 endp
 
+; ### THERAD PROC
 proc Client.ThreadUpdate,\
         lpParameter
 
         mov     [Client.StructLen], sizeof.sockaddr_in
-
 .loopThread:
-
         ; recieve data from all members
         invoke  recvfrom, [Client.psocket], Client.recvbuff, CLIENT_RECV_BUF_LEN, 0, Client.Sender_addr, Client.StructLen;
         cmp     eax, 0
         jle     .FailedToRecieve
-        mov     [Client.State], 2
-        ; TEST  TEST TEST TEST TEST TEST TEST TEST TEST TEST
+        ; PROTECT FROM SELFSEND!
+        ; test change text on screen
+        mov     [Client.State], 2 ; Got Message (future -- mov msgId)
+        ; get msgID
+        movzx   eax, word [Client.recvbuff + Client.MessageCode - GameMessage]; controlMsg
+        ; switch msg codes
+   ;### ; ======================
+        cmp     ax, MSG_CODE_KEYCONTROL
+        jne     @F
+        ; remote control message
         xor     ebx, ebx
-        movzx   al, byte [Client.recvbuff]
+        movzx   eax, byte [Client.recvbuff + 2]
 
         invoke  SendMessage, [Wnd.hwnd], WM_KEYDOWN, eax, ebx
 
+        jmp     .EndMessage
+   ;### ; ======================
+@@:
+        cmp     ax, MSG_CODE_REQ_TTR
+        je      .MessageSendUpdates
+        cmp     ax, MSG_CODE_REGISTER
+        jne     @F
+        ; #1. Register user.
+
+        ; #2. Send request for RCDS (only to person who just registered). TODO! copy of sendto is too large!
+        mov     [Client.MessageCode], MSG_CODE_REQ_TTR
+        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, Client.Sender_addr, sizeof.sockaddr_in
+.MessageSendUpdates:
+        ; #3. Send updates to person. TODO! copy of sendto is too large!
+        mov     [Client.MessageCode], MSG_CODE_TTR
+        push    Client.ListAllTTRFiles.SendFile
+        stdcall Settings.ListAllTTRFiles
+
+        ; exit msg update
+        jmp     .EndMessage
+   ;### ; ======================
+@@:
+        cmp     ax, MSG_CODE_TTR
+        jne     @F
+        ; got ttrs msg
+        ; check if in msg score is valid
+        ; TEMP COPY
+        mov     esi, dword [Client.recvbuff + (GameBuffer.Score - GameMessage)]
+        mov     dword [Settings.buffer], esi
+        stdcall Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
+        test    bx, bx
+        jnz     .EndMessageTTR ; failed to decode
+        push    eax ; save got highscore
+        ; get own file data
+        mov     eax, Client.recvbuff + MESSAGE_BASE_LEN; nickname ptr in such msg
+        push    eax ; save Nick ptr
+        stdcall Settings.GetHigh; req ptr to nick str in eax, ret high in eax
+        ; check if own data is up to date
+        cmp     dword [esp + 4], eax
+        jbe     .DataIsUpToDate
+        ; update own data
+        pop     edx
+        pop     eax
+        push    FILE_SZ_TO_READ ; overwrite?
+        stdcall Settings.SetHigh
+
+        ; exit data update
+        jmp     .EndMessageTTR
+.DataIsUpToDate:
+        ; reset stack
+        add esp, 8
+.EndMessageTTR:
+        jmp     .EndMessage
+   ;### ; ======================
+@@:
+.EndMessage:
 .FailedToRecieve:
         ;mov     eax, 1000
         ;invoke  Sleep, eax
@@ -112,8 +176,42 @@ proc Client.ThreadUpdate,\
         ret
 endp
 
+; ## Its for TTR filesend
+proc Client.ListAllTTRFiles.SendFile
+        push    ebx; required to save it!
+
+        ; get score
+        mov     eax, Settings.fileData.cFileName
+        stdcall Settings.GetHigh
+        ; fill in msg
+        ; mov high to buffer (THIS IS DANGEROUS BC ITS || THREAD!)
+        mov     [GameBuffer.Score], ax
+        stdcall Settings.EncodeWord
+        mov     [GameBuffer.ControlWord], bx
+        ; mov str to buffer
+        mov     esi, Settings.fileData.cFileName
+        mov     edi, Client.recvbuff + MESSAGE_BASE_LEN
+        mov     ecx, 8
+        rep movsb
+        ; copy buffer
+        mov     esi, GameMessage
+        mov     edi, Client.recvbuff
+        mov     ecx, MESSAGE_BASE_LEN
+        rep movsb
+        ; send it
+        invoke  sendto, [Client.psocket], Client.recvbuff, MESSAGE_BASE_LEN + 8, 0, Client.Sender_addr, sizeof.sockaddr_in
+
+        pop     ebx
+        ret
+endp
+
+
+; ## Destroys all data allocated for Network
 proc Client.Destroy
 
+        ; send disconnect message
+
+        ; stop
         cmp     [Client.State], FALSE
         je      @F
         ; stop thread

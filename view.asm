@@ -47,27 +47,26 @@ proc View.DrawFigure uses ecx,\
         inc     ecx
         loop    .DrawLoop
 
-        ;invoke  glEnd
-
         ret
 endp
 
 
 
 ;#############DRAW FIELD####################
+; (TO DO THIS YOU MUST DO GlBegin GL_POINTS!!!!!!!!!!!!!)
+; requires pointer to Field Matrix in eax
 proc    View.DrawField uses esi edi ebx;ecx ebx edx
-
-        ;invoke  glBegin, GL_POINTS
 
         mov     edi, FIELD_H ; Y
         mov     ebx, FIELD_H*FIELD_W-1
+        add     ebx, eax;
 
 DrawLoopW:
         mov     esi, FIELD_W ; X
 ; innnr start
 .DrawLoopH:
         ; get color
-        movzx   eax, byte [Game.BlocksArr + ebx]
+        movzx   eax, byte [ebx]
         ; draw rect (esi is X, edi is Y, ebx - color pos in table)
         stdcall View.DrawRect
         ; go next
@@ -80,8 +79,6 @@ DrawLoopW:
         test    edi, edi
 ; outer end
         jnz     DrawLoopW
-
-        ;invoke  glEnd
 
         ret
 endp
