@@ -105,6 +105,12 @@ proc Settings.SetHigh ; uses eax ebx ecx edx
         invoke  WriteFile, ebx, GameBuffer, dword [esp + 16], Settings.BytesProceed, 0 ; [esp + 16] is num of bytes
         ; close file
         invoke  CloseHandle, ebx
+        ; client broadcast
+        if (SERVER_DEFINED)
+        mov     esi, Settings.strFilenameBuf
+        mov     edi, Client.Broadcast_addr
+        stdcall Client.ListAllTTRFiles.SendFile
+        end if
         ; count control sum
         call    Settings.CountControlSum + SPECIAL_CTR
 .EndProc:
@@ -114,7 +120,8 @@ endp
 
 ;#############LIST ALL FILES (and call PROC param)####################
 ; [in] PROC: requires pointer to proc as param in stack
-proc Settings.ListAllTTRFiles
+; [in, optional] esi, edi as params for PROC
+proc Settings.ListAllTTRFiles; uses eax ebx ecx edx
 
         invoke  FindFirstFile, Settings.strFileFilter, Settings.fileData
         xchg    eax, ebx; ebx is file lookup handle
@@ -140,12 +147,13 @@ endp
 
 ; data to do it!
 proc Settings.ListAllTTRFiles.LBline; write got str to rcd
+        ; check if filename str == current nickname (if yes -- mark it somehow)
         ; parameters!
         mov     esi, Settings.fileData.cFileName; ptr to filename str
-        mov     edi, ecx
+        mov     edi, ecx ; loop ctr
         shl     edi, LB_ISTR_RCD_LEN_POW ; get cur pos in rcds (dep on LB_ISTR_RCD_LEN)
         add     edi, Settings.LeaderBoardArr;Settings.LeaderBoardArr + 3
-        push    edi
+        push    edi  ; save pos of the start of rcd
         ; clear mem
         mov     ecx, 2 shl LB_ISTR_RCD_LEN_POW
         xor     eax, eax
@@ -154,7 +162,7 @@ proc Settings.ListAllTTRFiles.LBline; write got str to rcd
         mov     edi, [esp]
         add     edi, 3 ; 3 reserved symbols
         mov     ecx, LB_NAME_STR_LEN
-        rep     movsb
+        rep     movsb ; mov nick text
         ; read file (alt)
         push    ebx ; save handle
         mov     eax, Settings.fileData.cFileName
@@ -164,7 +172,7 @@ proc Settings.ListAllTTRFiles.LBline; write got str to rcd
         jz      .EndTryLdFile; corrypted (or zero)
         ; set high
         inc     edi
-        push    eax ; save score sa num
+        push    eax ; save score as num
         ; write score
         cinvoke wsprintfA, edi, Str.Score.Format, eax
         ; save score and rcd nmb

@@ -139,6 +139,7 @@ Unitialized_mem:
         MSG_CODE_REQ_TTR                = 2 + MSG_CODE_BASE_CLIENT
         MSG_CODE_TTR                    = 3 + MSG_CODE_BASE_CLIENT
         MSG_CODE_DISCONNECTED           = 4 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_START_GAME             = 5 + MSG_CODE_BASE_CLIENT
 
         ; # BUFFER TO SCORE WRITE & GAME RESTORE
 GameMessage:
@@ -158,6 +159,7 @@ MESSAGE_BASE_LEN = ($ - GameMessage)
         ; # Random
         Random.dSeed                    dd      ?
         Random.dPrewNumber              dd      ?
+MESSAGE_START_GAME_LEN =  ($ - GameMessage)
         ; # Game
         Game.BlocksArr:                 db      FIELD_W*FIELD_H dup ? ; initialization!
         Game.CurFig                     dw      ?
@@ -251,6 +253,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
 
         UNINI_MEM_LEN                   = $ - Unitialized_mem
 
+        ; LB LINE STRUCT = [17 bytes Info = {place str - 3}{nick - 8}{score - 6}][ empty (11) ][is cur usr? (0)][4 bytes - prio prd {score - 2}{place - 2}]
         Settings.LeaderBoardArr         db     (LB_MAX_RCDS_AMOUNT)*(1 shl LB_ISTR_RCD_LEN_POW) dup ?
 
         ; GAME VERSION
@@ -270,7 +273,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 1
+        GAME_V_MINOR                    = 2
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

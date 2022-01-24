@@ -96,7 +96,7 @@ start:
         call    Game.IniField
 
         call    Random.Initialize
-        stdcall Game.GenNewFig; its for ini new fig -> cur fig
+        ;stdcall Game.GenNewFig
         stdcall Game.Initialize
 
         ; loop
@@ -488,6 +488,7 @@ proc WindowProc uses ebx esi edi,\
         add     esi, (1 shl LB_ISTR_RCD_LEN_POW) - LB_PRIO_RCD_LEN
         mov     ecx, LB_BASE_RCDS_AMOUNT - 1
 .DrawScoreboardLoop:
+        ; check if null user
         mov     ebx, [esi]
         test    bx, bx
         jz      .loopSkipLine
@@ -610,13 +611,21 @@ proc WindowProc uses ebx esi edi,\
         xor     [Game.Pause], 1
 @@:
         if (SERVER_DEFINED)
-        ; CLIENT
+        ; CLIENT START
         cmp     eax, VK_F3
         jne     @F
         cmp     [Client.State], 0
         jne     @F
         ; ini client if not ini
         stdcall Client.Init
+@@:
+        ; CLIENT REQUEST GAME (SAME SEED)
+        cmp     eax, VK_F4
+        jne     @F
+        cmp     [Game.Playing], TRUE
+        je      @F
+        ; send msg
+        stdcall Client.RequestGame
 @@:
         end if
         ; MUSIC

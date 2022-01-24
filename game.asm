@@ -76,6 +76,8 @@ proc Game.Initialize
         ; ========================
 
         ; gen new fig
+        mov     [Game.NextFigCtr], 0 ; set fig buf to 0 -- major bug fix!
+        stdcall Game.GenNewFig ; its for ini new fig -> cur fig
         stdcall Game.GenNewFig
         ; set preview Y to max (prevent bugs)
         mov     [Game.FigPreviewY], FIG_START_Y

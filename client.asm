@@ -17,7 +17,20 @@ SO_REUSEADDR                = 0x0004
         ;Client.Sender_addr      sockaddr_in     ?
         ;Client.Broadcast_addr   sockaddr_in     ?
 
+proc Client.RequestGame
+        ; reset random
+        stdcall Random.Initialize
+        ; send start game signal
+        mov     [Client.MessageCode], MSG_CODE_START_GAME
+        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_START_GAME_LEN, 0, Client.Broadcast_addr, sizeof.sockaddr_in
+        ; start game
+        ;stdcall Game.Initialize
+        ;mov     [Game.Pause], 0
 
+        ret
+endp
+
+; # initialize client to work
 proc Client.Init
 
         ; init WSA
@@ -96,6 +109,11 @@ proc Client.ThreadUpdate,\
         cmp     eax, 0
         jle     .FailedToRecieve
         ; PROTECT FROM SELFSEND!
+        ;mov     esi, Client.recvbuff + (Game.NickName - GameMessage)
+        ;mov     edi, Game.NickName
+        ;mov     ecx, 8; Nick len
+        ;repe cmpsb
+        ;je      .EndMessage
         ; test change text on screen
         mov     [Client.State], 2 ; Got Message (future -- mov msgId)
         ; get msgID
@@ -124,7 +142,10 @@ proc Client.ThreadUpdate,\
         invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, Client.Sender_addr, sizeof.sockaddr_in
 .MessageSendUpdates:
         ; #3. Send updates to person. TODO! copy of sendto is too large!
+        ; setup params
         mov     [Client.MessageCode], MSG_CODE_TTR
+        mov     esi, Settings.fileData.cFileName
+        mov     edi, Client.Sender_addr
         push    Client.ListAllTTRFiles.SendFile
         stdcall Settings.ListAllTTRFiles
 
@@ -165,6 +186,23 @@ proc Client.ThreadUpdate,\
         jmp     .EndMessage
    ;### ; ======================
 @@:
+        cmp     ax, MSG_CODE_START_GAME
+        jne     @F
+        ; Here set rnd gen if game stopped
+        cmp     [Game.Playing], TRUE
+        je      @F
+        ; set rnd gen
+        mov     eax, dword [Client.recvbuff + (Random.dPrewNumber - GameMessage)]
+        mov     dword [Random.dPrewNumber], eax
+        mov     eax, dword [Client.recvbuff + (Random.dSeed - GameMessage)]
+        mov     dword [Random.dSeed], eax
+        ; start game
+        stdcall Game.Initialize
+        mov     [Game.Pause], 0
+        ; exit
+        jmp     .EndMessage
+   ;### ; ======================
+@@:
 .EndMessage:
 .FailedToRecieve:
         ;mov     eax, 1000
@@ -177,11 +215,11 @@ proc Client.ThreadUpdate,\
 endp
 
 ; ## Its for TTR filesend
-proc Client.ListAllTTRFiles.SendFile
-        push    ebx; required to save it!
+proc Client.ListAllTTRFiles.SendFile ; esi -- ptr to name str, edi -- ptr to recv sockaddr_in (TODO -- create sendbuf)
+        push    ebx esi edi; required to save it!
 
         ; get score
-        mov     eax, Settings.fileData.cFileName
+        mov     eax, esi
         stdcall Settings.GetHigh
         ; fill in msg
         ; mov high to buffer (THIS IS DANGEROUS BC ITS || THREAD!)
@@ -189,7 +227,7 @@ proc Client.ListAllTTRFiles.SendFile
         stdcall Settings.EncodeWord
         mov     [GameBuffer.ControlWord], bx
         ; mov str to buffer
-        mov     esi, Settings.fileData.cFileName
+        ;mov     esi, Settings.fileData.cFileName
         mov     edi, Client.recvbuff + MESSAGE_BASE_LEN
         mov     ecx, 8
         rep movsb
@@ -199,9 +237,9 @@ proc Client.ListAllTTRFiles.SendFile
         mov     ecx, MESSAGE_BASE_LEN
         rep movsb
         ; send it
-        invoke  sendto, [Client.psocket], Client.recvbuff, MESSAGE_BASE_LEN + 8, 0, Client.Sender_addr, sizeof.sockaddr_in
+        invoke  sendto, [Client.psocket], Client.recvbuff, MESSAGE_BASE_LEN + 8, 0, edi, sizeof.sockaddr_in
 
-        pop     ebx
+        pop     edi esi ebx
         ret
 endp
 
