@@ -30,11 +30,21 @@ entry start
 ;===========================
 section '.code' code executable readable ;writable  ; code section
 start:
+        ; zero
+        xor     ebx, ebx
         ; zero allocated memory
         xor     eax, eax
         mov     ecx, UNINI_MEM_LEN
         mov     edi, Unitialized_mem
         rep     stosb
+        ; set Client.PCID (unique PC ID)
+        if (SERVER_DEFINED)
+        ; 0x0000ffff | 0x00010000 = RRF_RT_ANY | RRF_SUBKEY_WOW6464KEY
+        invoke  RegGetValueA, HKEY_LOCAL_MACHINE, Client.QuaryValue, Client.QuaryKey, 0x0000ffff or 0x00010000, ebx, Client.PCID, Client.PCIDBufLen
+        test    eax, eax
+        jnz     creation_error
+        end if
+
         ; set admin nickname
         mov     ecx, NICKNAME_LEN
         mov     edi, Game.NickName
@@ -56,8 +66,6 @@ start:
                                     (GAME_V_SPD_TYPE shl  2)
         mov     [Game.VersionInfo], Wnd.title
         ; ====
-
-        xor      ebx, ebx
         ; setup Wnd.wc
         mov     [Wnd.wc.lpfnWndProc], WindowProc
         mov     [Wnd.wc.lpszClassName], Wnd.class
@@ -110,7 +118,7 @@ start:
         jmp     msg_loop
 
 creation_error:
-        invoke  MessageBox, ebx, Wnd.Text, Wnd.Caption, MB_OK or MB_ICONERROR;
+        invoke  MessageBox, ebx, Wnd.Text, Wnd.title, MB_OK or MB_ICONERROR;
   end_loop:
         invoke  ExitProcess, [Wnd.msg.wParam]
 
@@ -554,11 +562,31 @@ proc WindowProc uses ebx esi edi,\
 @@:
         cmp     eax, 2
         jne     @F
-        mov     ebx, Client.StrRecieved
+        mov     ebx, Client.StrRegistered
 @@:
         ; DRAW text connection
         invoke  glRasterPos2i, FIELD_W + 2, FIELD_H;
         invoke  glCallLists, CLIENT_STR_LEN, GL_UNSIGNED_BYTE, ebx
+        ; DRAW text connections
+        mov     esi, Client.ClientsDataArr
+        mov     ecx, 2 ; loop ctr
+.printConnectionsLoop:
+        ; save loop ctr
+        push    ecx
+        ; check if not null (ping > 0)
+        mov     bx, word [esi + NICKNAME_LEN]
+        cmp     bx, 0
+        jle     @F
+        ; DRAW text connection
+        invoke  glRasterPos2i, FIELD_W + 2 + 8 + 12, ecx;
+        invoke  glCallLists, NICKNAME_LEN, GL_UNSIGNED_BYTE, esi
+@@:
+        add     esi, CLIENT_CL_RCD_LEN
+        ; restore loop ctr
+        pop     ecx
+        ; test  "ping" ; WARN IF OVERFLOW (MAX RCD 64)
+        test    bx, bx
+        jnz     .printConnectionsLoop
         end if
 
         cmp     [Game.Playing], 1
@@ -739,13 +767,17 @@ section '.idata' import data readable writeable
         user32,'USER32.DLL',\
         winmm,'WINMM.DLL',\
         opengl,'OPENGL32.DLL',\
-        ws2_32, 'ws2_32.dll'
+        ws2_32, 'ws2_32.dll',\
+        AdvApi32, 'AdvApi32.dll'
 
         include 'api\gdi32.inc'
         include 'api\kernel32.inc'
         include 'api\user32.inc'
                 
         include 'opengl.inc'
+
+import AdvApi32,\
+        RegGetValueA , 'RegGetValueA'
 
 import winmm,\
         mciSendString,'mciSendStringA',\

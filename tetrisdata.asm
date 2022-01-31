@@ -1,5 +1,4 @@
-        Wnd.Caption     db 'ERROR',0
-        Wnd.Text        db 'Window creation fail', 0
+        Wnd.Text        db 'Launch error :/', 0
 
         Wnd.font_name   db "Lucida Sans Typewriter", 0
 
@@ -7,6 +6,7 @@
         Wnd.title       TCHAR    'TETRIS WIN ASM by Artiom Drankevich',0
 
         Wnd.style       equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
+
 
         ;========
         DFIELD_H        dq      24.0 ; FIELD_H + 1
@@ -89,10 +89,14 @@
 
         ; # CLIENT
         if (SERVER_DEFINED)
+        Client.PCIDBufLen           dw    CLIENT_PCID_LEN
+        Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
+        Client.QuaryKey             db    'MachineGuid', 0
         Client.StrError             db    '[ OFFLINE ]'
         CLIENT_STR_LEN              = $ - Client.StrError
-        Client.StrConnected         db    '[ ONLINE  ]'
-        Client.StrRecieved          db    '[ D RECVD ]'
+        Client.StrConnected         db    '[ ON-LINE ]'
+        Client.StrRegistered        db    '[ REGSTRD ]'
+        Client.StrRgRejected        db    '[ REJCTED ]'
         end if
         ;IP_4_BROADCAST_VAL      dd              0xFF'FF'FF'FF
 
@@ -135,16 +139,20 @@ Unitialized_mem:
         MSG_CODE_KEYCONTROL             = 1 + MSG_CODE_BASE_SERVER
 
         MSG_CODE_BASE_CLIENT            = $A000
-        MSG_CODE_REGISTER               = 1 + MSG_CODE_BASE_CLIENT
-        MSG_CODE_REQ_TTR                = 2 + MSG_CODE_BASE_CLIENT
-        MSG_CODE_TTR                    = 3 + MSG_CODE_BASE_CLIENT
-        MSG_CODE_DISCONNECTED           = 4 + MSG_CODE_BASE_CLIENT
-        MSG_CODE_START_GAME             = 5 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_REGISTER               =   1 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_REQ_TTR                =   5 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_TTR                    =   6 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_RG_REJECTED            =   7 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_START_GAME             =   8 + MSG_CODE_BASE_CLIENT
+        MSG_CODE_PING                   = $FF + MSG_CODE_BASE_CLIENT
 
         ; # BUFFER TO SCORE WRITE & GAME RESTORE
 GameMessage:
         ; # Client
         Client.MessageCode              dw      ?
+        CLIENT_PCID_LEN                 = 36
+        Client.PCID                     db      CLIENT_PCID_LEN dup ?
+        Client.Buffer                   db      16 dup ? ; Buffer for client message addl parameters
 GameBuffer:
         ; Its defines base .ttr file data
         GameBuffer.Score                dw      ?
@@ -220,12 +228,18 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         Client.Broadcast_addr   sockaddr_in     ?
         Client.State            dw              ?
         ; 0 is error
-        ; 1 is connected
-        ; 2 is recieved packet
+        ; 1 is online
+        ; 2 is connected
 
-        Client.hThread          dd              ?
-        Client.pThId            dd              ?
-        Client.thStop           dw              ?
+        ; Thread reciever
+        Client.ThRecv.hThread   dd              ?
+        Client.ThRecv.pThId     dd              ?
+        Client.ThRecv.thStop    dw              ?
+
+        ; Thread Ping | send
+        Client.ThSend.hThread   dd              ?
+        Client.ThSend.pThId     dd              ?
+        Client.ThSend.thStop    dw              ?
 
         CLIENT_RECV_BUF_LEN     =               FILE_SZ_TO_RCV
         Client.recvbuff         db              CLIENT_RECV_BUF_LEN dup ?
@@ -251,8 +265,15 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         LB_BASE_RCDS_AMOUNT             = 16
         LB_MAX_RCDS_AMOUNT              = 1024
 
+        ; Filled up with zeros!
+        CLIENT_MAX_CONN                 = 64
+        CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 ; NICK + "word" ping
+        Client.ClientsDataArr           db     (CLIENT_MAX_CONN) * (CLIENT_CL_RCD_LEN) dup ? ; temp nick name usage
+
         UNINI_MEM_LEN                   = $ - Unitialized_mem
 
+        CLIENT_ADAPTERS_BUF_MAX         = 1024
+        Client.NetworkAdaptersBuf       db     (CLIENT_ADAPTERS_BUF_MAX) dup ?
         ; LB LINE STRUCT = [17 bytes Info = {place str - 3}{nick - 8}{score - 6}][ empty (11) ][is cur usr? (0)][4 bytes - prio prd {score - 2}{place - 2}]
         Settings.LeaderBoardArr         db     (LB_MAX_RCDS_AMOUNT)*(1 shl LB_ISTR_RCD_LEN_POW) dup ?
 
@@ -273,7 +294,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 2
+        GAME_V_MINOR                    = 3
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b
