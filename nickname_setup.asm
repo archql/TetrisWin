@@ -2,6 +2,7 @@
         ; check if control key
         cmp     eax, VK_RETURN
         jne     @F
+
         ; set cur name
         mov     esi, Settings.strTempNickName
         mov     edi, Game.NickName

@@ -89,6 +89,7 @@
 
         ; # CLIENT
         if (SERVER_DEFINED)
+        Client.dIPAddrTableSz       dd    CLIENT_ADAPTERS_BUF_MAX
         Client.PCIDBufLen           dw    CLIENT_PCID_LEN
         Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         Client.QuaryKey             db    'MachineGuid', 0
@@ -146,12 +147,14 @@ Unitialized_mem:
         MSG_CODE_START_GAME             =   8 + MSG_CODE_BASE_CLIENT
         MSG_CODE_PING                   = $FF + MSG_CODE_BASE_CLIENT
 
+
         ; # BUFFER TO SCORE WRITE & GAME RESTORE
+        Client.CritSection              RTL_CRITICAL_SECTION    ?
 GameMessage:
         ; # Client
         Client.MessageCode              dw      ?
         CLIENT_PCID_LEN                 = 36
-        Client.PCID                     db      CLIENT_PCID_LEN dup ?
+        Client.PCID                     db      CLIENT_PCID_LEN dup ?, ? ; zero term
         Client.Buffer                   db      16 dup ? ; Buffer for client message addl parameters
 GameBuffer:
         ; Its defines base .ttr file data
@@ -230,6 +233,11 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; 0 is error
         ; 1 is online
         ; 2 is connected
+        ; 3 is rg rejected
+
+        ; IP list table
+        ;Client.dIPAddrTableSz   dd              ?
+        ;Client.pIPAddrTable     dd              ?
 
         ; Thread reciever
         Client.ThRecv.hThread   dd              ?
@@ -273,7 +281,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         UNINI_MEM_LEN                   = $ - Unitialized_mem
 
         CLIENT_ADAPTERS_BUF_MAX         = 1024
-        Client.NetworkAdaptersBuf       db     (CLIENT_ADAPTERS_BUF_MAX) dup ?
+        Client.IPAddrTableBuf           db     (CLIENT_ADAPTERS_BUF_MAX) dup ?
         ; LB LINE STRUCT = [17 bytes Info = {place str - 3}{nick - 8}{score - 6}][ empty (11) ][is cur usr? (0)][4 bytes - prio prd {score - 2}{place - 2}]
         Settings.LeaderBoardArr         db     (LB_MAX_RCDS_AMOUNT)*(1 shl LB_ISTR_RCD_LEN_POW) dup ?
 
@@ -294,7 +302,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 3
+        GAME_V_MINOR                    = 4
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

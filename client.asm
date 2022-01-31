@@ -17,12 +17,14 @@ SO_REUSEADDR                = 0x0004
         ;Client.Sender_addr      sockaddr_in     ?
         ;Client.Broadcast_addr   sockaddr_in     ?
 
+; # send RequestGame msg
 proc Client.RequestGame ; Can be bugged call (2 threads using same mem)
         ; reset random
         stdcall Random.Initialize
         ; send start game signal
-        mov     [Client.MessageCode], MSG_CODE_START_GAME
-        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_START_GAME_LEN, 0, Client.Broadcast_addr, sizeof.sockaddr_in
+        mov     edi, MSG_CODE_START_GAME
+        mov     ebx, MESSAGE_BASE_LEN ; msg len
+        stdcall Client.Broadcast
         ; start game (IF NOT SELF ACTIVATION)
         ;stdcall Game.Initialize
         ;mov     [Game.Pause], 0
@@ -30,8 +32,90 @@ proc Client.RequestGame ; Can be bugged call (2 threads using same mem)
         ret
 endp
 
+; # send registration msg
+proc Client.SendRegistration   ; Can be bugged call (2 threads using same mem)
+
+        ; send register signal
+        mov     edi, MSG_CODE_REGISTER
+        mov     ebx, MESSAGE_BASE_LEN ; msg len
+        stdcall Client.Broadcast
+        ;invoke  sendto, ebx, GameMessage, MESSAGE_BASE_LEN, 0, Client.Broadcast_addr, sizeof.sockaddr_in
+        ; sleep some time
+        invoke  Sleep, 500
+        ; check if someone rejected my message
+        cmp     [Client.State], 3
+        je      @F ; failed to rg
+        ; if no -- register success (POTENTIAL VULNERABILITY!) (disable ingame nick change)(disable rg failure when already registered (v))
+        mov     [Client.State], 2
+    @@:
+endp
+
+; # send message to all network adapters
+proc Client.Broadcast ; size of msg in ebx, msgId in edi
+
+        mov     ecx, dword [Client.IPAddrTableBuf + MIB_IPADDRTABLE.dwNumEntries]
+        xor     esi, esi ; table offset
+.LoopBroadcast:
+        ; do
+        ; save loop ctr
+        push    ecx
+        ; Get broadcast ips (TEST)
+        mov     eax, dword [Client.IPAddrTableBuf + MIB_IPADDRTABLE.table + esi + MIB_IPADDRROW.dwAddr]
+        mov     edx, dword [Client.IPAddrTableBuf + MIB_IPADDRTABLE.table + esi + MIB_IPADDRROW.dwMask]
+        not     edx
+        or      eax, edx ; got IP in eax
+
+        ; enter critical section
+        push    eax
+        invoke  EnterCriticalSection, Client.CritSection
+        pop     eax
+        ; set MSGID
+        mov     word [Client.MessageCode], di
+        ; set IP
+        mov     [Client.Broadcast_addr + sockaddr_in.sin_addr], eax
+        ; send (message code already at its place and thread change is already locked)
+        invoke  sendto, [Client.psocket], GameMessage, ebx, 0, Client.Broadcast_addr, sizeof.sockaddr_in
+        ; leave critical section
+        invoke  LeaveCriticalSection, Client.CritSection
+
+        ; go next
+        add     esi, sizeof.MIB_IPADDRROW
+        ; restore ctr
+        pop     ecx
+        ; cont loop
+        loop    .LoopBroadcast
+
+        ret
+endp
+
+; # multithread send to
+proc Client.SendToMultiTh,\
+        msgid; require push msgid;dest, msgsz
+
+        ; enter critical section
+        invoke  EnterCriticalSection, Client.CritSection
+        ; send msg
+        mov     eax, [msgid]
+        mov     word [Client.MessageCode], ax
+        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, Client.Sender_addr, sizeof.sockaddr_in
+        ; leave crit section
+        invoke  LeaveCriticalSection, Client.CritSection
+        ; ret
+        ret
+endp
+
 ; # initialize client to work
 proc Client.Init
+        ; check if registration try needed
+        cmp     [Client.State], 3
+        jne     @F
+        mov     [Client.State], 1
+        stdcall Client.SendRegistration
+        jmp     .EndProc
+@@:
+        ; check if startup needed
+        cmp     [Client.State], 0
+        jne     .EndProc
 
         ; init WSA
         invoke  WSAStartup, 0x0202, Client.wsaData ; init winsock
@@ -58,6 +142,7 @@ proc Client.Init
         ; memset zero (dont need, already zero!)
         mov     [Client.Broadcast_addr.sin_family], AF_INET
         mov     [Client.Broadcast_addr.sin_port], ax
+        ; DISABLE??
         mov     dword [Client.Broadcast_addr.sin_addr], not 0
         ; Bind socket
         invoke  bind, ebx, Client.Recv_addr, sizeof.sockaddr_in
@@ -72,19 +157,30 @@ proc Client.Init
         invoke  setsockopt, ebx, SOL_SOCKET, SO_REUSEADDR, Client.flag, 4; = sizeof.Client.flag
         test    eax, eax; CHECK THIS!!!!
         js      .ErrorConnect ;( < 0)
+
+        ;Client.pIPAddrTable
+        ; Get Adapters List
+        invoke  GetIpAddrTable, Client.IPAddrTableBuf, Client.dIPAddrTableSz, eax
+        test    eax, eax
+        jnz     .ErrorConnect ;!= NO_ERROR = 0
         ; Yess, connection Ready!
+
+        ; create critical section to protect write-send
+        invoke  InitializeCriticalSectionAndSpinCount, Client.CritSection, 0x400
 
         ; start || thread (Recv)
         xor     eax, eax
-        invoke  CreateThread, eax, eax, Client.ThRecv, eax, eax, Client.ThRecv.pThId; last is ptr to thread id
+        invoke  CreateThread, eax, eax, Client.ThRecv, ebx, eax, Client.ThRecv.pThId; last is ptr to thread id
         test    eax, eax
         jz      .ErrorConnect
+        ;mov     [Client.Recv.thStop], 0
 
         ; start || thread (Send)
         xor     eax, eax
-        invoke  CreateThread, eax, eax, Client.ThSend, eax, eax, Client.ThSend.pThId; last is ptr to thread id
+        invoke  CreateThread, eax, eax, Client.ThSend, ebx, eax, Client.ThSend.pThId; last is ptr to thread id
         test    eax, eax
         jz      .ErrorConnect
+        ;mov     [Client.ThSend.thStop], 0
 
         ; set result
         mov     eax, TRUE
@@ -97,49 +193,60 @@ proc Client.Init
         xor     eax, eax
 .Exit:
         mov     [Client.State], ax
+.EndProc:
         ret
 endp
 
 ; ### THERAD RECIEVER PROC
 proc Client.ThSend,\
-        lpParameter
+        lpParameter ; PSOCKET
 
-        ; send register signal
-        mov     [Client.MessageCode], MSG_CODE_REGISTER
-        invoke  sendto, ebx, GameMessage, MESSAGE_BASE_LEN, 0, Client.Broadcast_addr, sizeof.sockaddr_in
-        ; sleep some time
-        invoke  Sleep, 1000
-        ; check if someone rejected my message
-        cmp     [Client.State], 3
-        je      .EndThread ; failed to rg
-        ; if no -- register success (POTENTIAL VULNERABILITY!) (disable ingame nick change)(disable rg failure when already registered (v))
-        mov     [Client.State], 2
+        stdcall Client.SendRegistration
+
 .loopThread:
+        ; Sleep
+        invoke  Sleep, 200;200
+        ; if registered:
+        cmp     [Client.State], 2
+        jne     .EndThCycleUpdate ; just wait
 
         ; Send PING msg
-        mov     [Client.MessageCode], MSG_CODE_PING
-        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, Client.Broadcast_addr, sizeof.sockaddr_in
-        ; Sleep
-        invoke  Sleep, 1000 ; THREAD OVERLAP VULNERABILITY!!!!  -- FLAG IF OCCUPIED
+        mov     edi, MSG_CODE_PING
+        mov     ebx, MESSAGE_BASE_LEN ; msg len
+        stdcall Client.Broadcast
 
         ; Check pings
+        mov     esi, Client.ClientsDataArr + NICKNAME_LEN ; tgt ping
+    .LoopCheckPings:
+        cmp     word [esi], 0
+        je      .CheckEnd ;if zero -> rcd empty
+        jl      @F        ;if < 0  -> rcd freed
+        dec     word [esi]
+        jnz     @F        ;if became 0 -> rcd need to be freed
+        dec     word [esi]
+   @@:
+        add     esi, CLIENT_CL_RCD_LEN
+        jmp     .LoopCheckPings
+    .CheckEnd:
         ; TEMP
 
         ; LOOP THREAD
+    .EndThCycleUpdate:
         cmp     [Client.ThSend.thStop], 1
         jne     .loopThread
 .EndThread:
+
         ret
 endp
 
 ; ### THERAD RECIEVER PROC
 proc Client.ThRecv,\
-        lpParameter
+        lpParameter ; PSOCKET
 
         mov     [Client.StructLen], sizeof.sockaddr_in
 .loopThread:
         ; recieve data from all members
-        invoke  recvfrom, [Client.psocket], Client.recvbuff, CLIENT_RECV_BUF_LEN, 0, Client.Sender_addr, Client.StructLen;
+        invoke  recvfrom, [lpParameter], Client.recvbuff, CLIENT_RECV_BUF_LEN, 0, Client.Sender_addr, Client.StructLen;
         cmp     eax, 0
         jle     .FailedToRecieve
         ; get msgID
@@ -179,6 +286,9 @@ proc Client.ThRecv,\
         jmp     .EndMessage
    ;### ; ======================
 .MessagePing:
+        ; first first check if registered
+        cmp     [Client.State], 2
+        jne     .EndPingMsg
         ; first find rcd corresponding to got nickname
         mov     esi, Client.recvbuff + (Game.NickName - GameMessage)
         mov     edi, Client.ClientsDataArr
@@ -191,15 +301,16 @@ proc Client.ThRecv,\
         repe cmpsb
         pop     ecx edi esi
         mov     ax, word [edi + NICKNAME_LEN]; get PING
-        jne     @F ; if str not equal (from repe cmpsb)
+        jne     .StrNotEqual ; if str not equal (from repe cmpsb)
         ; rcd founded -- inc "ping" (if < MAX)
-        cmp     ax, 10 ;MAX
-        jge     @F
+        ;cmp     ax, 10 ;MAX
+        ;jge     @F
         ; inc
-        inc     word [edi + NICKNAME_LEN]
+        mov     word [edi + NICKNAME_LEN], 10; SET MAX
+   ;@@:
         ; exit
         jmp     .EndPingMsg
-   @@:
+   .StrNotEqual:
         cmp     ax, 0
         ; ckeck if ping = zero -- if yes -- founded
         je      .FoundedFree
@@ -223,7 +334,7 @@ proc Client.ThRecv,\
    @@:
         ; copy str
         rep movsb
-        mov     word [edi], 1
+        mov     word [edi], 10 ; set base (MAX) ping
    .EndPingMsg:
         jmp     .EndMessage
    ;### ; ====================== (NEXT MESSAGES PROTECTED FROM SELFSEND)
@@ -235,18 +346,18 @@ proc Client.ThRecv,\
         repe cmpsb
         jne     .RegistrationOK
         ; Send Rejection
-        mov     [Client.MessageCode], MSG_CODE_RG_REJECTED
-        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, Client.Sender_addr, sizeof.sockaddr_in
+        push    MSG_CODE_RG_REJECTED
+        stdcall Client.SendToMultiTh
 
     .RegistrationOK:
         ; #2. Send request for RCDS (only to person who just registered). TODO! copy of sendto is too large!
-        mov     [Client.MessageCode], MSG_CODE_REQ_TTR
-        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, Client.Sender_addr, sizeof.sockaddr_in
+        push    MSG_CODE_REQ_TTR
+        stdcall Client.SendToMultiTh
          ; partial message
 .MessageSendUpdates:
-        ; #3. Send updates to person. TODO! copy of sendto is too large!
+        ; #3. Send updates to person.
         ; setup params
-        mov     [Client.MessageCode], MSG_CODE_TTR
+        mov     [Client.MessageCode], MSG_CODE_TTR ; POTENTIAL BUG! THREAD CONFLICT
         mov     esi, Settings.fileData.cFileName
         mov     edi, Client.Sender_addr
         push    Client.ListAllTTRFiles.SendFile
@@ -258,7 +369,7 @@ proc Client.ThRecv,\
 .MessageRgRejected:
         ; set state to failure
         cmp     [Client.State], 2
-        je      @F ; if client isnt registered b4
+        je      @F ; if client isnt registered yet
         mov     [Client.State], 3
     @@:
         jmp     .EndMessage
@@ -274,7 +385,7 @@ proc Client.ThRecv,\
         jnz     .EndMessageTTR ; failed to decode
         push    eax ; save got highscore
         ; get own file data
-        mov     eax, Client.recvbuff + MESSAGE_BASE_LEN; nickname ptr in such msg
+        mov     eax, Client.recvbuff + (Client.Buffer - GameMessage); nickname ptr in such msg
         push    eax ; save Nick ptr
         stdcall Settings.GetHigh; req ptr to nick str in eax, ret high in eax
         ; check if own data is up to date
@@ -324,8 +435,13 @@ proc Client.ListAllTTRFiles.SendFile ; esi -- ptr to name str, edi -- ptr to rec
         ; get score
         mov     eax, esi
         stdcall Settings.GetHigh
+        push    eax
+        ; enter critical section
+        invoke  EnterCriticalSection, Client.CritSection
+
         ; fill in msg
-        ; mov high to buffer (THIS IS DANGEROUS BC ITS || THREAD!)
+        pop     eax
+        ; mov high to buffer
         mov     [GameBuffer.Score], ax
         stdcall Settings.EncodeWord
         mov     [GameBuffer.ControlWord], bx
@@ -334,10 +450,15 @@ proc Client.ListAllTTRFiles.SendFile ; esi -- ptr to name str, edi -- ptr to rec
         mov     edi, Client.Buffer
         mov     ecx, NICKNAME_LEN
         rep movsb
+        ; restore ptr to sockaddr_in
+        pop     edi
         ; send it
         invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, edi, sizeof.sockaddr_in
+        ; leave critical section
+        invoke  LeaveCriticalSection, Client.CritSection
 
-        pop     edi esi ebx
+        ; ret
+        pop     esi ebx
         ret
 endp
 
@@ -348,9 +469,13 @@ proc Client.Destroy
         ; stop
         cmp     [Client.State], FALSE
         je      @F
+        ; set
+        mov     [Client.State], FALSE
         ; stop thread
         mov     [Client.ThRecv.thStop], TRUE
         mov     [Client.ThSend.thStop], TRUE
+        ; del crit section
+        invoke  DeleteCriticalSection, Client.CritSection
         ; close if need
         invoke  closesocket, [Client.psocket]
         invoke  WSACleanup

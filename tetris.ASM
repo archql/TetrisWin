@@ -555,15 +555,11 @@ proc WindowProc uses ebx esi edi,\
         if (SERVER_DEFINED)
         ; check connection
         mov     ebx, Client.StrError
-        movzx   eax, [Client.State]
-        cmp     eax, 1
-        jne     @F
-        mov     ebx, Client.StrConnected
-@@:
-        cmp     eax, 2
-        jne     @F
-        mov     ebx, Client.StrRegistered
-@@:
+        mov     dx, 11
+        movzx   eax, word [Client.State]
+        mul     dx
+        add     ebx, eax
+
         ; DRAW text connection
         invoke  glRasterPos2i, FIELD_W + 2, FIELD_H;
         invoke  glCallLists, CLIENT_STR_LEN, GL_UNSIGNED_BYTE, ebx
@@ -578,8 +574,15 @@ proc WindowProc uses ebx esi edi,\
         cmp     bx, 0
         jle     @F
         ; DRAW text connection
-        invoke  glRasterPos2i, FIELD_W + 2 + 8 + 12, ecx;
-        invoke  glCallLists, NICKNAME_LEN, GL_UNSIGNED_BYTE, esi
+        ; TEMP
+        ;mov     ax, bx  ; !!!! || THREAD CAN CHANGE IT
+        ;add     ax, 'AA'
+        ;mov     word [GameBuffer], ax
+        invoke  glRasterPos2i, FIELD_W + 2 + 8 + 11, ecx;
+        invoke  glCallLists, NICKNAME_LEN, GL_UNSIGNED_BYTE, esi   ; TEST -- CLIENT_CL_RCD_LEN
+        ;invoke  glCallLists, 2, GL_UNSIGNED_BYTE, GameBuffer   ; TEST -- CLIENT_CL_RCD_LEN
+        ; inc ctr
+        inc     dword [esp]
 @@:
         add     esi, CLIENT_CL_RCD_LEN
         ; restore loop ctr
@@ -621,6 +624,13 @@ proc WindowProc uses ebx esi edi,\
         ; check if game ended
         cmp    [Game.Score], 0
         jnz     .regularKeyEvent
+        ; check if connected to network with fixed nickname
+        if (SERVER_DEFINED)
+        cmp     [Client.State], 2
+        je      .regularKeyEvent
+        cmp     [Client.State], 1
+        je      .regularKeyEvent
+        end if
         ; activate edit mode
         mov     [Settings.SetupNickNameActive], TRUE
 
@@ -641,8 +651,6 @@ proc WindowProc uses ebx esi edi,\
         if (SERVER_DEFINED)
         ; CLIENT START
         cmp     eax, VK_F3
-        jne     @F
-        cmp     [Client.State], 0
         jne     @F
         ; ini client if not ini
         stdcall Client.Init
@@ -768,13 +776,40 @@ section '.idata' import data readable writeable
         winmm,'WINMM.DLL',\
         opengl,'OPENGL32.DLL',\
         ws2_32, 'ws2_32.dll',\
-        AdvApi32, 'AdvApi32.dll'
+        AdvApi32, 'AdvApi32.dll',\
+        iphlpapi, 'iphlpapi.dll'
 
         include 'api\gdi32.inc'
         include 'api\kernel32.inc'
         include 'api\user32.inc'
                 
         include 'opengl.inc'
+
+import iphlpapi,\
+        GetIpAddrTable , 'GetIpAddrTable'
+        ; THIS STRUCTURES GOT FROM INTERNET. THEY MAY BE CHANGED!
+        struct MIB_IPADDRROW
+               dwAddr           dd              ?
+               dwIndex          dd              ?
+               dwMask           dd              ?
+               dwBCastAddr      dd              ?
+               dwReasmSize      dd              ?
+               unused1          dw              ?
+               wType            dw              ?
+        ends
+        struct MIB_IPADDRTABLE
+               dwNumEntries     dd              ?
+               table            MIB_IPADDRROW   ?
+        ends
+
+        struct RTL_CRITICAL_SECTION
+                DebugInfo       dd      ?;  Its ptr
+                LockCount       dd      ?;  LONG
+                RecursionCount  dd      ?;  LONG
+                OwningThread    dd      ?;  HANDLE      // from the thread's ClientId->UniqueThread
+                LockSemaphore   dd      ?;  HANDLE
+                SpinCount       dd      ?;  ULONG_PTR   // force size on 64-bit systems when packed
+        ends
 
 import AdvApi32,\
         RegGetValueA , 'RegGetValueA'
