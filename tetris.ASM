@@ -39,12 +39,17 @@ start:
         rep     stosb
         ; set Client.PCID (unique PC ID)
         if (SERVER_DEFINED)
-        ; 0x0000ffff | 0x00010000 = RRF_RT_ANY | RRF_SUBKEY_WOW6464KEY
-        invoke  RegGetValueA, HKEY_LOCAL_MACHINE, Client.QuaryValue, Client.QuaryKey, 0x0000ffff or 0x00010000, ebx, Client.PCID, Client.PCIDBufLen
+        invoke  RegOpenKeyExA, HKEY_LOCAL_MACHINE, Client.QuaryValue, ebx, KEY_READ or 0x0100, Client.KeyHandle   ;KEY_WOW64_64KEY
         test    eax, eax
-        jnz     creation_error
+        jnz     @F
+        invoke  RegGetValueA, [Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen ; Client.QuaryKey - 1 -- NULL STRING
+        test    eax, eax
+     @@:
+        jz      @F
+        ; Throw error
+        mov     [Client.State], CLIENT_STATE_UUIDERROR ; Error
+     @@:
         end if
-
         ; set admin nickname
         mov     ecx, NICKNAME_LEN
         mov     edi, Game.NickName
@@ -118,9 +123,16 @@ start:
         jmp     msg_loop
 
 creation_error:
-        invoke  MessageBox, ebx, Wnd.Text, Wnd.title, MB_OK or MB_ICONERROR;
+        mov     eax, Wnd.Text
+        stdcall ThrowMessage
   end_loop:
         invoke  ExitProcess, [Wnd.msg.wParam]
+
+;############# ThrowMessage ##################
+proc ThrowMessage; eax is ptr to string, ebx is zero!
+        invoke  MessageBox, ebx, eax, Wnd.title, MB_OK or MB_ICONERROR;
+        ret
+endp
 
 ;############# WindowProc ####################
 
@@ -626,9 +638,9 @@ proc WindowProc uses ebx esi edi,\
         jnz     .regularKeyEvent
         ; check if connected to network with fixed nickname
         if (SERVER_DEFINED)
-        cmp     [Client.State], 2
+        cmp     [Client.State], CLIENT_STATE_REGISTERED
         je      .regularKeyEvent
-        cmp     [Client.State], 1
+        cmp     [Client.State], CLIENT_STATE_ONLINE
         je      .regularKeyEvent
         end if
         ; activate edit mode
@@ -812,7 +824,10 @@ import iphlpapi,\
         ends
 
 import AdvApi32,\
-        RegGetValueA , 'RegGetValueA'
+        RegGetValueA , 'RegGetValueA',\
+        RegQueryValueExA, 'RegQueryValueExA',\
+        RegOpenKeyA, 'RegOpenKeyA',\
+        RegOpenKeyExA, 'RegOpenKeyExA'
 
 import winmm,\
         mciSendString,'mciSendStringA',\

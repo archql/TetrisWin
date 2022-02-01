@@ -43,10 +43,10 @@ proc Client.SendRegistration   ; Can be bugged call (2 threads using same mem)
         ; sleep some time
         invoke  Sleep, 500
         ; check if someone rejected my message
-        cmp     [Client.State], 3
+        cmp     [Client.State], CLIENT_STATE_REJECTED
         je      @F ; failed to rg
         ; if no -- register success (POTENTIAL VULNERABILITY!) (disable ingame nick change)(disable rg failure when already registered (v))
-        mov     [Client.State], 2
+        mov     [Client.State], CLIENT_STATE_REGISTERED
     @@:
 endp
 
@@ -107,14 +107,14 @@ endp
 ; # initialize client to work
 proc Client.Init
         ; check if registration try needed
-        cmp     [Client.State], 3
+        cmp     [Client.State], CLIENT_STATE_REJECTED
         jne     @F
-        mov     [Client.State], 1
+        mov     [Client.State], CLIENT_STATE_ONLINE
         stdcall Client.SendRegistration
         jmp     .EndProc
 @@:
         ; check if startup needed
-        cmp     [Client.State], 0
+        cmp     [Client.State], CLIENT_STATE_OFFLINE
         jne     .EndProc
 
         ; init WSA
@@ -166,7 +166,7 @@ proc Client.Init
         ; Yess, connection Ready!
 
         ; create critical section to protect write-send
-        invoke  InitializeCriticalSectionAndSpinCount, Client.CritSection, 0x400
+        invoke  InitializeCriticalSectionAndSpinCount, Client.CritSection, 0x400 ; 0x400 tries to capture crit section b4 go to core speed
 
         ; start || thread (Recv)
         xor     eax, eax
@@ -207,12 +207,12 @@ proc Client.ThSend,\
         ; Sleep
         invoke  Sleep, 200;200
         ; if registered:
-        cmp     [Client.State], 2
+        cmp     [Client.State], CLIENT_STATE_REGISTERED
         jne     .EndThCycleUpdate ; just wait
 
         ; Send PING msg
         mov     edi, MSG_CODE_PING
-        mov     ebx, MESSAGE_BASE_LEN ; msg len
+        mov     ebx, FILE_SZ_TO_RCV; Senf full game frame(were MESSAGE_BASE_LEN) ; msg len
         stdcall Client.Broadcast
 
         ; Check pings
@@ -287,7 +287,7 @@ proc Client.ThRecv,\
    ;### ; ======================
 .MessagePing:
         ; first first check if registered
-        cmp     [Client.State], 2
+        cmp     [Client.State], CLIENT_STATE_REGISTERED
         jne     .EndPingMsg
         ; first find rcd corresponding to got nickname
         mov     esi, Client.recvbuff + (Game.NickName - GameMessage)
@@ -368,9 +368,9 @@ proc Client.ThRecv,\
    ;### ; ======================
 .MessageRgRejected:
         ; set state to failure
-        cmp     [Client.State], 2
+        cmp     [Client.State], CLIENT_STATE_REGISTERED
         je      @F ; if client isnt registered yet
-        mov     [Client.State], 3
+        mov     [Client.State], CLIENT_STATE_REJECTED
     @@:
         jmp     .EndMessage
    ;### ; ======================
@@ -467,10 +467,10 @@ endp
 proc Client.Destroy
 
         ; stop
-        cmp     [Client.State], FALSE
+        cmp     [Client.State], CLIENT_STATE_OFFLINE
         je      @F
         ; set
-        mov     [Client.State], FALSE
+        mov     [Client.State], CLIENT_STATE_OFFLINE
         ; stop thread
         mov     [Client.ThRecv.thStop], TRUE
         mov     [Client.ThSend.thStop], TRUE

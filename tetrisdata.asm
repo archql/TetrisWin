@@ -91,13 +91,16 @@
         if (SERVER_DEFINED)
         Client.dIPAddrTableSz       dd    CLIENT_ADAPTERS_BUF_MAX
         Client.PCIDBufLen           dw    CLIENT_PCID_LEN
+
         Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         Client.QuaryKey             db    'MachineGuid', 0
+
         Client.StrError             db    '[ OFFLINE ]'
         CLIENT_STR_LEN              = $ - Client.StrError
         Client.StrConnected         db    '[ ON-LINE ]'
         Client.StrRegistered        db    '[ REGSTRD ]'
         Client.StrRgRejected        db    '[ REJCTED ]'
+        Client.StrKeyFail           db    '[ UUIDERR ]'
         end if
         ;IP_4_BROADCAST_VAL      dd              0xFF'FF'FF'FF
 
@@ -229,15 +232,19 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         Client.Recv_addr        sockaddr_in     ?
         Client.Sender_addr      sockaddr_in     ?
         Client.Broadcast_addr   sockaddr_in     ?
+
         Client.State            dw              ?
-        ; 0 is error
-        ; 1 is online
-        ; 2 is connected
-        ; 3 is rg rejected
+        CLIENT_STATE_OFFLINE    = 0
+        CLIENT_STATE_ONLINE     = 1
+        CLIENT_STATE_REGISTERED = 2
+        CLIENT_STATE_REJECTED   = 3
+        CLIENT_STATE_UUIDERROR  = 4
 
         ; IP list table
         ;Client.dIPAddrTableSz   dd              ?
         ;Client.pIPAddrTable     dd              ?
+        ; for get UUID
+        Client.KeyHandle        dd              ?
 
         ; Thread reciever
         Client.ThRecv.hThread   dd              ?
@@ -302,7 +309,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 4
+        GAME_V_MINOR                    = 5
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b
