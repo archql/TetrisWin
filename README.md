@@ -52,7 +52,7 @@ All rectangular screen resolutions supported.
  **Use *F3* key to make try to connect to LAN** (your current state is OFFLINE). If it's worked properly your state is ON-LINE. 
  Next client sends register message and waits (cur 500 ms). If your next state is REGSTRD everything went good!
  If you got REJCTED message -- change you nickname & try to connect again (use **F3** key).
- LAN connection currently used for update leaderboard and synhro game start on same seed (use **F4** key to start. Starts only if client has GAME OVER mode).
+ LAN connection currently used for update leaderboard and synhro game start on same seed (use **F4** key to start. Game starts only if client has GAME OVER mode).
  Leaderboard isn't updated automatically. Use **R** key to do so.
  You can still get file updates if your state is REJCTED.
  
@@ -67,7 +67,7 @@ All rectangular screen resolutions supported.
  
  If timeout value became 0, client removes corresponding ping record.
  
- Ping messages contains full game frame so your game can visualized remotely with 200 ms precision.
+ Ping messages contains full game frame so your game can be visualized remotely with 200 ms precision.
 
 #### What is '.amid' files?
 '.amid' file -- its file with short midi messages, every message is 4 bytes long,

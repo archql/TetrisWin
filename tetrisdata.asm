@@ -309,7 +309,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 5
+        GAME_V_MINOR                    = 6
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

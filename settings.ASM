@@ -8,10 +8,11 @@
         ;FILE_SZ_TO_READ           = 2
         IS_GITHUB_VERSION       = FALSE
 
+; got score in eax, control in bx
 proc Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
 
-        mov     bx, word [Settings.buffer + 2]
-        movzx   eax, word [Settings.buffer]
+        ;mov     bx, word [Settings.buffer + 2]
+        ;movzx   eax, word [Settings.buffer]
         ; decode control byte in buffer
         mov     cl, 0x45
         xor     cl, al
@@ -67,6 +68,8 @@ proc Settings.GetHigh ; uses eax ebx ecx edx
         cmp     [Settings.BytesProceed], 0
         je      .EndProc
         ; decode high score
+        mov     bx, word [Settings.buffer + 2]
+        movzx   eax, word [Settings.buffer]
         stdcall Settings.DecodeWord
         test    bx, bx
         jnz     .EndProc
@@ -105,14 +108,17 @@ proc Settings.SetHigh ; uses eax ebx ecx edx
         invoke  WriteFile, ebx, GameBuffer, dword [esp + 16], Settings.BytesProceed, 0 ; [esp + 16] is num of bytes
         ; close file
         invoke  CloseHandle, ebx
-        ; client broadcast
-        if (SERVER_DEFINED)
-        mov     esi, Settings.strFilenameBuf
-        mov     edi, Client.Broadcast_addr
-        stdcall Client.ListAllTTRFiles.SendFile
-        end if
         ; count control sum
         call    Settings.CountControlSum + SPECIAL_CTR
+        ; client broadcast
+        if (SERVER_DEFINED)
+        cmp     [Client.State], CLIENT_STATE_OFFLINE
+        je      @F
+        mov     esi, Settings.strFilenameBuf
+        mov     edi, Client.Broadcast
+        stdcall Client.ListAllTTRFiles.SendFile
+  @@:
+        end if
 .EndProc:
         pop     eax
         ret     4
@@ -168,8 +174,8 @@ proc Settings.ListAllTTRFiles.LBline; write got str to rcd
         mov     eax, Settings.fileData.cFileName
         stdcall Settings.GetHigh ; ret high in eax
         pop     ebx ; ld handle
-        test    eax, eax
-        jz      .EndTryLdFile; corrypted (or zero)
+        ;test    eax, eax     ; BEFORE -- IGNORED CORRYPTED DATA; NOW -- TRY TO ENCOUNT IT
+        ;jz      .EndTryLdFile; corrypted (or zero)
         ; set high
         inc     edi
         push    eax ; save score as num

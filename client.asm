@@ -22,9 +22,9 @@ proc Client.RequestGame ; Can be bugged call (2 threads using same mem)
         ; reset random
         stdcall Random.Initialize
         ; send start game signal
-        mov     edi, MSG_CODE_START_GAME
-        mov     ebx, MESSAGE_BASE_LEN ; msg len
-        stdcall Client.Broadcast
+        mov     edi, MESSAGE_BASE_LEN
+        mov     ebx, MSG_CODE_START_GAME ; msg len
+        stdcall Client.ThSafeCall, Client.Broadcast
         ; start game (IF NOT SELF ACTIVATION)
         ;stdcall Game.Initialize
         ;mov     [Game.Pause], 0
@@ -36,22 +36,25 @@ endp
 proc Client.SendRegistration   ; Can be bugged call (2 threads using same mem)
 
         ; send register signal
-        mov     edi, MSG_CODE_REGISTER
-        mov     ebx, MESSAGE_BASE_LEN ; msg len
-        stdcall Client.Broadcast
+        mov     edi, MESSAGE_BASE_LEN
+        mov     ebx, MSG_CODE_REGISTER ; msg len
+        stdcall Client.ThSafeCall, Client.Broadcast
         ;invoke  sendto, ebx, GameMessage, MESSAGE_BASE_LEN, 0, Client.Broadcast_addr, sizeof.sockaddr_in
         ; sleep some time
         invoke  Sleep, 500
         ; check if someone rejected my message
         cmp     [Client.State], CLIENT_STATE_REJECTED
         je      @F ; failed to rg
-        ; if no -- register success (POTENTIAL VULNERABILITY!) (disable ingame nick change)(disable rg failure when already registered (v))
+        ; if no -- register success
         mov     [Client.State], CLIENT_STATE_REGISTERED
     @@:
+        ret
 endp
 
 ; # send message to all network adapters
-proc Client.Broadcast ; size of msg in ebx, msgId in edi
+; - [in, ebx] msgId
+; - [in, edi] msgSz
+proc Client.Broadcast
 
         mov     ecx, dword [Client.IPAddrTableBuf + MIB_IPADDRTABLE.dwNumEntries]
         xor     esi, esi ; table offset
@@ -66,17 +69,17 @@ proc Client.Broadcast ; size of msg in ebx, msgId in edi
         or      eax, edx ; got IP in eax
 
         ; enter critical section
-        push    eax
-        invoke  EnterCriticalSection, Client.CritSection
-        pop     eax
+        ;push    eax
+        ;invoke  EnterCriticalSection, Client.CritSection
+        ;pop     eax
         ; set MSGID
-        mov     word [Client.MessageCode], di
+        mov     word [Client.MessageCode], bx
         ; set IP
         mov     [Client.Broadcast_addr + sockaddr_in.sin_addr], eax
         ; send (message code already at its place and thread change is already locked)
-        invoke  sendto, [Client.psocket], GameMessage, ebx, 0, Client.Broadcast_addr, sizeof.sockaddr_in
+        invoke  sendto, [Client.psocket], GameMessage, edi, 0, Client.Broadcast_addr, sizeof.sockaddr_in
         ; leave critical section
-        invoke  LeaveCriticalSection, Client.CritSection
+        ;invoke  LeaveCriticalSection, Client.CritSection
 
         ; go next
         add     esi, sizeof.MIB_IPADDRROW
@@ -88,20 +91,28 @@ proc Client.Broadcast ; size of msg in ebx, msgId in edi
         ret
 endp
 
-; # multithread send to
-proc Client.SendToMultiTh,\
-        msgid; require push msgid;dest, msgsz
+; # MySendTo
+; - [in, ebx] msgId
+; - [in, edi] msgSz
+proc Client.Send ; requires msgId & msgSz
 
+        mov     word [Client.MessageCode], bx
+        invoke  sendto, [Client.psocket], GameMessage, edi, 0, Client.Sender_addr, sizeof.sockaddr_in
+
+        ret
+endp
+
+; # Safe function
+; - [in, stack] ptr to function
+proc Client.ThSafeCall ; uses as params ebx esi edi
         ; enter critical section
         invoke  EnterCriticalSection, Client.CritSection
-        ; send msg
-        mov     eax, [msgid]
-        mov     word [Client.MessageCode], ax
-        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, Client.Sender_addr, sizeof.sockaddr_in
+        ; call
+        stdcall dword [esp + 4]
         ; leave crit section
         invoke  LeaveCriticalSection, Client.CritSection
         ; ret
-        ret
+        ret 4
 endp
 
 ; # initialize client to work
@@ -211,9 +222,9 @@ proc Client.ThSend,\
         jne     .EndThCycleUpdate ; just wait
 
         ; Send PING msg
-        mov     edi, MSG_CODE_PING
-        mov     ebx, FILE_SZ_TO_RCV; Senf full game frame(were MESSAGE_BASE_LEN) ; msg len
-        stdcall Client.Broadcast
+        mov     edi, FILE_SZ_TO_RCV
+        mov     ebx, MSG_CODE_PING; Senf full game frame(were MESSAGE_BASE_LEN) ; msg len
+        stdcall Client.ThSafeCall, Client.Broadcast
 
         ; Check pings
         mov     esi, Client.ClientsDataArr + NICKNAME_LEN ; tgt ping
@@ -346,20 +357,21 @@ proc Client.ThRecv,\
         repe cmpsb
         jne     .RegistrationOK
         ; Send Rejection
-        push    MSG_CODE_RG_REJECTED
-        stdcall Client.SendToMultiTh
+        mov     ebx, MSG_CODE_RG_REJECTED
+        mov     edi, MESSAGE_BASE_LEN
+        stdcall Client.ThSafeCall, Client.Send
 
     .RegistrationOK:
-        ; #2. Send request for RCDS (only to person who just registered). TODO! copy of sendto is too large!
-        push    MSG_CODE_REQ_TTR
-        stdcall Client.SendToMultiTh
+        ; #2. Send request for RCDS (only to person who just registered).
+        mov     ebx, MSG_CODE_REQ_TTR
+        mov     edi, MESSAGE_BASE_LEN
+        stdcall Client.ThSafeCall, Client.Send
          ; partial message
 .MessageSendUpdates:
         ; #3. Send updates to person.
         ; setup params
-        mov     [Client.MessageCode], MSG_CODE_TTR ; POTENTIAL BUG! THREAD CONFLICT
         mov     esi, Settings.fileData.cFileName
-        mov     edi, Client.Sender_addr
+        mov     edi, Client.Send;Client.Sender_addr
         push    Client.ListAllTTRFiles.SendFile
         stdcall Settings.ListAllTTRFiles
 
@@ -378,8 +390,10 @@ proc Client.ThRecv,\
         ; got ttrs msg
         ; check if in msg score is valid
         ; TEMP COPY
-        mov     esi, dword [Client.recvbuff + (GameBuffer.Score - GameMessage)]
-        mov     dword [Settings.buffer], esi
+        movzx   eax, word [Client.recvbuff + (GameBuffer.Score       - GameMessage)]
+        mov     bx,  word [Client.recvbuff + (GameBuffer.ControlWord - GameMessage)]
+        ;mov     esi, dword [Client.recvbuff + (GameBuffer.Score - GameMessage)]
+        ;mov     dword [Settings.buffer], esi
         stdcall Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
         test    bx, bx
         jnz     .EndMessageTTR ; failed to decode
@@ -409,12 +423,13 @@ proc Client.ThRecv,\
         ; Here set rnd gen if game stopped
         cmp     [Game.Playing], TRUE
         je      .EndMessage
-        ; set rnd gen
+        ; set rnd gen ; GAME MEM USAGE -- PROPERTY OF MAIN THREAD!!!
         mov     eax, dword [Client.recvbuff + (Random.dSeed - GameMessage)]
         mov     dword [Random.dPrewNumber], eax
         mov     dword [Random.dSeed], eax
+        mov     [Game.Playing], TRUE ; To prevent activalion from next messages
         ; start game
-        stdcall Game.Initialize
+        stdcall Client.ThSafeCall, Game.Initialize ; USES GAME MEM -- PROPERTY OF MAIN THREAD!!! CONFLICT!!!
         mov     [Game.Pause], 0
         ; exit
         jmp     .EndMessage
@@ -429,12 +444,12 @@ proc Client.ThRecv,\
 endp
 
 ; ## Its for TTR filesend
-proc Client.ListAllTTRFiles.SendFile ; esi -- ptr to name str, edi -- ptr to recv sockaddr_in (TODO -- create sendbuf)
+proc Client.ListAllTTRFiles.SendFile ; esi -- ptr to name str, edi -- ptr to send function (TODO -- create sendbuf)
         push    ebx esi edi; required to save it!
 
         ; get score
         mov     eax, esi
-        stdcall Settings.GetHigh
+        stdcall Settings.GetHigh  ; SETTINGS BUF MEM USAGE -- PROPERTY OF MAIN THREAD!!!
         push    eax
         ; enter critical section
         invoke  EnterCriticalSection, Client.CritSection
@@ -450,15 +465,21 @@ proc Client.ListAllTTRFiles.SendFile ; esi -- ptr to name str, edi -- ptr to rec
         mov     edi, Client.Buffer
         mov     ecx, NICKNAME_LEN
         rep movsb
-        ; restore ptr to sockaddr_in
-        pop     edi
+        ; restore ptr to function
+        mov     eax, dword [esp]
         ; send it
-        invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, edi, sizeof.sockaddr_in
+        ; required:
+        ; - ebx - msgId
+        mov     ebx, MSG_CODE_TTR
+        ; - edi - msgSz
+        mov     edi, MESSAGE_BASE_LEN
+        stdcall eax
+        ;invoke  sendto, [Client.psocket], GameMessage, MESSAGE_BASE_LEN, 0, edi, sizeof.sockaddr_in
         ; leave critical section
         invoke  LeaveCriticalSection, Client.CritSection
 
         ; ret
-        pop     esi ebx
+        pop     edi esi ebx
         ret
 endp
 

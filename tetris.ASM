@@ -485,63 +485,100 @@ proc WindowProc uses ebx esi edi,\
         ; BEGIN text draw
         invoke  glListBase, [Wnd.nFontBase]
         ; draw text NEXT FIG
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2;
-        invoke  glCallLists, Str.NextFig.Len, GL_UNSIGNED_BYTE, Str.NextFig
+        stdcall View.DrawText, FIELD_W + 3 - 1, 2            , Str.NextFig.Len  , eax, Str.NextFig
         ; draw text HOLDED FIG
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 6;
-        invoke  glCallLists, Str.HoldedFig.Len, GL_UNSIGNED_BYTE, Str.HoldedFig
+        stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 6        , Str.HoldedFig.Len, eax, Str.HoldedFig
         ; DRAW text SCORE
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 6 + 2;
-        invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.Score
+        stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 4 + 6 + 2, SCOLE_LEN_CONST  , eax, Str.Score
         ; DRAW text SCORE HIGH
-        invoke  glRasterPos2i, FIELD_W + 3 - 1, 2 + 4 + 6 + 3;
-        invoke  glCallLists, SCOLE_LEN_CONST, GL_UNSIGNED_BYTE, Str.HighScore
+        stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 4 + 6 + 3, SCOLE_LEN_CONST  , eax, Str.HighScore
 
         ; DRAW text SCOREBOARD
-        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, 2;
-        invoke  glCallLists, LB_ISTR_RCD_LEN, GL_UNSIGNED_BYTE, Str.Scoreboard
+        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, 2        , LB_ISTR_RCD_LEN  , eax, Str.Scoreboard
         ; DRAW Scoreboard
+        ; first -- alloc mem for flag (if cur usr founded)
+        xor     eax, eax
+        inc     eax
+        push    eax
         ; 1st: find amount of actual strings
-        ; ERROR!!
         mov     edi, Settings.LeaderBoardArr
         mov     esi, edi
         add     esi, (1 shl LB_ISTR_RCD_LEN_POW) - LB_PRIO_RCD_LEN
-        mov     ecx, LB_BASE_RCDS_AMOUNT - 1
+        mov     ecx, LB_BASE_RCDS_AMOUNT - 1 ; ALG MAX 255
 .DrawScoreboardLoop:
-        ; check if null user
+        ; set base color
+        stdcall View.FastWhiteColor
+        ; get rcd score & place
         mov     ebx, [esi]
-        test    bx, bx
-        jz      .loopSkipLine
-        ; save base pos
-        and     ebx, $FF'FF'00'00
+        push    ebx
+        ; save base pos & count new
+        xor     bx, bx   ;and     ebx, $FF'FF'00'00 (same)
         shr     ebx, 16 - LB_ISTR_RCD_LEN_POW; got real place
         push    edi
         add     edi, ebx
 
+        ; check if this rcd correspond to cur user
+        push    esi edi ecx
+        ;xor     ecx, ecx
+        ;inc     ecx
+        ;inc     ecx
+        mov     ecx, NICKNAME_LEN
+        mov     esi, Game.NickName
+        add     edi, 3 ; offset
+        rep cmpsb
+        jne     @F
+        ;HIGHLIGHT SOMEWAY USER RCD
+        stdcall View.FastYellowColor
+        ; set flag
+        mov     byte [esp + 20], 0 ; flag found
+@@:
+        pop     ecx edi esi
+        ; check if last rcd & cur user rcd not found
+        cmp     cl, byte [esp + 8] ; flag found
+        jnz     @F
+        mov     byte [esp + 8 + 1], 1 ; flag cur user isnt visible
+        inc     ecx
+        jmp     .loopSkipLine
+@@:
+        ; check if zero rcd
+        ;mov     bx, word [esp + 4] ; ebx
+        ;test    bx, bx
+        ;jz      .loopSkipLine
+        ; DRAW
+.drawLine:
         ; count Y pos
         push    ecx; save loop ctr
         xchg    ebx, ecx
         neg     ebx
         add     ebx, LB_BASE_RCDS_AMOUNT
+        ; check if cur place > 15 (can display only 15)
+        mov     word [edi], '##'
+        cmp     byte [esp + 12 + 1], 0
+        jg      @F
         ; print cur place
-        cinvoke wsprintfA, edi, Settings.PlaceFormat, ebx
+        cinvoke wsprintfA, edi, Settings.PlaceFormat, ebx; ebx
+@@:
         ; mov Y cord
-        add     ebx, 2 ; 3 - 1
+        inc     ebx;, 2 ; 3 - 1
+        inc     ebx
 
-        ; draw
-        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, ebx;dword [esp + 4];
-        invoke  glCallLists, LB_ISTR_RCD_LEN, GL_UNSIGNED_BYTE, edi
+        ; EBX IS CHANGED!!!
+        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, ebx, LB_ISTR_RCD_LEN, eax, edi     ; par eax is ANY
 
-        pop     ecx
-        pop     edi
+        pop     ecx ; loop ctr
 
 .loopSkipLine:
+        pop     edi ebx
         add     esi, (1 shl LB_ISTR_RCD_LEN_POW); LEN_OF_LB_INFO_RCD
         loop    .DrawScoreboardLoop
+        ; reset stack
+        pop     eax
+        ; reset color
+        stdcall View.FastWhiteColor
 
         ; Draw CurNickName
-        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, FIELD_H - 2;
-        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Game.NickName
+        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, FIELD_H - 2, 8, eax, Game.NickName
+
 
         ; Draw TmpNickName
         mov     ebx, Settings.strTempNickNameBlocked
@@ -557,12 +594,10 @@ proc WindowProc uses ebx esi edi,\
         invoke  glRasterPos2f, 22.0 , 22.7 ;FIELD_W + 3 - 1 + 8, FIELD_H - 1 + 1;
         invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickNameHighlight
         ; set Special color
-        mov     eax, 1.0
-        invoke  glColor3f, eax, eax, eax
+        stdcall View.FastWhiteColor
 @@:
         ; Draw Main Str
-        invoke  glRasterPos2i, FIELD_W + 3 - 1 + 8, FIELD_H - 1;
-        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, ebx
+        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, FIELD_H - 1, 8, eax, ebx
 
         if (SERVER_DEFINED)
         ; check connection
@@ -573,8 +608,7 @@ proc WindowProc uses ebx esi edi,\
         add     ebx, eax
 
         ; DRAW text connection
-        invoke  glRasterPos2i, FIELD_W + 2, FIELD_H;
-        invoke  glCallLists, CLIENT_STR_LEN, GL_UNSIGNED_BYTE, ebx
+        stdcall View.DrawText, FIELD_W + 2, FIELD_H, CLIENT_STR_LEN, eax, ebx
         ; DRAW text connections
         mov     esi, Client.ClientsDataArr
         mov     ecx, 2 ; loop ctr
@@ -587,12 +621,9 @@ proc WindowProc uses ebx esi edi,\
         jle     @F
         ; DRAW text connection
         ; TEMP
-        ;mov     ax, bx  ; !!!! || THREAD CAN CHANGE IT
-        ;add     ax, 'AA'
-        ;mov     word [GameBuffer], ax
-        invoke  glRasterPos2i, FIELD_W + 2 + 8 + 11, ecx;
-        invoke  glCallLists, NICKNAME_LEN, GL_UNSIGNED_BYTE, esi   ; TEST -- CLIENT_CL_RCD_LEN
-        ;invoke  glCallLists, 2, GL_UNSIGNED_BYTE, GameBuffer   ; TEST -- CLIENT_CL_RCD_LEN
+        push    ebx
+        stdcall View.DrawText, FIELD_W + 2 + 8 + 11, ecx, NICKNAME_LEN, eax, esi
+        pop     ebx
         ; inc ctr
         inc     dword [esp]
 @@:
@@ -607,15 +638,13 @@ proc WindowProc uses ebx esi edi,\
         cmp     [Game.Playing], 1
         je      @F
         ; DRAW text GAME OVER
-        invoke  glRasterPos2i, FIELD_W / 2 - 2, 2;
-        invoke  glCallLists, 9, GL_UNSIGNED_BYTE, Str.Loose
+        stdcall View.DrawText, FIELD_W / 2 - 2, 2, 9, eax, Str.Loose
         jmp     .end_draw
 @@:
         cmp     [Game.Pause], 1
         jne     @F
         ; DRAW text PAUSE
-        invoke  glRasterPos2i, FIELD_W / 2 - 1, 2;
-        invoke  glCallLists, 6, GL_UNSIGNED_BYTE, Str.Pause
+        stdcall View.DrawText, FIELD_W / 2 - 1, 2, 6, eax, Str.Pause
 @@:
         ; end draw;
 .end_draw:
@@ -751,6 +780,7 @@ proc WindowProc uses ebx esi edi,\
         if (SERVER_DEFINED)
         stdcall Client.Destroy
         end if
+        ; save last logged nickname?
         ; music
         stdcall SoundPlayer.Close
         ; font lists

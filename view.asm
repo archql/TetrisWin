@@ -1,4 +1,48 @@
 
+;#############DRAW TEXT #####################
+;  USES EBX!!!
+;  params inorder
+;  - [in, stack] X cord
+;  - [in, stack] Y cord
+;  - [in, stack] strlen
+;  - [in, stack] ANY
+;  - [in, stack] strptr
+; REQUIRED invoke  glListBase, [Wnd.nFontBase]
+proc View.DrawText ; 10 bytes better than separate call
+
+        pop     ebx ; ret adress
+        invoke  glRasterPos2i;, FIELD_W + 3 - 1 + 8, ebx;dword [esp + 4];
+        mov     dword [esp + 4], GL_UNSIGNED_BYTE
+        invoke  glCallLists
+        push    ebx
+
+        ret
+endp
+
+;#############FAST COLOR FUNCS ####################
+; - they aren't fast
+; - they aren't compact
+; - but they're used for fast color change (call w\out params)
+proc View.FastWhiteColor uses ecx ; "Fast" but BIG
+
+        ; set White color
+        mov     eax, 1.0
+        invoke  glColor3f, eax, eax, eax
+
+        ret
+endp
+
+proc View.FastYellowColor uses ecx
+
+        ; set White color
+        xor     edx, edx
+        mov     eax, 1.0
+        invoke  glColor3f, eax, eax, edx
+
+        ret
+endp
+
+
 ;#############DRAW FIGURE####################
 ; (TO DO THIS YOU MUST DO GlBegin GL_POINTS!!!!!!!!!!!!!)
 ; - fig    -- 2 bytes fig data
