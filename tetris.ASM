@@ -12,9 +12,6 @@ entry start
 ; consts
         SERVER_DEFINED              = TRUE
 
-        FIELD_W = 12; 12
-        FIELD_H = 23
-
         TRUE    = 1
         FALSE   = 0
 
@@ -215,11 +212,11 @@ proc WindowProc uses ebx esi edi,\
         fistp   [font_size]
 
         ; get sub rect sz
-        fld     [rect_size]
-        mov     [sub_rect_size], 5
-        fild    [sub_rect_size]
-        fdivp
-        fstp    [sub_rect_size]
+        ;fld     [rect_size]
+        ;mov     [sub_rect_size], SUBR_SZ_MOD
+        ;fild    [sub_rect_size]
+        ;fdivp
+        ;fstp    [sub_rect_size]
 
         ; get width ratio
         fild    [Wnd.rc.right]
@@ -238,6 +235,7 @@ proc WindowProc uses ebx esi edi,\
         ; create font "Lucida Console" sz
         invoke  CreateFontA,[font_size], ebx, ebx, ebx, 600,\
                           ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, Wnd.font_name
+        mov     [Wnd.hFont], eax
         invoke  SelectObject, [Wnd.hdc], eax
 
         invoke  glGenLists, NUM_OF_CHARACTERS
@@ -318,43 +316,114 @@ proc WindowProc uses ebx esi edi,\
         ; #####################
         ; # draw other fields #
         ; #####################
-        ; set projection
-        ;invoke  glMatrixMode, GL_PROJECTION
-        ;invoke  glLoadIdentity
+        ; get scale factor
+        xor     eax, eax ; pow
+        xor     ebx, ebx ; scale f
+        inc     ebx
+        xor     ecx, ecx ; loop ctr
+        mov     esi, Client.ClientsDataArr ;+ CLIENT_CL_RCD_LEN ; 2nd rcd (check if correspond to cur user?)
+  .ClientsDataArrLoop:
+        mov     dx, word [esi + NICKNAME_LEN] ; get ping
+        test    dx, dx
+        jz      .ClientsDataArrLoopEnd
+        js      .ClientsDataArrLoopNext
+        ; get rcd info
+        ; skip if cur user rcd
+        ; inc counter
+        inc     ecx
+        ; if ctr > pow
+        cmp     ecx, eax
+        jle     @F
+        ; yes -- set new pow
+        inc     ebx ; ??
+        mov     eax, ebx
+        mul     eax ; edx is corrypted here
+@@:
+   .ClientsDataArrLoopNext:
+        add     esi, CLIENT_CL_RCD_LEN
+        jmp     .ClientsDataArrLoop
+   .ClientsDataArrLoopEnd:
+        ; now scale factor is in ebx (int)
+        mov     dword [sub_scale], ebx  ; its buf (temp)
+        fild    dword [sub_scale]
+        ; next get sub_field_w
+        ;fld     qword [DFIELD_W]
+        ;fdiv    st0, st1
+        ;fstp    dword [sub_field_w]
+        ; get sub_field_h
+        ;fld     qword [DFIELD_H]
+        ;fdiv    st0, st1
+        ;fstp    dword [sub_field_h]
+        ; get rect sz here
+        fld     dword [rect_size]
+        fdiv    st0, st1
+        fst     dword [sub_rect_size]
+        fchs
+        fistp   dword [sub_font_sz]
+        ; get inverted scale
+        fst     dword [sub_inv_scale_f]
+        fstp    dword [sub_scale_f]
+        mov     eax, 7F000000H
+        sub     eax, dword [sub_inv_scale_f]
+        mov     dword [sub_inv_scale_f], eax
+        ; create font DUPLICATED TEST!!!
+        ;xor     ebx, ebx
+        ;delete old fonts
+        ;mov     eax, [sub_font_base]
+        ;test    eax, eax
+        ;jz      @F
+        ;invoke  glDeleteLists, eax, NUM_OF_CHARACTERS
+;@@:
+        ; create font "Lucida Console" sz
+        ;invoke  CreateFontA,[sub_font_sz], ebx, ebx, ebx, 600,\
+        ;                  ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, Wnd.font_name
+        ;invoke  SelectObject, [Wnd.hdc], eax
 
-        ;invoke  glOrtho, double [DFIELD_LW_SUB], double [DFIELD_W_SUB], double [DFIELD_H_SUB], double [DFIELD_LH_SUB], double -1.0, double 1.0
+        ;invoke  glGenLists, NUM_OF_CHARACTERS
+        ;mov     [sub_font_base], eax ; save place where bitmaps created
+      ;@@:
+        ; set font
+        ;invoke  wglUseFontBitmapsA, [Wnd.hdc], ebx, NUM_OF_CHARACTERS, eax ; if errors ret 0
+        ;invoke  glListBase, [sub_font_base]
+        ; we're ready!
+        ; translate draw point
+        invoke  glTranslatef, 22.0, 0.0, 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
+        ; scale
+        invoke  glScalef, [sub_inv_scale_f], [sub_inv_scale_f], 1.0
+        ; set draw
+        invoke  glPointSize, [sub_rect_size] ; pixels!!!!
+        ; Now loop through ClientsDataArr again!
+        xor     ebx, ebx ; loop ctr
+        mov     esi, Client.ClientsDataArr ;+ CLIENT_CL_RCD_LEN ; 2nd rcd (check if correspond to cur user?)
+  .ClientsDataArrLoop2:
+        mov     dx, word [esi + NICKNAME_LEN] ; get ping
+        test    dx, dx
+        jz      .ClientsDataArrLoopEnd2
+        js      .ClientsDataArrLoopNext2
+        ; get rcd info
+        ; skip if cur user rcd
+        ; draw user
+        stdcall View.DrawGame ; loop ctr in ebx, pos in esi+2 (save it)
+        ; inc counter
+        inc     ebx
+@@:
+   .ClientsDataArrLoopNext2:
+        add     esi, CLIENT_CL_RCD_LEN
+        jmp     .ClientsDataArrLoop2
+   .ClientsDataArrLoopEnd2:
+        ; Scale Back
+        invoke  glScalef, [sub_scale_f], [sub_scale_f], 1.0
+        ; translate draw point back
+        invoke  glTranslatef, -22.0, 0.0, 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
 
-        ;invoke  glMatrixMode, GL_MODELVIEW
-        ; set sz
-        ;invoke  glPointSize, [sub_rect_size] ; pixels!!!!
-        ; draw
-        ;invoke  glBegin, GL_POINTS
-        ; draw field
-        ;mov     eax, Game.BlocksArr
-        ;stdcall View.DrawField
-        ; draw figure figure
-        ;mov     bx,  word [Game.CurFig]; figure
-        ;movzx   esi, word [Game.FigX]  ; X
-        ;push    bx esi ; save
-        ;movzx   edi, word [Game.FigPreviewY]  ; Y
-        ;stdcall View.DrawFigure, 2
-        ; draw figure
-        ;pop     esi bx
-        ;movzx   edi, word [Game.FigY]  ; Y
-        ;movzx   eax, byte [Game.CurFigColor]; movzx
-        ;stdcall View.DrawFigure, eax
-        ; .........
-        ;invoke  glEnd
+        ; SET BACK FONT TEST!!!
+        ;xor     ebx, ebx
+        ;invoke  SelectObject, [Wnd.hdc], [Wnd.hFont]
+        ;invoke  wglUseFontBitmapsA, [Wnd.hdc], ebx, NUM_OF_CHARACTERS, [Wnd.nFontBase] ; if errors ret 0
+
+
         ; #####################
-        ; set projection back
-        ;invoke  glMatrixMode, GL_PROJECTION
-        ;invoke  glLoadIdentity
-
-        ;invoke  glOrtho, double 0.0, double [DFIELD_W], double [DFIELD_H], double 0.0, double -1.0, double 1.0
-
-        ;invoke  glMatrixMode, GL_MODELVIEW
-        ; othre
-
+        ; set rect sz back
         invoke  glPointSize, [rect_size] ; pixels!!!!
 
         ; draw
@@ -704,7 +773,8 @@ import opengl,\
          wglMakeCurrent,'wglMakeCurrent',\
          wglUseFontBitmapsA,'wglUseFontBitmapsA',\
          glListBase, 'glListBase',\
-         glRasterPos2f, 'glRasterPos2f'
+         glRasterPos2f, 'glRasterPos2f',\
+         glScalef, 'glScalef'
 import ws2_32,\
         WSAStartup, 'WSAStartup',\
         socket, 'socket',\

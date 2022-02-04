@@ -1,16 +1,22 @@
         Wnd.Text        db 'Launch error :/', 0
 
         Wnd.font_name   db "Lucida Sans Typewriter", 0
+        Wnd.hFont       dd       ?
 
         Wnd.class       TCHAR    'FASMW32',0
         Wnd.title       TCHAR    'TETRIS WIN ASM by Artiom Drankevich',0
 
         Wnd.style       equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 
-
+        ; == FIELD SZ
+        FIELD_W = 12; 12
+        FIELD_H = 23
+        DFIELD_W_CONST = 13.0
+        DFIELD_H_CONST = 24.0
         ;========
-        DFIELD_H        dq      24.0 ; FIELD_H + 1
-        RECT_MODIFIER   dq      0.90
+        DFIELD_H         dq      DFIELD_H_CONST ; FIELD_H + 1
+        sub_DFIELD_W     dq      DFIELD_W_CONST
+        RECT_MODIFIER    dq      0.90
         ;DFIELD_W        dq      ?
         ;clock           dd      ?
         ;rect_size       dd      ?
@@ -133,10 +139,15 @@ Unitialized_mem:
         rect_size                       dd      ? ; initialization
         ; sub draw data
         sub_rect_size                   dd      ?
-        ;SUB_DFIELD_W                    dq      ?
-        ;SUB_DFIELD_H                    dq      ?
-        ;SUB_DFIELD_LH                   dq      ?
-        ;SUB_DFIELD_LW                   dq      ?
+        sub_inv_x_pos                   dd      ?
+        sub_inv_y_pos                   dd      ?
+        sub_scale_f                     dd      ?
+        sub_inv_scale_f                 dd      ?
+        sub_scale                       dd      ?
+        sub_x_pos                       dd      ?
+        sub_y_pos                       dd      ?
+        sub_font_sz                     dd      ?
+        sub_font_base                   dd      ?
 
         ; # MESSAGE CODES
         MSG_CODE_BASE_SERVER            = $F000
@@ -282,10 +293,10 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
 
         ; Filled up with zeros!
         CLIENT_MAX_CONN                 = 64
-        CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 ;+ FILE_SZ_TO_RCV ; NICK + "word" ping
+        CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 + FILE_SZ_TO_WRITE ; NICK + "word" ping
         Client.ClientsDataArr           db     (CLIENT_MAX_CONN) * (CLIENT_CL_RCD_LEN) dup ? ; temp nick name usage
 
-        UNINI_MEM_LEN                   = $ - Unitialized_mem
+        UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when started so its protected from page allocation error
 
         CLIENT_ADAPTERS_BUF_MAX         = 1024
         Client.IPAddrTableBuf           db     (CLIENT_ADAPTERS_BUF_MAX) dup ?
@@ -309,7 +320,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 7
+        GAME_V_MINOR                    = 8
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

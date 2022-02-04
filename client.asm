@@ -316,15 +316,8 @@ proc Client.ThRecv,\
         repe cmpsb
         pop     ecx edi esi
         mov     ax, word [edi + NICKNAME_LEN]; get PING
-        jne     .StrNotEqual ; if str not equal (from repe cmpsb)
-        ; rcd founded -- inc "ping" (if < MAX)
-        ;cmp     ax, 10 ;MAX
-        ;jge     @F
-        ; inc
-        mov     word [edi + NICKNAME_LEN], 10; SET MAX
-   ;@@:
-        ; exit
-        jmp     .EndPingMsg
+        je      .StrFounded ;(corresponding rcd founded -- inc ping)
+        ; if str not equal (from repe cmpsb)
    .StrNotEqual:
         cmp     ax, 0
         ; ckeck if ping = zero -- if yes -- founded
@@ -347,9 +340,18 @@ proc Client.ThRecv,\
         ; yes
         mov     edi, ebx ; get first free place
    @@:
-        ; copy str
+  .StrFounded:
+        ; copy nick str
         rep movsb
-        mov     word [edi], 10 ; set base (MAX) ping
+        ; set base (MAX) ping
+        mov     word [edi], 10
+        ; copy message (game frame)
+        mov     esi, Client.recvbuff + (GameBuffer - GameMessage)
+        inc     edi
+        inc     edi
+        mov     ecx, FILE_SZ_TO_WRITE
+        rep movsb
+        ;
    .EndPingMsg:
         jmp     .EndMessage
    ;### ; ====================== (NEXT MESSAGES PROTECTED FROM SELFSEND)

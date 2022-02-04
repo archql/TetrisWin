@@ -266,6 +266,112 @@ proc View.DrawGlow
         ret
 endp
 
+;#############DRAW GAME######################
+; constts:
+SUBR_SZ_MOD = 5
+DSUBR_SZ_MOD = 5.0
+; number at
+proc View.DrawGame uses ebx ;
+
+        ; num in ebx, so
+        xor     edx, edx
+        mov     eax, dword [sub_scale] ; get scale f
+        xchg    eax, ebx
+        div     ebx
+        ; now edx is X pos, eax is Y pos
+        ; get 'em
+        ; (x)
+        mov     dword [sub_x_pos], edx
+        fild    dword [sub_x_pos]
+        fld     qword [sub_DFIELD_W]
+        fmulp   st1, st0
+        fst     dword [sub_x_pos]
+        fchs
+        fstp    dword [sub_inv_x_pos]
+        ; (y)
+        mov     dword [sub_y_pos], eax
+        fild    dword [sub_y_pos]
+        fld     qword [DFIELD_H]
+        fmulp   st1, st0
+        fst     dword [sub_y_pos]
+        fchs
+        fstp    dword [sub_inv_y_pos]
+        ; translate matrix
+        invoke  glTranslatef, [sub_x_pos], [sub_y_pos], 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
+
+        ; set draw
+        invoke  glBegin, GL_POINTS
+        ; set base pos
+        mov     eax, esi ; base pos
+        add     eax, NICKNAME_LEN + 2 + (Game.BlocksArr - GameBuffer)
+        ; draw
+        stdcall View.DrawField
+
+        ; draw fig
+        push    esi
+        mov     ecx, esi
+        ; draw figure figure
+        mov     bx,  word [ecx + NICKNAME_LEN + 2 + (Game.CurFig      - GameBuffer)]  ; figure
+        movzx   esi, word [ecx + NICKNAME_LEN + 2 + (Game.FigX        - GameBuffer)]  ; X
+        movzx   edi, word [ecx + NICKNAME_LEN + 2 + (Game.FigY        - GameBuffer)]  ; Y
+        movzx   eax, byte [ecx + NICKNAME_LEN + 2 + (Game.CurFigColor - GameBuffer)]  ; movzx
+        stdcall View.DrawFigure, eax
+        ; restore
+        pop     esi
+
+        ; end draw
+        invoke  glEnd
+
+        ; DRAW text
+        ;mov     eax, esi ; base pos
+        ;add     eax, NICKNAME_LEN + 2 + (Game.NickName - GameBuffer)
+        ;stdcall View.DrawText, (FIELD_W - NICKNAME_LEN) / 2 + 2, 1, NICKNAME_LEN , eax, eax;Str.Score
+        ; DRAW text
+        ;mov     eax, esi ; base pos
+        ;add     eax, NICKNAME_LEN + 2 + (Str.Score - GameBuffer)
+        ;stdcall View.DrawText, (FIELD_W - SCOLE_LEN_CONST) / 2 + 2, 2, SCOLE_LEN_CONST , eax, eax;Str.Score
+        ; DRAW text
+        ;mov     eax, esi ; base pos
+        ;add     eax, NICKNAME_LEN + 2 + (Str.Score - GameBuffer)
+        ;stdcall View.DrawText, (FIELD_W - SCOLE_LEN_CONST) / 2 + 2, 2, SCOLE_LEN_CONST , eax, eax;Str.Score
+        ; Translate back
+        invoke  glTranslatef, [sub_inv_x_pos], [sub_inv_y_pos], 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
+
+        ; Draw it at pos of LB: x = FIELD_W + 3 - 1 + 8
+        ; x cord = i %  2
+        ; y cord = i >> 2
+        ; set projection
+        ;invoke  glMatrixMode, GL_PROJECTION
+        ;invoke  glLoadIdentity
+
+        ;invoke  glOrtho, double [DFIELD_LW_SUB], double [DFIELD_W_SUB], double [DFIELD_H_SUB], double [DFIELD_LH_SUB], double -1.0, double 1.0
+
+        ;invoke  glMatrixMode, GL_MODELVIEW
+        ; set sz
+        ;invoke  glPointSize, [sub_rect_size] ; pixels!!!!
+        ; draw
+        ;invoke  glBegin, GL_POINTS
+        ; draw field
+        ;mov     eax, Game.BlocksArr
+        ;stdcall View.DrawField
+        ; draw figure figure
+        ;mov     bx,  word [Game.CurFig]; figure
+        ;movzx   esi, word [Game.FigX]  ; X
+        ;push    bx esi ; save
+        ;movzx   edi, word [Game.FigPreviewY]  ; Y
+        ;stdcall View.DrawFigure, 2
+        ; draw figure
+        ;pop     esi bx
+        ;movzx   edi, word [Game.FigY]  ; Y
+        ;movzx   eax, byte [Game.CurFigColor]; movzx
+        ;stdcall View.DrawFigure, eax
+        ; .........
+        ;invoke  glEnd
+
+
+        ret
+endp
+
 
 ;#############DRAW FIGURE####################
 ; (TO DO THIS YOU MUST DO GlBegin GL_POINTS!!!!!!!!!!!!!)
