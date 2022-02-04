@@ -205,7 +205,7 @@ MESSAGE_START_GAME_LEN =  ($ - GameMessage)
 
         Game.VersionInfo                dd      ?
         Game.VersionCode                dd      ?
-        Game.Reserved                   dw      15 dup ?
+        Game.Reserved                   dw      16 dup ?
 FILE_SZ_TO_WRITE = ($ - GameBuffer)
 FILE_SZ_TO_RCV   = ($ - GameMessage)
 
@@ -282,7 +282,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
 
         ; Filled up with zeros!
         CLIENT_MAX_CONN                 = 64
-        CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 ; NICK + "word" ping
+        CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 ;+ FILE_SZ_TO_RCV ; NICK + "word" ping
         Client.ClientsDataArr           db     (CLIENT_MAX_CONN) * (CLIENT_CL_RCD_LEN) dup ? ; temp nick name usage
 
         UNINI_MEM_LEN                   = $ - Unitialized_mem
@@ -309,7 +309,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 6
+        GAME_V_MINOR                    = 7
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

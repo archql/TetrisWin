@@ -103,6 +103,11 @@ start:
         jz      creation_error; err_reg_class
         mov     [Wnd.hwnd], eax
 
+        if (SERVER_DEFINED)
+        ; create critical section to protect write-send (for multithreaded app)
+        invoke  InitializeCriticalSectionAndSpinCount, Client.CritSection, 0x400 ; 0x400 tries to capture crit section b4 go to core speed
+        end if
+
         ; call music ini
         stdcall SoundPlayer.Ini
         ; call game initialization
@@ -296,7 +301,7 @@ proc WindowProc uses ebx esi edi,\
         add     [Game.TicksPlayed], eax
         ; call game update
         mov     eax, 7; key with ID 7 is undefined
-        stdcall Game.KeyEvent
+        stdcall Game.KeyEvent ; Safe call?
 @@:
 .animation:
         ; define animation
@@ -309,8 +314,6 @@ proc WindowProc uses ebx esi edi,\
       ;.animation_ok:
         invoke  glClear,GL_COLOR_BUFFER_BIT
         invoke  glLoadIdentity
-
-
 
         ; #####################
         ; # draw other fields #
@@ -380,107 +383,11 @@ proc WindowProc uses ebx esi edi,\
         mov     esi, FIELD_W + 3; X
         mov     edi, 2  +  4  +  2 ; Y
         stdcall View.DrawFigure, 3;//????
-
+        ; end draw points
         invoke  glEnd
-        ; setup rotation
-        fld     [Glow.AnimAngle]
-        fld     [Glow.AnimDeltaAngle]
-        faddp
-        fstp    [Glow.AnimAngle]
-        ; set Special color
-        mov     eax, 0.9
-        ;mov     edi, [Settings.AllocatedMem] ; where mem allocated?
-        invoke  glColor3f, eax, eax, eax
-        ; draw special effect
-        mov     ecx, FIELD_H-1
-     .glow_draw:
-        movzx  ebx, byte [ecx + Glow.Arr] ;AllocatedMem.glowArr
-        ;mov     ebx, 5; tmp
-        cmp    ebx, 0
-        je     .glow_skip
-        ; dec effect
-        dec    byte [ecx + Glow.Arr]  ; where mem allocated?
-        ; check if effect is too big
-        cmp    ebx, GLOW_TIME_TICKS+1
-        jg     .glow_skip
-        cmp    ebx, GLOW_TIME_TICKS+1
-        jl     @F
-        ; equal -- so delete line (uses eax, edi, edx)
 
-        mov     edi, Game.BlocksArr + 1
-        mov     dx, FIELD_W
-        mov     eax, ecx
-        dec     eax
-        mul     dx ; ax is cur cord
-        add     edi, eax
-
-        ; clear line
-        xor     eax, eax
-        push    ecx
-        mov     ecx, FIELD_W - 2
-        rep stosb
-        pop     ecx
-
-@@:
-        ; DO EFFECT
-        push   ebx ; copy for fld mul (sp-=4)
-        ; count cur effect sz
-        fld    [Glow.SZ_delta]
-        fild   dword [esp]
-        fmulp  st1, st0
-        fst    dword [Glow.right]
-        fchs
-        fstp   dword [Glow.left]
-        ; load it to regs
-        mov    esi, [Glow.right]
-        mov    edi, [Glow.left]
-
-        ; load ebx to fpu (Y cord)
-        mov    dword [esp], ecx; load Y cord
-        fild   dword [esp]     ; load Y cord to FPU
-        fstp   dword [esp]     ; convert to float Y cord
-
-        sub     esp, 4 ; reserve place on stack to float X cord  (sp-=4)
-
-        push    ecx            ; (sp-=4)
-        mov     ecx, FIELD_W - 2
-     .inner_glow_draw:
-        push    ecx            ; (sp-=4)
-        ; timed sol
-        inc     ecx
-        push    ecx
-        ; load X cord (ecx) to FPU
-        fild    dword [esp]    ; cur int X cord
-        add     esp, 4         ; reset stack (temp)
-        fstp    dword [esp + 8]
-
-        ; test rotating rect draw
-        invoke  glPushMatrix;
-        invoke  glTranslatef, dword [esp + 16], dword [esp + 16], 0.0  ;  esp -= 4 happened 2xtimes
-        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 5.0;
-        invoke  glBegin, GL_QUADS
-
-                invoke  glVertex2f, edi, edi
-                invoke  glVertex2f, esi, edi
-                invoke  glVertex2f, esi, esi
-                invoke  glVertex2f, edi, esi
-
-        invoke  glEnd
-        invoke  glPopMatrix
-
-        ; load loop cntr (X cord)
-        pop     ecx    ;(sp+=4)
-        loop    .inner_glow_draw
-        ; load loop cntr (Y cord)
-        pop     ecx    ;(sp+=4)
-        ; free stack (from reserved for X and Y cord)
-        add     esp, 8 ;(sp+=8)
-        ; go next
-      .glow_skip:
-        dec     ecx
-        test    ecx, ecx
-        jnz  .glow_draw
-        ; end test glow draw
+        ; draw glow
+        stdcall View.DrawGlow
 
         ; BEGIN text draw
         invoke  glListBase, [Wnd.nFontBase]
@@ -496,85 +403,7 @@ proc WindowProc uses ebx esi edi,\
         ; DRAW text SCOREBOARD
         stdcall View.DrawText, FIELD_W + 3 - 1 + 8, 2        , LB_ISTR_RCD_LEN  , eax, Str.Scoreboard
         ; DRAW Scoreboard
-        ; first -- alloc mem for flag (if cur usr founded)
-        xor     eax, eax
-        inc     eax
-        push    eax
-        ; 1st: find amount of actual strings
-        mov     edi, Settings.LeaderBoardArr
-        mov     esi, edi
-        add     esi, (1 shl LB_ISTR_RCD_LEN_POW) - LB_PRIO_RCD_LEN
-        mov     ecx, LB_BASE_RCDS_AMOUNT - 1 ; ALG MAX 255
-.DrawScoreboardLoop:
-        ; set base color
-        stdcall View.FastWhiteColor
-        ; get rcd score & place
-        mov     ebx, [esi]
-        push    ebx
-        ; save base pos & count new
-        xor     bx, bx   ;and     ebx, $FF'FF'00'00 (same)
-        shr     ebx, 16 - LB_ISTR_RCD_LEN_POW; got real place
-        push    edi
-        add     edi, ebx
-
-        ; check if this rcd correspond to cur user
-        push    esi edi ecx
-        ;xor     ecx, ecx
-        ;inc     ecx
-        ;inc     ecx
-        mov     ecx, NICKNAME_LEN
-        mov     esi, Game.NickName
-        add     edi, 3 ; offset
-        rep cmpsb
-        jne     @F
-        ;HIGHLIGHT SOMEWAY USER RCD
-        stdcall View.FastYellowColor
-        ; set flag
-        mov     byte [esp + 20], 0 ; flag found
-@@:
-        pop     ecx edi esi
-        ; check if last rcd & cur user rcd not found
-        cmp     cl, byte [esp + 8] ; flag found
-        jnz     @F
-        mov     byte [esp + 8 + 1], 1 ; flag cur user isnt visible
-        inc     ecx
-        jmp     .loopSkipLine
-@@:
-        ; check if zero rcd
-        ;mov     bx, word [esp + 4] ; ebx
-        ;test    bx, bx
-        ;jz      .loopSkipLine
-        ; DRAW
-.drawLine:
-        ; count Y pos
-        push    ecx; save loop ctr
-        xchg    ebx, ecx
-        neg     ebx
-        add     ebx, LB_BASE_RCDS_AMOUNT
-        ; check if cur place > 15 (can display only 15)
-        mov     word [edi], '##'
-        cmp     byte [esp + 12 + 1], 0
-        jg      @F
-        ; print cur place
-        cinvoke wsprintfA, edi, Settings.PlaceFormat, ebx; ebx
-@@:
-        ; mov Y cord
-        inc     ebx;, 2 ; 3 - 1
-        inc     ebx
-
-        ; EBX IS CHANGED!!!
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, ebx, LB_ISTR_RCD_LEN, eax, edi     ; par eax is ANY
-
-        pop     ecx ; loop ctr
-
-.loopSkipLine:
-        pop     edi ebx
-        add     esi, (1 shl LB_ISTR_RCD_LEN_POW); LEN_OF_LB_INFO_RCD
-        loop    .DrawScoreboardLoop
-        ; reset stack
-        pop     eax
-        ; reset color
-        stdcall View.FastWhiteColor
+        stdcall Client.ThSafeCall, View.DrawLeaderboard
 
         ; Draw CurNickName
         stdcall View.DrawText, FIELD_W + 3 - 1 + 8, FIELD_H - 2, 8, eax, Game.NickName
@@ -606,33 +435,11 @@ proc WindowProc uses ebx esi edi,\
         movzx   eax, word [Client.State]
         mul     dx
         add     ebx, eax
-
         ; DRAW text connection
         stdcall View.DrawText, FIELD_W + 2, FIELD_H, CLIENT_STR_LEN, eax, ebx
-        ; DRAW text connections
-        mov     esi, Client.ClientsDataArr
-        mov     ecx, 2 ; loop ctr
-.printConnectionsLoop:
-        ; save loop ctr
-        push    ecx
-        ; check if not null (ping > 0)
-        mov     bx, word [esi + NICKNAME_LEN]
-        cmp     bx, 0
-        jle     @F
-        ; DRAW text connection
-        ; TEMP
-        push    ebx
-        stdcall View.DrawText, FIELD_W + 2 + 8 + 11, ecx, NICKNAME_LEN, eax, esi
-        pop     ebx
-        ; inc ctr
-        inc     dword [esp]
-@@:
-        add     esi, CLIENT_CL_RCD_LEN
-        ; restore loop ctr
-        pop     ecx
-        ; test  "ping" ; WARN IF OVERFLOW (MAX RCD 64)
-        test    bx, bx
-        jnz     .printConnectionsLoop
+
+        ; DRAW connections
+        stdcall View.DrawConnections
         end if
 
         cmp     [Game.Playing], 1
@@ -779,6 +586,9 @@ proc WindowProc uses ebx esi edi,\
         ; server conn
         if (SERVER_DEFINED)
         stdcall Client.Destroy
+        ; del critical section
+        invoke  DeleteCriticalSection, Client.CritSection
+        ; end if
         end if
         ; save last logged nickname?
         ; music

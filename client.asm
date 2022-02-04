@@ -19,16 +19,19 @@ SO_REUSEADDR                = 0x0004
 
 ; # send RequestGame msg
 proc Client.RequestGame ; Can be bugged call (2 threads using same mem)
+
+        cmp     [Client.State], CLIENT_STATE_REGISTERED
+        jne      @F ; failed to rg
         ; reset random
         stdcall Random.Initialize
         ; send start game signal
-        mov     edi, MESSAGE_BASE_LEN
+        mov     edi, MESSAGE_START_GAME_LEN
         mov     ebx, MSG_CODE_START_GAME ; msg len
         stdcall Client.ThSafeCall, Client.Broadcast
         ; start game (IF NOT SELF ACTIVATION)
         ;stdcall Game.Initialize
         ;mov     [Game.Pause], 0
-
+@@:
         ret
 endp
 
@@ -105,8 +108,12 @@ endp
 ; # Safe function
 ; - [in, stack] ptr to function
 proc Client.ThSafeCall ; uses as params ebx esi edi
+        ; save all base rgs
+        push    eax ecx edx
         ; enter critical section
         invoke  EnterCriticalSection, Client.CritSection
+        ; restore rgs
+        pop     edx ecx eax
         ; call
         stdcall dword [esp + 4]
         ; leave crit section
@@ -175,9 +182,6 @@ proc Client.Init
         test    eax, eax
         jnz     .ErrorConnect ;!= NO_ERROR = 0
         ; Yess, connection Ready!
-
-        ; create critical section to protect write-send
-        invoke  InitializeCriticalSectionAndSpinCount, Client.CritSection, 0x400 ; 0x400 tries to capture crit section b4 go to core speed
 
         ; start || thread (Recv)
         xor     eax, eax
@@ -428,6 +432,8 @@ proc Client.ThRecv,\
         mov     dword [Random.dPrewNumber], eax
         mov     dword [Random.dSeed], eax
         mov     [Game.Playing], TRUE ; To prevent activalion from next messages
+        ; clear field
+        stdcall Client.ThSafeCall, Game.IniField
         ; start game
         stdcall Client.ThSafeCall, Game.Initialize ; USES GAME MEM -- PROPERTY OF MAIN THREAD!!! CONFLICT!!!
         mov     [Game.Pause], 0
@@ -495,8 +501,6 @@ proc Client.Destroy
         ; stop thread
         mov     [Client.ThRecv.thStop], TRUE
         mov     [Client.ThSend.thStop], TRUE
-        ; del crit section
-        invoke  DeleteCriticalSection, Client.CritSection
         ; close if need
         invoke  closesocket, [Client.psocket]
         invoke  WSACleanup
