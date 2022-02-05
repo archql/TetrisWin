@@ -1,5 +1,5 @@
         TOP_LINE                = 0;1
-        FIG_START_Y             = -2
+        FIG_START_Y             = -1;-2
 
         SPECIAL_PRICE           = 100
 

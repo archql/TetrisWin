@@ -319,11 +319,11 @@ proc Client.ThRecv,\
         je      .StrFounded ;(corresponding rcd founded -- inc ping)
         ; if str not equal (from repe cmpsb)
    .StrNotEqual:
-        cmp     ax, 0
+        test    ax, ax
         ; ckeck if ping = zero -- if yes -- founded
-        je      .FoundedFree
+        jz      .FoundedFree
         ; ckeck if ping < zero -- if yes -- mark as first free place
-        jg      @F ; if greater than zero -- not free
+        js      @F ; if greater than zero -- not free
         ; below zero -- freed place
         test    ebx, ebx ; if its first?
         jnz     @F

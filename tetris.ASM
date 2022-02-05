@@ -209,14 +209,7 @@ proc WindowProc uses ebx esi edi,\
         frndint  ; round
         fst     [rect_size]
         fchs
-        fistp   [font_size]
-
-        ; get sub rect sz
-        ;fld     [rect_size]
-        ;mov     [sub_rect_size], SUBR_SZ_MOD
-        ;fild    [sub_rect_size]
-        ;fdivp
-        ;fstp    [sub_rect_size]
+        fistp   [Wnd.fontSz]
 
         ; get width ratio
         fild    [Wnd.rc.right]
@@ -227,21 +220,9 @@ proc WindowProc uses ebx esi edi,\
         ; get result
         fstp    [DFIELD_W]
 
-        ; set font
-        xor     ebx, ebx
-
-        ;delete old fonts
-        invoke  glDeleteLists, ebx, NUM_OF_CHARACTERS
-        ; create font "Lucida Console" sz
-        invoke  CreateFontA,[font_size], ebx, ebx, ebx, 600,\
-                          ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, Wnd.font_name
-        mov     [Wnd.hFont], eax
-        invoke  SelectObject, [Wnd.hdc], eax
-
-        invoke  glGenLists, NUM_OF_CHARACTERS
-        mov     [Wnd.nFontBase], eax ; save place where bitmaps created
-        invoke  wglUseFontBitmapsA, [Wnd.hdc], ebx, NUM_OF_CHARACTERS, eax ; if errors ret 0
-        ;invoke  GetLastError
+        ; create font DUPLICATED TEST!!!
+        mov     esi, Wnd.font; ptr to font struct
+        stdcall View.CreateFont
 
         ; set projection
         invoke  glMatrixMode, GL_PROJECTION
@@ -313,9 +294,14 @@ proc WindowProc uses ebx esi edi,\
         invoke  glClear,GL_COLOR_BUFFER_BIT
         invoke  glLoadIdentity
 
+        cmp     [View.MenuChosen], 0
+        je      .ViewMenu_1
+
         ; #####################
+        ; #     -MENU #2-     #
         ; # draw other fields #
         ; #####################
+   .ViewMenu_2:
         ; get scale factor
         xor     eax, eax ; pow
         xor     ebx, ebx ; scale f
@@ -344,20 +330,15 @@ proc WindowProc uses ebx esi edi,\
         jmp     .ClientsDataArrLoop
    .ClientsDataArrLoopEnd:
         ; now scale factor is in ebx (int)
+        cmp     dword [sub_scale], ebx
+        je      .PrevScaleIsOk
         mov     dword [sub_scale], ebx  ; its buf (temp)
         fild    dword [sub_scale]
-        ; next get sub_field_w
-        ;fld     qword [DFIELD_W]
-        ;fdiv    st0, st1
-        ;fstp    dword [sub_field_w]
-        ; get sub_field_h
-        ;fld     qword [DFIELD_H]
-        ;fdiv    st0, st1
-        ;fstp    dword [sub_field_h]
         ; get rect sz here
         fld     dword [rect_size]
         fdiv    st0, st1
         fst     dword [sub_rect_size]
+        ; get font sz
         fchs
         fistp   dword [sub_font_sz]
         ; get inverted scale
@@ -367,25 +348,13 @@ proc WindowProc uses ebx esi edi,\
         sub     eax, dword [sub_inv_scale_f]
         mov     dword [sub_inv_scale_f], eax
         ; create font DUPLICATED TEST!!!
-        ;xor     ebx, ebx
-        ;delete old fonts
-        ;mov     eax, [sub_font_base]
-        ;test    eax, eax
-        ;jz      @F
-        ;invoke  glDeleteLists, eax, NUM_OF_CHARACTERS
-;@@:
-        ; create font "Lucida Console" sz
-        ;invoke  CreateFontA,[sub_font_sz], ebx, ebx, ebx, 600,\
-        ;                  ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, Wnd.font_name
-        ;invoke  SelectObject, [Wnd.hdc], eax
+        mov     esi, sub_font; ptr to font struct
+        stdcall View.CreateFont
 
-        ;invoke  glGenLists, NUM_OF_CHARACTERS
-        ;mov     [sub_font_base], eax ; save place where bitmaps created
-      ;@@:
-        ; set font
-        ;invoke  wglUseFontBitmapsA, [Wnd.hdc], ebx, NUM_OF_CHARACTERS, eax ; if errors ret 0
-        ;invoke  glListBase, [sub_font_base]
         ; we're ready!
+.PrevScaleIsOk:
+        ; set font
+        invoke  glListBase, [sub_font_base]
         ; translate draw point
         invoke  glTranslatef, 22.0, 0.0, 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
         ; scale
@@ -415,16 +384,41 @@ proc WindowProc uses ebx esi edi,\
         invoke  glScalef, [sub_scale_f], [sub_scale_f], 1.0
         ; translate draw point back
         invoke  glTranslatef, -22.0, 0.0, 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
-
-        ; SET BACK FONT TEST!!!
-        ;xor     ebx, ebx
-        ;invoke  SelectObject, [Wnd.hdc], [Wnd.hFont]
-        ;invoke  wglUseFontBitmapsA, [Wnd.hdc], ebx, NUM_OF_CHARACTERS, [Wnd.nFontBase] ; if errors ret 0
-
-
-        ; #####################
         ; set rect sz back
         invoke  glPointSize, [rect_size] ; pixels!!!!
+        ; Return text draw
+        invoke  glListBase, [Wnd.nFontBase]
+
+        jmp     .ViewMenu_End
+        ; #####################
+        ; #     -MENU #1-     #
+        ; # draw leaderboard  #
+        ; #####################
+  .ViewMenu_1:
+        ; set rect sz
+        invoke  glPointSize, [rect_size] ; pixels!!!!
+        ; text draw set
+        invoke  glListBase, [Wnd.nFontBase]
+        ; DRAW text SCOREBOARD
+        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, 2        , LB_ISTR_RCD_LEN  , eax, Str.Scoreboard
+        ; DRAW Scoreboard
+        stdcall Client.ThSafeCall, View.DrawLeaderboard
+        ; DRAW connections
+        if (SERVER_DEFINED)
+        stdcall View.DrawConnections
+        end if
+   .ViewMenu_End:
+        ;#######################
+        if (SERVER_DEFINED)
+        ; check connection
+        mov     ebx, Client.StrError
+        mov     dx,  CLIENT_STR_LEN
+        movzx   eax, word [Client.State]
+        mul     dx
+        add     ebx, eax
+        ; DRAW text connection
+        stdcall View.DrawText, FIELD_W + 3, FIELD_H, CLIENT_STR_LEN, eax, ebx
+        end if
 
         ; draw
         invoke  glBegin, GL_POINTS
@@ -458,26 +452,17 @@ proc WindowProc uses ebx esi edi,\
         ; draw glow
         stdcall View.DrawGlow
 
-        ; BEGIN text draw
-        invoke  glListBase, [Wnd.nFontBase]
         ; draw text NEXT FIG
         stdcall View.DrawText, FIELD_W + 3 - 1, 2            , Str.NextFig.Len  , eax, Str.NextFig
         ; draw text HOLDED FIG
         stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 6        , Str.HoldedFig.Len, eax, Str.HoldedFig
         ; DRAW text SCORE
-        stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 4 + 6 + 2, SCOLE_LEN_CONST  , eax, Str.Score
+        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 2, SCOLE_LEN_CONST  , eax, Str.Score
         ; DRAW text SCORE HIGH
-        stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 4 + 6 + 3, SCOLE_LEN_CONST  , eax, Str.HighScore
-
-        ; DRAW text SCOREBOARD
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, 2        , LB_ISTR_RCD_LEN  , eax, Str.Scoreboard
-        ; DRAW Scoreboard
-        stdcall Client.ThSafeCall, View.DrawLeaderboard
+        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 3, SCOLE_LEN_CONST  , eax, Str.HighScore
 
         ; Draw CurNickName
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, FIELD_H - 2, 8, eax, Game.NickName
-
-
+        stdcall View.DrawText, FIELD_W + 3 - 1 + 1, FIELD_H - 3, 8, eax, Game.NickName
         ; Draw TmpNickName
         mov     ebx, Settings.strTempNickNameBlocked
         ; If setup mode activated
@@ -489,27 +474,13 @@ proc WindowProc uses ebx esi edi,\
         mov     eax, 1.0
         invoke  glColor3f, eax, ebx, ebx
         ; Draw HighLight
-        invoke  glRasterPos2f, 22.0 , 22.7 ;FIELD_W + 3 - 1 + 8, FIELD_H - 1 + 1;
+        invoke  glRasterPos2f, 15.0 , 22.7 ;FIELD_W + 3 - 1 , FIELD_H - 1 + 1;
         invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickNameHighlight
         ; set Special color
         stdcall View.FastWhiteColor
 @@:
         ; Draw Main Str
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, FIELD_H - 1, 8, eax, ebx
-
-        if (SERVER_DEFINED)
-        ; check connection
-        mov     ebx, Client.StrError
-        mov     dx, 11
-        movzx   eax, word [Client.State]
-        mul     dx
-        add     ebx, eax
-        ; DRAW text connection
-        stdcall View.DrawText, FIELD_W + 2, FIELD_H, CLIENT_STR_LEN, eax, ebx
-
-        ; DRAW connections
-        stdcall View.DrawConnections
-        end if
+        stdcall View.DrawText, FIELD_W + 3 - 1 + 1, FIELD_H - 2, 8, eax, ebx
 
         cmp     [Game.Playing], 1
         je      @F
@@ -566,6 +537,13 @@ proc WindowProc uses ebx esi edi,\
         xor     [Game.Pause], 1
 @@:
         if (SERVER_DEFINED)
+        ; MENU CHANGE VIEW
+        cmp     eax, VK_F2
+        jne     @F
+        ;mov     ax, [View.MenuChosen]
+        inc     word [View.MenuChosen]
+        and     word [View.MenuChosen], 1; Menus amount
+@@:
         ; CLIENT START
         cmp     eax, VK_F3
         jne     @F

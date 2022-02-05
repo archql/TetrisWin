@@ -322,14 +322,17 @@ proc View.DrawGame uses ebx ;
         ; end draw
         invoke  glEnd
 
+        ; set clr
+        stdcall View.FastWhiteColor
+
         ; DRAW text
-        ;mov     eax, esi ; base pos
-        ;add     eax, NICKNAME_LEN + 2 + (Game.NickName - GameBuffer)
-        ;stdcall View.DrawText, (FIELD_W - NICKNAME_LEN) / 2 + 2, 1, NICKNAME_LEN , eax, eax;Str.Score
+        mov     eax, esi ; base pos
+        add     eax, NICKNAME_LEN + 2 + (Game.NickName - GameBuffer)
+        stdcall View.DrawText, (FIELD_W - NICKNAME_LEN) / 2 + 2, 1, NICKNAME_LEN , eax, eax;Str.Score
         ; DRAW text
-        ;mov     eax, esi ; base pos
-        ;add     eax, NICKNAME_LEN + 2 + (Str.Score - GameBuffer)
-        ;stdcall View.DrawText, (FIELD_W - SCOLE_LEN_CONST) / 2 + 2, 2, SCOLE_LEN_CONST , eax, eax;Str.Score
+        mov     eax, esi ; base pos
+        add     eax, NICKNAME_LEN + 2 + (Str.Score - GameBuffer)
+        stdcall View.DrawText, (FIELD_W - SCOLE_LEN_CONST) / 2 + 1, 2, SCOLE_LEN_CONST , eax, eax;Str.Score
         ; DRAW text
         ;mov     eax, esi ; base pos
         ;add     eax, NICKNAME_LEN + 2 + (Str.Score - GameBuffer)
@@ -368,6 +371,34 @@ proc View.DrawGame uses ebx ;
         ; .........
         ;invoke  glEnd
 
+
+        ret
+endp
+
+;#############CREATE FONT####################
+; params inorder
+; - ptr to font struct (esi) (dword base, dword size : inorder)
+proc View.CreateFont
+        ; create font
+        xor     ebx, ebx
+        ;delete old fonts
+        mov     eax, dword [esi]
+        test    eax, eax
+        jz      @F
+        invoke  glDeleteLists, eax, NUM_OF_CHARACTERS
+@@:
+        ; get wnd hdc
+        mov     edi, [Wnd.hdc]
+        ; create font "Lucida Console" sz
+        invoke  CreateFontA, dword [esi + 4], ebx, ebx, ebx, 600,\
+                          ebx, ebx, ebx, ebx, ebx, ebx, ebx, ebx, Wnd.font_name
+        invoke  SelectObject, edi, eax
+
+        invoke  glGenLists, NUM_OF_CHARACTERS
+        mov     dword [esi], eax ; save place where bitmaps created
+
+        ; set font
+        invoke  wglUseFontBitmapsA, edi, ebx, NUM_OF_CHARACTERS, eax ; if errors ret 0
 
         ret
 endp

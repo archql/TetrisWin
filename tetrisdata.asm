@@ -1,7 +1,6 @@
         Wnd.Text        db 'Launch error :/', 0
 
         Wnd.font_name   db "Lucida Sans Typewriter", 0
-        Wnd.hFont       dd       ?
 
         Wnd.class       TCHAR    'FASMW32',0
         Wnd.title       TCHAR    'TETRIS WIN ASM by Artiom Drankevich',0
@@ -75,13 +74,14 @@
         ;========Game model==============
         Game.SpeedMul           dq      0.96;96
 
-        figArr          dw      0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\ ; O
+        figArr          dw      0110'0110_0000'0000b, 0110'0110_0000'0000b, 0110'0110_0000'0000b, 0110'0110_0000'0000b,\ ; O
                                 0000'1111_0000'0000b, 0010'0010_0010'0010b, 0000'0000_1111'0000b, 0100'0100_0100'0100b,\ ; I
                                 1000_1110_0000_0000b, 0110_0100_0100_0000b, 0000_1110_0010_0000b, 0100_0100_1100_0000b,\ ; J
                                 0010_1110_0000_0000b, 0100_0100_0110_0000b, 0000_1110_1000_0000b, 1100_0100_0100_0000b,\ ; L
                                 0110_1100_0000_0000b, 0100_0110_0010_0000b, 0000_0110_1100_0000b, 1000_1100_0100_0000b,\ ; S
                                 1100_0110_0000_0000b, 0010_0110_0100_0000b, 0000_1100_0110_0000b, 0100_1100_1000_0000b,\ ; Z
                                 0100_1110_0000_0000b, 0100_0110_0100_0000b, 0000_1110_0100_0000b, 0100_1100_0100_0000b   ; T
+                                ;0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\ ; O
                                 ;0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b,\
                                 ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b;,\;
         figNum          =       ($ - figArr)/8 - 1
@@ -101,12 +101,12 @@
         Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         Client.QuaryKey             db    'MachineGuid', 0
 
-        Client.StrError             db    '[ OFFLINE ]'
+        Client.StrError             db    '@OFFLINE'
         CLIENT_STR_LEN              = $ - Client.StrError
-        Client.StrConnected         db    '[ ON-LINE ]'
-        Client.StrRegistered        db    '[ REGSTRD ]'
-        Client.StrRgRejected        db    '[ REJCTED ]'
-        Client.StrKeyFail           db    '[ UUIDERR ]'
+        Client.StrConnected         db    '@ON-LINE'
+        Client.StrRegistered        db    '@REGSTRD'
+        Client.StrRgRejected        db    '@REJCTED'
+        Client.StrKeyFail           db    '@UUIDERR'
         end if
         ;IP_4_BROADCAST_VAL      dd              0xFF'FF'FF'FF
 
@@ -115,12 +115,12 @@
 ; ################################################
 Unitialized_mem:
         ; # Windows
-        Wnd.nFontBase                   dd                      ?
         Wnd.msg                         MSG                     ?
         Wnd.paintstruct                 PAINTSTRUCT             ?
         Wnd.pfd                         PIXELFORMATDESCRIPTOR   ?
-
-        font_size                       dd    ?
+     Wnd.font:
+        Wnd.nFontBase                   dd                      ?
+        Wnd.fontSz                      dd                      ?
 
         Wnd.hwnd                        dd      ?
         Wnd.hrc                         dd      ?
@@ -146,8 +146,9 @@ Unitialized_mem:
         sub_scale                       dd      ?
         sub_x_pos                       dd      ?
         sub_y_pos                       dd      ?
-        sub_font_sz                     dd      ?
+     sub_font:
         sub_font_base                   dd      ?
+        sub_font_sz                     dd      ?
 
         ; # MESSAGE CODES
         MSG_CODE_BASE_SERVER            = $F000
@@ -221,6 +222,8 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
 FILE_SZ_TO_RCV   = ($ - GameMessage)
 
         Game.CurTick                    dd      ?
+
+        View.MenuChosen                 dw      ?
 
         ; # Music
         midihandle                      dd      ?
@@ -320,7 +323,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 8
+        GAME_V_MINOR                    = 9
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b
