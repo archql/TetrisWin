@@ -1,5 +1,6 @@
 ;include '%fasminc%/win32a.inc' ;;ax
 ;include '%fasminc%/win32a.inc'
+; test
 
 format PE GUI 5.0
 
