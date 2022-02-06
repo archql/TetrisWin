@@ -1,9 +1,6 @@
-        Wnd.Text        db 'Launch error :/', 0
+        ; LOOK FOR PROTECTED STRINGS IN CLIENT.ASM!!!
 
         Wnd.font_name   db "Lucida Sans Typewriter", 0
-
-        Wnd.class       TCHAR    'FASMW32',0
-        Wnd.title       TCHAR    'TETRIS WIN ASM by Artiom Drankevich',0
 
         Wnd.style       equ WS_VISIBLE+WS_OVERLAPPEDWINDOW
 
@@ -97,10 +94,12 @@
         ; # CLIENT
         if (SERVER_DEFINED)
         Client.dIPAddrTableSz       dd    CLIENT_ADAPTERS_BUF_MAX
-        Client.PCIDBufLen           dw    CLIENT_PCID_LEN
+        Client.PCIDBufLen           dd    CLIENT_PCID_LEN + CLIENT_BUF_LEN + 1 ; Buffer for key isnt large enough but it isnt dangerous??
 
-        Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
-        Client.QuaryKey             db    'MachineGuid', 0
+        ; protected strings
+        ;Wnd.title                   TCHAR 'TETRIS WIN ASM by Artiom Drankevich',0
+        ;Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
+        ;Client.QuaryKey             db    'MachineGuid', 0
 
         Client.StrError             db    '@OFFLINE'
         CLIENT_STR_LEN              = $ - Client.StrError
@@ -183,7 +182,8 @@ GameMessage:
         Client.MessageCode              dw      ?
         CLIENT_PCID_LEN                 = 36
         Client.PCID                     db      CLIENT_PCID_LEN dup ?, ? ; zero term
-        Client.Buffer                   db      16 dup ? ; Buffer for client message addl parameters
+        CLIENT_BUF_LEN                  = 16
+        Client.Buffer                   db      CLIENT_BUF_LEN dup ? ; Buffer for client message addl parameters
 GameBuffer:
         ; Its defines base .ttr file data
         GameBuffer.Score                dw      ?
@@ -342,7 +342,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         GAME_V_TYPE_RELEASE             = 11b
         GAME_V_TYPE_BRANCH              = 1
         ; Set here!
-        GAME_V_TYPE                     = GAME_V_TYPE_DBG
+        GAME_V_TYPE                     = GAME_V_TYPE_RELEASE
         ; -- Random type                (2 bits)
         GAME_V_RND_TYPE_ORIGINAL        = 1
         GAME_V_RND_TYPE_CLASSIC         = 0

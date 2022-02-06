@@ -17,6 +17,13 @@ SO_REUSEADDR                = 0x0004
         ;Client.Sender_addr      sockaddr_in     ?
         ;Client.Broadcast_addr   sockaddr_in     ?
 
+; protected strings
+        Wnd.Text                    db    'Launch error :/', 0
+        Wnd.class                   TCHAR 'FASMW32',0
+        Wnd.title                   TCHAR 'TETRIS WIN ASM by Artiom Drankevich',0
+        Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
+        Client.QuaryKey             db    'MachineGuid', 0
+
 ; # send RequestGame msg
 proc Client.RequestGame ; Can be bugged call (2 threads using same mem)
 

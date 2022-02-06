@@ -89,9 +89,97 @@
     - added .ttr.tmp files
     * 4.10 *
     - Nickname field now has red arrow pointed to cur edited letter
-	- Nickname field now protected from editing when score > 0
-	- This is Release version
-    --> CURRENT VERSION
+    - Nickname field now protected from editing when score > 0
+    - This is RELEASE version
+  * VERSION -V- *
+   "Network update"
+    - started working in a direction to create a multiplayer network based game	
+    * 5.1 * - Leaderboard synhro added
+    - now client broadcasts register message thorug the net
+    - other clients reply this message with file update request (only when connected to then net!)
+    - .ttr file format changed (again) non critical
+    - Work with multiple game displays started
+    - minor fixes
+    // For devs
+    - Score procs became reusable (now request ptr to nick str)
+    - field proc requires ptr to field array
+    - LdScoreboard optimized
+    * 5.2 * - added synhro game start
+    - added synhro game start with same random seed 
+    - random generator fix -- figures generated correctly only when game restarted
+    - added file synhro when rcd score updated
+    - minor fixes
+    * 5.3 * - Added local net connected list
+    - local net connected list
+    - app connection to your machine (UUID)
+    - ping message
+    - selfsend protection
+    - samename clients protection
+    - state string changed (1 - online, 2 - connected, 3 - rejected)
+    - added second || thread to send ping
+    // For devs
+    - fixed messages switch
+    - started work with adapters list (send bug)
+    - KNOWN BUGS:
+    - if you have multiple adapters, "send" messages broadcasts fails
+    * 5.4 * Broadcast & filesend fixed
+    - fixed potential thread conflicts (partly)
+    - fixed major bug with file messages (now they work properly)
+    - added ping messages (list of users current online)
+    - added corresponding "invisible" for users timeout parameter. If client idles for too long, its disconnected.
+    - added same name protection (reject if same)
+    - fixed: disabled ingame nick change when registered
+    - Client restart registration added
+    - fixed problem with broadcasting to multiple adapters
+    - fixed selfsend
+    - fixed problex with clients with same name -- now every client has unique ID equals your machine (UUID)
+    * 5.5 * fixed UUID read error
+    - fixed UUID read error
+    - ping now sends full game frame (prep for visual clients)
+    - KNOWN BUG: same time game start is bugged
+    * 5.6 * User AOD & bug fixes
+    - added Leaderboard user AOD -- now user record is always displayed at Leaderboard and highligted in yellow
+    - changed: now zero rcds also showed at Leaderboard
+    - changed: DrawText wrap saved 10 bytes for each call
+    - fixed ListAllTTRFiles.SendFile -- didnt work when file score updated due to wrong send adress and msgCode and wrong order of encoding|decoding game frame
+    - added thread safe call wrap function
+    - fixed send functions (broadcast and send to sender now have same format)
+    - fixed Settings.DecodeWord is connected to Settings.buffer (thread conflict)
+    - fixed: MessageSendUpdates bug -- thread conflict
+    - major bug fixed: same time game start crashes and autostops (because of thread conflicts and several Game.Ini messages (game did not pause message incomes)
+    - other minor fixes
+    * 5.7 * Fixed thread conflict
+    - fixed sim game start
+    - fixed wrong msg len
+    - fixed unregistered start
+    - fixed crashes
+    - View reorganized
+    * 5.8 * Online game view added
+    - added view with fields of any player in the LAN (OGV)
+    - minor fixes & optimizations
+    * 5.9 * Menu swithch added (F2 key)
+    - menu #1 (base) contains LB and connections list
+    - menu #2 contains OGV
+    - font creation optimized
+    - OGV font support added
+    - minor optimizations
+    * fixes *
+    - fixed ping display
+    - added short russian readme
+    - minor view fixes
+    - scoreboard fixed -- display less than 16 players fixed
+    - base player became NOPLAYER
+    * 5.10 * Menu swithch added (F2 key)
+    - file read write and score read write splitted
+    - file read write minor fix
+    - last used nickname save added
+    - OGV display fixed (wrong scaling)
+    - minor optimizations
+    * fixes 2 *
+    - some small fixes to decrease size
+    - protection from default nicknames (Now default nicname is @DEFAULT)
+    - data moved to data
+    
   <PLANNED>
   * VERSION -V- *
     "Settings screen update"
