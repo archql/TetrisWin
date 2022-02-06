@@ -42,7 +42,7 @@ All rectangular screen resolutions supported.
  I'm going to create tetris API with all information
  about network packets and their formats.
  
- Client has 4 states:
+ Client has 5 states:
  - OFFLINE -- client isn't connected to network.
  - ON-LINE -- client is connected to network, but registration isn't completed.
  - REGSTRD -- client is registered in network and now can send & recieve all nessesary messages

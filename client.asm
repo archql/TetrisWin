@@ -323,7 +323,7 @@ proc Client.ThRecv,\
         ; ckeck if ping = zero -- if yes -- founded
         jz      .FoundedFree
         ; ckeck if ping < zero -- if yes -- mark as first free place
-        js      @F ; if greater than zero -- not free
+        jns     @F ; if greater than zero -- not free
         ; below zero -- freed place
         test    ebx, ebx ; if its first?
         jnz     @F

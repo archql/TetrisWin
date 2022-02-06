@@ -34,7 +34,7 @@
 
         NICKNAME_LEN                     =     8
         Settings.strTempNickName         db    '________'
-        Str.AdminNickName                db    '_ARCHQL_'
+        Str.AdminNickName                db    'NOPLAYER';'_ARCHQL_'
         Settings.strTempNickNameBlocked  db    '~~~~~~~~'
         ;========ANIMATIONS========================
         Glow.AnimAngle            dd    0.0

@@ -61,6 +61,9 @@ proc View.DrawLeaderboard
         stdcall View.FastWhiteColor
         ; get rcd score & place
         mov     ebx, [esi]
+        ; check if zero rcd
+        test    ebx, ebx
+        jz      .EndDrawScoreboardLoop
         push    ebx
         ; save base pos & count new
         xor     bx, bx   ;and     ebx, $FF'FF'00'00 (same)
@@ -122,6 +125,7 @@ proc View.DrawLeaderboard
         pop     edi ebx
         add     esi, (1 shl LB_ISTR_RCD_LEN_POW); LEN_OF_LB_INFO_RCD
         loop    .DrawScoreboardLoop
+.EndDrawScoreboardLoop:
         ; reset stack
         pop     eax
         ; reset color

@@ -474,7 +474,7 @@ proc WindowProc uses ebx esi edi,\
         mov     eax, 1.0
         invoke  glColor3f, eax, ebx, ebx
         ; Draw HighLight
-        invoke  glRasterPos2f, 15.0 , 22.7 ;FIELD_W + 3 - 1 , FIELD_H - 1 + 1;
+        invoke  glRasterPos2f, 15.0 , 21.7 ;FIELD_W + 3 - 1 , FIELD_H - 1 + 1;
         invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickNameHighlight
         ; set Special color
         stdcall View.FastWhiteColor
