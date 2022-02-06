@@ -1,5 +1,5 @@
         TOP_LINE                = 0;1
-        FIG_START_Y             = -2
+        FIG_START_Y             = -1;-2
 
         SPECIAL_PRICE           = 100
 
@@ -52,26 +52,32 @@ endp
 ;#############GAME INITIALIZATION####################
 proc Game.Initialize
 
-        ;call    Random.Initialize
-
         stdcall Game.ClearField
+
+        ; reset time
+        mov     [Game.TicksPlayed], 0
 
         ; write score
         mov     word [Game.Score], 0; set score to 0
-        stdcall Settings.GetHigh
+        mov     eax, Game.NickName
+        stdcall Settings.GetHigh ; ret in eax
+        mov     word [Game.HighScore], ax
 
         ; write high score
-        movzx   eax, word [Game.HighScore]
         cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
         ;write score
         movzx   eax, word [Game.Score]
         cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
 
         ; TESTTESTTEST!!!!
-        stdcall Settings.LdScoreboard
+        ;stdcall Settings.LdScoreboard
+        push    Settings.ListAllTTRFiles.LBline
+        stdcall Settings.ListAllTTRFiles
         ; ========================
 
         ; gen new fig
+        mov     [Game.NextFigCtr], 0 ; set fig buf to 0 -- major bug fix!
+        stdcall Game.GenNewFig ; its for ini new fig -> cur fig
         stdcall Game.GenNewFig
         ; set preview Y to max (prevent bugs)
         mov     [Game.FigPreviewY], FIG_START_Y
@@ -632,16 +638,19 @@ proc Game.End
         mov     [Game.Playing], FALSE
         ; stop music
         stdcall SoundPlayer.Pause
+        ; game cost
         ; check score if new high
         mov     cx, [Game.HighScore]
-        mov     ax, word [Game.Score]
+        movzx   eax, word [Game.Score]
         cmp     ax, cx
         jle     @F
         ; save high scrore
-        mov    [Game.HighScore], ax
-        stdcall Settings.SetHigh
-        ; write high score
-        movzx   eax, word [Game.HighScore]
+        mov     [Game.HighScore], ax
+        mov     edx, Game.NickName
+        push    FILE_SZ_TO_WRITE
+        ; count cur state control sum
+        stdcall Settings.SetHigh ; returns score in eax
+        ; print new high score
         cinvoke wsprintfA, Str.HighScore, Str.Score.Format, eax
 @@:
         ret
