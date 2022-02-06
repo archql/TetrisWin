@@ -13,14 +13,12 @@ proc SoundPlayer.Ini
         xor     ebx, ebx
         invoke  midiOutOpen, midihandle, ebx, ebx, ebx, ebx; last CALLBACK_NULL
 
-        mov      esi, [midihandle]
-        mov      edi, SoundPlayer.Instruments
-        invoke   midiOutShortMsg, esi, dword [edi]
-        invoke   midiOutShortMsg, esi, dword [edi + 4]
-        invoke   midiOutShortMsg, esi, dword [edi + 8]
-        invoke   midiOutShortMsg, esi, dword [edi + 12]
+        invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments]
+        invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 4]
+        invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 8]
+        invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 12]
         ; gunshot
-        invoke   midiOutShortMsg, esi, dword [edi + 16]
+        invoke   midiOutShortMsg, [midihandle], dword [SoundPlayer.Instruments + 16]
 
         ;/* Close the MIDI device */
         ;invoke  midiOutClose, [midihandle];
@@ -92,11 +90,10 @@ endp
 
 proc SoundPlayer.Pause
 
-        mov     edi, [midihandle]
-        invoke  midiOutShortMsg, edi, 0x00007BB0
-        invoke  midiOutShortMsg, edi, 0x00007BB1
-        invoke  midiOutShortMsg, edi, 0x00007BB2
-        invoke  midiOutShortMsg, edi, 0x00007BB9
+        invoke  midiOutShortMsg, [midihandle], 0x00007BB0
+        invoke  midiOutShortMsg, [midihandle], 0x00007BB1
+        invoke  midiOutShortMsg, [midihandle], 0x00007BB2
+        invoke  midiOutShortMsg, [midihandle], 0x00007BB9
 
         ret
 endp
@@ -177,8 +174,21 @@ proc SoundPlayer.PlayNextSEx uses ebx
 
         ret
 endp
+
+
+
+SoundPlayer.NextSound        dw      0
                         ; 1001 -- play; 1000 - stop; kkk - note num, vvv - volume
                         ;format 1001'nnnn   kk  0vvvvvvvv
+
+SoundPlayer.Notes         file    'tetris_ex.amid' ; ex
+SoundPlayer.NotesNum:     ; this pos - 2 bytes
+
+SoundPlayer.Instruments   db    1100'0000b or 0, 32, 0, 0,\ ; 32 25 25 10
+                                1100'0000b or 1, 25, 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
+                                1100'0000b or 2, 25, 0, 0,\
+                                1100'0000b or 3, 10, 0, 0,\
+                                1100'0000b or 4, 127, 0, 0; gunshot
 
 
 
