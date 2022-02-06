@@ -6,12 +6,13 @@
         ;Settings.buffer           db    4 dup ?
         ;Settings.BytesProceed     dd    ?
         ;FILE_SZ_TO_READ           = 2
-        IS_GITHUB_VERSION       = TRUE
+        IS_GITHUB_VERSION       = FALSE
 
+; got score in eax, control in bx
 proc Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
 
-        mov     bx, word [Settings.buffer + 2]
-        movzx   eax, word [Settings.buffer]
+        ;mov     bx, word [Settings.buffer + 2]
+        ;movzx   eax, word [Settings.buffer]
         ; decode control byte in buffer
         mov     cl, 0x45
         xor     cl, al
@@ -23,7 +24,7 @@ proc Settings.DecodeWord ; ret score in eax, TRUE|FALSE in bx, uses cx
         ret
 endp
 
-proc Settings.EncodeWord; got in ax, res in bx
+proc Settings.EncodeWord; got in ax (doestn change!), res in bx, uses cx
 
         ; encode control byte
         mov     bx, ax
@@ -45,27 +46,94 @@ else
         include 'super_secret_settings.asm'
 end if
 
-;#############GET HIGH SCORE####################
-; ret high score in ax
-proc Settings.GetHigh
-        ; get player nickname filename
-        cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, Game.NickName
-        ; reset ebx
+;#############READ FILE#########################
+; params inorder
+; [in, stack] ptr to filename
+; [in, stack] ptr to buf
+; [in, stack] file sz to read
+; [out, eax] amount of bytes read
+; -1 if invalid handle
+proc Settings.ReadFile ; uses eax ecx edx ebx
+        ; temp set pos!!!!!
         xor     ebx, ebx
         ; createfile
-        invoke  CreateFileA, Settings.strFilenameBuf, GENERIC_READ, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
-        xchg    eax, ebx ; save handle
+        invoke  CreateFileA, dword[esp + 4 + 6*4] , GENERIC_READ, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
         cmp     eax, INVALID_HANDLE_VALUE
-        je      .EndProc
-@@:
+        je      .Exit
+        xchg    eax, ebx ; save handle in ebx (eax is zero)
         ; read high
-        invoke  ReadFile, ebx, Settings.buffer, FILE_SZ_TO_READ, Settings.BytesProceed, 0
+        invoke  ReadFile, ebx, dword[esp + 8 + 3*4], dword[esp + 12 + 2*4], Settings.BytesProceed, eax
         ; close file
         invoke  CloseHandle, ebx
+        ; ret
+        mov     eax, [Settings.BytesProceed]
+.Exit:
+        ret 12
+endp
+;#############WRITE FILE########################
+; [in, stack] ptr to filename
+; [in, stack] ptr to buf
+; [in, stack] file sz to write
+; [out, eax] amount of bytes writen
+; -1 if invalid handle
+proc Settings.WriteFile ; uses eax ecx edx ebx
+        ; temp set pos!!!!!
+        xor     ebx, ebx
+        ; createfile
+        invoke  CreateFileA, dword [esp + 4 + 6*4], GENERIC_WRITE, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
+        cmp     eax, INVALID_HANDLE_VALUE
+        je      .Exit
+        xchg    eax, ebx ; save handle in ebx (eax is zero)
+        ; write high
+        invoke  WriteFile, ebx, dword [esp + 8 + 3*4], dword [esp + 12 + 2*4], Settings.BytesProceed, eax ; [esp + 16] is num of bytes
+        ; close file
+        invoke  CloseHandle, ebx
+        ; ret
+        mov     eax, [Settings.BytesProceed]
+.Exit:
+        ret 12
+endp
+;#############GET LAST NICKNAME#################
+; no params
+proc Settings.GetLastNick
+        ; set base values
+        mov     esi, NICKNAME_LEN
+        mov     edi, Game.NickName
+        ; try to read
+        stdcall Settings.ReadFile, Settings.File.Name, edi, esi
+        cmp     eax, NICKNAME_LEN
+        je      .EndProc ; eok
+        ; failed -- use base nick
+        mov     ecx, Str.BaseNickName
+        xchg    esi, ecx
+        rep     movsb
+.EndProc:
+        ret
+endp
+;#############SET LAST NICKNAME#################
+; [in, stack] ptr to filename
+; [in, stack] ptr to nick
+; [in, stack] file sz to nicklen
+proc Settings.SetLastNick  ; uses ebx esi
+        pop     esi  ; save ret
+        stdcall Settings.WriteFile
+        push    esi
+        ret
+endp
+;#############GET HIGH SCORE####################
+; [in]  ptr to nickname str (eax)
+; [out] high score in eax
+proc Settings.GetHigh ; uses eax ebx ecx edx
+        ; get player nickname filename
+        cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, eax
+        ; read high
+        stdcall Settings.ReadFile, Settings.strFilenameBuf, Settings.buffer, FILE_SZ_TO_READ
         ; check if smth readed
-        cmp     [Settings.BytesProceed], 0
-        je      .EndProc
+        cmp     eax, FILE_SZ_TO_READ
+        jne     .EndProc ; failed
         ; decode high score
+        mov     bx, word [Settings.buffer + 2]
+        movzx   eax, word [Settings.buffer]
         stdcall Settings.DecodeWord
         test    bx, bx
         jnz     .EndProc
@@ -73,59 +141,86 @@ proc Settings.GetHigh
         ;mov     ax, word [Settings.buffer]
         jmp     @F ; skip reset score
 .EndProc:
-        xor     ax, ax
+        xor     eax, eax
 @@:
-        mov     word [Game.HighScore], ax  ;[Settings.strHighScore]
-
         ret
 endp
 
 ;#############SET HIGH SCORE####################
-; got high score in ax
-proc Settings.SetHigh
-        push    eax
+; [in]  num of bytes to write (stack, [esp + 4], bc of ret ptr in stack!)
+; [in]  ptr to nickname str (edx)
+; [in]  high score in ax
+; [out] high score in ax
+proc Settings.SetHigh ; uses eax ebx ecx edx
+        push    eax; save high score
+        ; Check if nickname is DEFAULT
+        cmp     byte [edx], STR_BASE_NICKNAME_FIRST_SYMBOL
+        je      .EndProc
         ; mov high to buffer
         mov     [GameBuffer.Score], ax
         stdcall Settings.EncodeWord
         mov     [GameBuffer.ControlWord], bx
+        ; get player nickname filename
+        cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, edx
         ; count cur state control sum
         call    Settings.CountControlSum
-        ; get player nickname filename
-        cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, Game.NickName
-        ; temp set pos!!!!!
-        xor     ebx, ebx
-        ; createfile
-        invoke  CreateFileA, Settings.strFilenameBuf, GENERIC_WRITE, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
-        xchg    eax, ebx ; save handle
-        cmp     eax, INVALID_HANDLE_VALUE
-        je      .EndProc
         ; write high
-        invoke  WriteFile, ebx, GameBuffer, FILE_SZ_TO_WRITE, Settings.BytesProceed, 0
-        ; close file
-        invoke  CloseHandle, ebx
+        stdcall Settings.WriteFile, Settings.strFilenameBuf, GameBuffer, dword [esp + 8] ; [esp + 8] is num of bytes
+        ; check res
+        cmp     eax, dword [esp + 8]
+        jne     .EndProc
         ; count control sum
         call    Settings.CountControlSum + SPECIAL_CTR
+        ; client broadcast
+        if (SERVER_DEFINED)
+        cmp     [Client.State], CLIENT_STATE_OFFLINE
+        je      @F
+        mov     esi, Settings.strFilenameBuf
+        mov     edi, Client.Broadcast
+        stdcall Client.ListAllTTRFiles.SendFile
+  @@:
+        end if
 .EndProc:
         pop     eax
-        ret
+        ret     4
 endp
 
-;#############GET ALL RCD FILES####################
-proc Settings.LdScoreboard
+;#############LIST ALL FILES (and call PROC param)####################
+; [in] PROC: requires pointer to proc as param in stack
+; [in, optional] esi, edi as params for PROC
+proc Settings.ListAllTTRFiles; uses eax ebx ecx edx
 
         invoke  FindFirstFile, Settings.strFileFilter, Settings.fileData
         xchg    eax, ebx; ebx is file lookup handle
         test    ebx, ebx
-        jz      @F
+        jz      .EndProc
         mov     ecx, 0
-.Loop_Find:
-        push    ecx; loop ctr
-        ; write got str to rcd
+.Loop_Find: ; (REQUIRED EBX)
+        ; Save loop ctr
+        push    ecx; loop ctr (As param to proc)
+        ; Do action here
+        stdcall dword [esp + 8] ; param in stack
+        ; reset stack
+        ; find next
+        invoke  FindNextFile, ebx, Settings.fileData
+        ; loop
+        pop     ecx
+        inc     ecx
+        test    eax, eax; find next file result in eax
+        jnz     .Loop_Find
+.EndProc:
+        ret     4
+endp
+
+; data to do it!
+proc Settings.ListAllTTRFiles.LBline; write got str to rcd
+        ; check if filename str == current nickname (if yes -- mark it somehow)
+        ; parameters!
         mov     esi, Settings.fileData.cFileName; ptr to filename str
-        mov     edi, ecx
+        mov     edi, ecx ; loop ctr
         shl     edi, LB_ISTR_RCD_LEN_POW ; get cur pos in rcds (dep on LB_ISTR_RCD_LEN)
         add     edi, Settings.LeaderBoardArr;Settings.LeaderBoardArr + 3
-        push    edi
+        push    edi  ; save pos of the start of rcd
         ; clear mem
         mov     ecx, 2 shl LB_ISTR_RCD_LEN_POW
         xor     eax, eax
@@ -134,35 +229,22 @@ proc Settings.LdScoreboard
         mov     edi, [esp]
         add     edi, 3 ; 3 reserved symbols
         mov     ecx, LB_NAME_STR_LEN
-        rep     movsb
-        ; read file
-        invoke  CreateFileA, Settings.fileData.cFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL
-        cmp     eax, INVALID_HANDLE_VALUE
-        je      .EndTryLdFile; failed :/
-        ; read high
-        push    eax ; save handle
-        invoke  ReadFile, eax, Settings.buffer, FILE_SZ_TO_READ, Settings.BytesProceed, 0 ; [nSize]
-        ; close file handle
-        invoke  CloseHandle ; uses file handle in stack
-        ; check if smth readed
-        cmp     [Settings.BytesProceed], 0
-        jne     @F; jmp if good
-        mov     dword [Settings.buffer], 0
-@@:
-        ; check on score protection
-        push    ebx ecx
-        stdcall Settings.DecodeWord
-        test    bx, bx
-        pop     ecx ebx ; save flags!!! vvv
-        jnz     .EndTryLdFile; corrypted
+        rep     movsb ; mov nick text
+        ; read file (alt)
+        push    ebx ; save handle
+        mov     eax, Settings.fileData.cFileName
+        stdcall Settings.GetHigh ; ret high in eax
+        pop     ebx ; ld handle
+        ;test    eax, eax     ; BEFORE -- IGNORED CORRYPTED DATA; NOW -- TRY TO ENCOUNT IT
+        ;jz      .EndTryLdFile; corrypted (or zero)
         ; set high
         inc     edi
-        push    eax ; save score sa num
+        push    eax ; save score as num
         ; write score
         cinvoke wsprintfA, edi, Str.Score.Format, eax
         ; save score and rcd nmb
         pop     eax
-        mov     edi, [esp + 4]; get loop counter
+        mov     edi, [esp + 8]; get loop counter -- as param
         mov     esi, [esp]; get rcd place in arr
         add     esi, (1 shl LB_ISTR_RCD_LEN_POW) - LB_PRIO_RCD_LEN;3 reserved symbols
         mov     [esi], ax
@@ -189,16 +271,7 @@ proc Settings.LdScoreboard
 .EndTryLdFile:
         ; reset stack
         pop     edi
-        ; write cur
-        ; invoke  MessageBox, 0, Settings.LeaderBoardArr, Caption, MB_OK or MB_ICONERROR;
-        ; find next
-        invoke  FindNextFile, ebx, Settings.fileData
-        ; loop
-        pop     ecx
-        inc     ecx
-        test    eax, eax; find next file result in eax
-        jnz     .Loop_Find
-.EndProc:
+
         ret
 endp
 
