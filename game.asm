@@ -638,6 +638,7 @@ proc Game.End
         mov     [Game.Playing], FALSE
         ; stop music
         stdcall SoundPlayer.Pause
+        ; game cost
         ; check score if new high
         mov     cx, [Game.HighScore]
         movzx   eax, word [Game.Score]

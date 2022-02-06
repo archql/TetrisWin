@@ -68,24 +68,25 @@ start:
         mov     [Game.VersionInfo], Wnd.title
         ; ====
         ; setup Wnd.wc
-        mov     [Wnd.wc.lpfnWndProc], WindowProc
-        mov     [Wnd.wc.lpszClassName], Wnd.class
+        mov     esi, Wnd.wc
+        mov     [esi + (Wnd.wc.lpfnWndProc - Wnd.wc)], WindowProc
+        mov     [esi + (Wnd.wc.lpszClassName - Wnd.wc)], Wnd.class
         ; window creation process
         invoke  GetModuleHandle, ebx
-        mov     [Wnd.wc.hInstance],  eax
+        mov     [esi + (Wnd.wc.hInstance - Wnd.wc)],  eax
 
         invoke  LoadCursor, ebx, IDC_ARROW
-        mov     [Wnd.wc.hCursor], eax
+        mov     [esi + (Wnd.wc.hCursor - Wnd.wc)], eax
 
         invoke  LoadIcon, ebx, IDI_APPLICATION
-        mov     [Wnd.wc.hIcon], eax
+        mov     [esi + (Wnd.wc.hIcon - Wnd.wc)], eax
 
-        invoke  RegisterClass, Wnd.wc
+        invoke  RegisterClass, esi
         test    eax, eax ; check if success
         jz      creation_error; err_reg_class
 
         ; push wnd data
-        push    ebx [Wnd.wc.hInstance] ebx ebx
+        push    ebx [esi + (Wnd.wc.hInstance - Wnd.wc)] ebx ebx
         ; push wnd szs
         ; get screen ratio
         invoke  GetSystemMetrics, SM_CYSCREEN   ; hei
@@ -116,16 +117,16 @@ start:
         ; loop
   msg_loop:
         xor     ebx, ebx; NULL = zero
-        invoke  GetMessage, Wnd.msg, ebx, ebx, ebx
+        mov     esi, Wnd.msg
+        invoke  GetMessage, esi, ebx, ebx, ebx
         or      eax, eax
         jz      end_loop
-        invoke  TranslateMessage, Wnd.msg
-        invoke  DispatchMessage, Wnd.msg
+        invoke  TranslateMessage, esi
+        invoke  DispatchMessage, esi
         jmp     msg_loop
 
 creation_error:
-        mov     eax, Wnd.Text
-        stdcall ThrowMessage
+        invoke  MessageBox, ebx, Wnd.Text, Wnd.title, MB_OK or MB_ICONERROR;
   end_loop:
         invoke  ExitProcess, [Wnd.msg.wParam]
 
@@ -165,17 +166,18 @@ proc WindowProc uses ebx esi edi,\
         ;mov     ecx,sizeof.PIXELFORMATDESCRIPTOR shr 2
         ;xor     eax,eax
         ;rep     stosd
-        mov     [Wnd.pfd.nSize], sizeof.PIXELFORMATDESCRIPTOR
-        mov     [Wnd.pfd.nVersion], 1
-        mov     [Wnd.pfd.dwFlags], PFD_SUPPORT_OPENGL+PFD_DOUBLEBUFFER+PFD_DRAW_TO_WINDOW
-        mov     [Wnd.pfd.iLayerType], PFD_MAIN_PLANE
-        mov     [Wnd.pfd.iPixelType], PFD_TYPE_RGBA
-        mov     [Wnd.pfd.cColorBits], 16
-        mov     [Wnd.pfd.cDepthBits], 16
+        mov     esi, Wnd.pfd
+        mov     [esi + (Wnd.pfd.nSize - Wnd.pfd)], sizeof.PIXELFORMATDESCRIPTOR
+        mov     [esi + (Wnd.pfd.nVersion - Wnd.pfd)], 1
+        mov     [esi + (Wnd.pfd.dwFlags - Wnd.pfd)], PFD_SUPPORT_OPENGL+PFD_DOUBLEBUFFER+PFD_DRAW_TO_WINDOW
+        mov     [esi + (Wnd.pfd.iLayerType - Wnd.pfd)], PFD_MAIN_PLANE
+        mov     [esi + (Wnd.pfd.iPixelType - Wnd.pfd)], PFD_TYPE_RGBA
+        mov     [esi + (Wnd.pfd.cColorBits - Wnd.pfd)], 16
+        mov     [esi + (Wnd.pfd.cDepthBits - Wnd.pfd)], 16
         ;mov     [Wnd.pfd.cAccumBits], 0 ; ALREADY ZERO
         ;mov     [Wnd.pfd.cStencilBits], 0
-        invoke  ChoosePixelFormat, ebx, Wnd.pfd
-        invoke  SetPixelFormat, ebx, eax, Wnd.pfd
+        invoke  ChoosePixelFormat, ebx, esi
+        invoke  SetPixelFormat, ebx, eax, esi
 
         ; create gl context
         invoke  wglCreateContext, ebx
@@ -183,9 +185,8 @@ proc WindowProc uses ebx esi edi,\
         invoke  wglMakeCurrent, ebx, eax;[hrc]
 
         ; set fone color
-        invoke  glClearColor, 0.0,0.0,0.0,1.0;0.07, 0.13, 0.17, 1.0
-
-
+        xor     eax, eax
+        invoke  glClearColor, eax,eax,eax,1.0;0.07, 0.13, 0.17, 1.0
 
         ; set clock
         invoke  GetTickCount
@@ -227,7 +228,8 @@ proc WindowProc uses ebx esi edi,\
         invoke  glMatrixMode, GL_PROJECTION
         invoke  glLoadIdentity
 
-        invoke  glOrtho, double 0.0, double [DFIELD_W], double [DFIELD_H], double 0.0, double -1.0, double 1.0
+        xor     ebx, ebx ; double 0.0 == double push 0
+        invoke  glOrtho, ebx, ebx, double [DFIELD_W], double [DFIELD_H], ebx, ebx, double -1.0, double 1.0
 
         invoke  glMatrixMode, GL_MODELVIEW
 
@@ -328,42 +330,48 @@ proc WindowProc uses ebx esi edi,\
         add     esi, CLIENT_CL_RCD_LEN
         jmp     .ClientsDataArrLoop
    .ClientsDataArrLoopEnd:
+        ; SET OFFSET
+        mov     edi, sub_
         ; now scale factor is in ebx (int)
-        cmp     dword [sub_scale], ebx
+        cmp     dword [edi + (sub_scale - sub_)], ebx
         je      .PrevScaleIsOk
-        mov     dword [sub_scale], ebx  ; its buf (temp)
-        fild    dword [sub_scale]
+        mov     dword [edi + (sub_scale - sub_)], ebx  ; its buf (temp)
+        fild    dword [edi + (sub_scale - sub_)]
         ; get rect sz here
         fld     dword [rect_size]
         fdiv    st0, st1
-        fst     dword [sub_rect_size]
+        fst     dword [edi + (sub_rect_size - sub_)]
         ; get font sz
         fchs
-        fistp   dword [sub_font_sz]
+        fistp   dword [edi + (sub_font_sz - sub_)]
         ; get inverted scale
         fld1
         fdiv    st0, st1
-        fstp    dword [sub_inv_scale_f]
-        fstp    dword [sub_scale_f]
+        fstp    dword [edi + (sub_inv_scale_f - sub_)]
+        fstp    dword [edi + (sub_scale_f - sub_)]
         ;fst     dword [sub_inv_scale_f]
         ;fstp    dword [sub_scale_f]
         ;mov     eax, 7F000000H
         ;sub     eax, dword [sub_inv_scale_f]
         ;mov     dword [sub_inv_scale_f], eax
+        push    edi ; save sub_ offset
         ; create font DUPLICATED TEST!!!
         mov     esi, sub_font; ptr to font struct
         stdcall View.CreateFont
 
+        ; restore sub_ offset
+        pop     edi ; restore sub_ offset
+
         ; we're ready!
 .PrevScaleIsOk:
         ; set font
-        invoke  glListBase, [sub_font_base]
+        invoke  glListBase, [edi + (sub_font_base - sub_)]
         ; translate draw point
         invoke  glTranslatef, 22.0, 0.0, 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
         ; scale
-        invoke  glScalef, [sub_inv_scale_f], [sub_inv_scale_f], 1.0
+        invoke  glScalef, [edi + (sub_inv_scale_f - sub_)], [edi + (sub_inv_scale_f - sub_)], 1.0
         ; set draw
-        invoke  glPointSize, [sub_rect_size] ; pixels!!!!
+        invoke  glPointSize, [edi + (sub_rect_size - sub_)] ; pixels!!!!
         ; Now loop through ClientsDataArr again!
         xor     ebx, ebx ; loop ctr
         mov     esi, Client.ClientsDataArr ;+ CLIENT_CL_RCD_LEN ; 2nd rcd (check if correspond to cur user?)
@@ -383,8 +391,10 @@ proc WindowProc uses ebx esi edi,\
         add     esi, CLIENT_CL_RCD_LEN
         jmp     .ClientsDataArrLoop2
    .ClientsDataArrLoopEnd2:
+        ; restore sub_ offset
+        mov     edi, sub_
         ; Scale Back
-        invoke  glScalef, [sub_scale_f], [sub_scale_f], 1.0
+        invoke  glScalef, [edi + (sub_scale_f - sub_)], [edi + (sub_scale_f - sub_)], 1.0
         ; translate draw point back
         invoke  glTranslatef, -22.0, 0.0, 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
         ; set rect sz back

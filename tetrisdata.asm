@@ -34,10 +34,10 @@
 
         NICKNAME_LEN                     =     8
         Settings.strTempNickName         db    '________'
-        Str.BaseNickName                 db    'NOPLAYER';'_ARCHQL_'
+        STR_BASE_NICKNAME_FIRST_SYMBOL   =     '@'
+        Str.BaseNickName                 db    STR_BASE_NICKNAME_FIRST_SYMBOL ,'DEFAULT';'_ARCHQL_'
         Settings.strTempNickNameBlocked  db    '~~~~~~~~'
         ;========ANIMATIONS========================
-        Glow.AnimAngle            dd    0.0
         Glow.AnimDeltaAngle       dd    20.0
         Glow.SZ_delta             dd    0.05
         ;Glow.right                dd    ?
@@ -111,6 +111,15 @@
         end if
         ;IP_4_BROADCAST_VAL      dd              0xFF'FF'FF'FF
 
+        ;# SoundPlayer
+        SoundPlayer.Notes         file    'tetris_ex.amid' ; ex
+        SoundPlayer.NotesNum:     ; this pos - 2 bytes
+        SoundPlayer.Instruments   db    1100'0000b or 0, 32 , 0, 0,\ ; 32 25 25 10
+                                        1100'0000b or 1, 25 , 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
+                                        1100'0000b or 2, 25 , 0, 0,\
+                                        1100'0000b or 3, 10 , 0, 0,\
+                                        1100'0000b or 4, 127, 0, 0; gunshot
+
 ; ################################################
 ; ####### UNINITIALIZED MEMORY HERE!!!!! #########
 ; ################################################
@@ -131,6 +140,8 @@ Unitialized_mem:
 
         Wnd.rc                          RECT    ?
         ; # Glow data
+        Glow.AnimAngle                  dd      ?
+
         Glow.right                      dd      ?
         Glow.left                       dd      ?
         Glow.Arr                        db      FIELD_H dup ? ; initialization!
@@ -139,6 +150,7 @@ Unitialized_mem:
         clock                           dd      ?
         rect_size                       dd      ? ; initialization
         ; sub draw data
+     sub_:
         sub_rect_size                   dd      ?
         sub_inv_x_pos                   dd      ?
         sub_inv_y_pos                   dd      ?

@@ -174,9 +174,7 @@ proc View.DrawGlow
         faddp
         fstp    [Glow.AnimAngle]
         ; set Special color
-        mov     eax, 0.9
-        ;mov     edi, [Settings.AllocatedMem] ; where mem allocated?
-        invoke  glColor3f, eax, eax, eax
+        stdcall View.FastWhiteColor
         ; draw special effect
         mov     ecx, FIELD_H-1
      .glow_draw:
@@ -284,24 +282,26 @@ proc View.DrawGame uses ebx ;
         div     ebx
         ; now edx is X pos, eax is Y pos
         ; get 'em
+        mov     ecx, sub_ ; set offset of structure (free rg ecx)
+        push    ecx ; save offset of structure sub
         ; (x)
-        mov     dword [sub_x_pos], edx
-        fild    dword [sub_x_pos]
+        mov     dword [ecx + (sub_x_pos - sub_)], edx
+        fild    dword [ecx + (sub_x_pos - sub_)]
         fld     qword [sub_DFIELD_W]
         fmulp   st1, st0
-        fst     dword [sub_x_pos]
+        fst     dword [ecx + (sub_x_pos - sub_)]
         fchs
-        fstp    dword [sub_inv_x_pos]
+        fstp    dword [ecx + (sub_inv_x_pos - sub_)]
         ; (y)
-        mov     dword [sub_y_pos], eax
-        fild    dword [sub_y_pos]
+        mov     dword [ecx + (sub_y_pos - sub_)], eax
+        fild    dword [ecx + (sub_y_pos - sub_)]
         fld     qword [DFIELD_H]
         fmulp   st1, st0
-        fst     dword [sub_y_pos]
+        fst     dword [ecx + (sub_y_pos - sub_)]
         fchs
-        fstp    dword [sub_inv_y_pos]
+        fstp    dword [ecx + (sub_inv_y_pos - sub_)]
         ; translate matrix
-        invoke  glTranslatef, [sub_x_pos], [sub_y_pos], 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
+        invoke  glTranslatef, [ecx + (sub_x_pos - sub_)], [ecx + (sub_y_pos - sub_)], 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
 
         ; set draw
         invoke  glBegin, GL_POINTS
@@ -342,39 +342,8 @@ proc View.DrawGame uses ebx ;
         ;add     eax, NICKNAME_LEN + 2 + (Str.Score - GameBuffer)
         ;stdcall View.DrawText, (FIELD_W - SCOLE_LEN_CONST) / 2 + 2, 2, SCOLE_LEN_CONST , eax, eax;Str.Score
         ; Translate back
-        invoke  glTranslatef, [sub_inv_x_pos], [sub_inv_y_pos], 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
-
-        ; Draw it at pos of LB: x = FIELD_W + 3 - 1 + 8
-        ; x cord = i %  2
-        ; y cord = i >> 2
-        ; set projection
-        ;invoke  glMatrixMode, GL_PROJECTION
-        ;invoke  glLoadIdentity
-
-        ;invoke  glOrtho, double [DFIELD_LW_SUB], double [DFIELD_W_SUB], double [DFIELD_H_SUB], double [DFIELD_LH_SUB], double -1.0, double 1.0
-
-        ;invoke  glMatrixMode, GL_MODELVIEW
-        ; set sz
-        ;invoke  glPointSize, [sub_rect_size] ; pixels!!!!
-        ; draw
-        ;invoke  glBegin, GL_POINTS
-        ; draw field
-        ;mov     eax, Game.BlocksArr
-        ;stdcall View.DrawField
-        ; draw figure figure
-        ;mov     bx,  word [Game.CurFig]; figure
-        ;movzx   esi, word [Game.FigX]  ; X
-        ;push    bx esi ; save
-        ;movzx   edi, word [Game.FigPreviewY]  ; Y
-        ;stdcall View.DrawFigure, 2
-        ; draw figure
-        ;pop     esi bx
-        ;movzx   edi, word [Game.FigY]  ; Y
-        ;movzx   eax, byte [Game.CurFigColor]; movzx
-        ;stdcall View.DrawFigure, eax
-        ; .........
-        ;invoke  glEnd
-
+        pop     ecx ; restore offset of structure sub
+        invoke  glTranslatef, [ecx + (sub_inv_x_pos - sub_)], [ecx + (sub_inv_y_pos - sub_)], 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
 
         ret
 endp

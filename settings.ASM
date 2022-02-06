@@ -153,6 +153,9 @@ endp
 ; [out] high score in ax
 proc Settings.SetHigh ; uses eax ebx ecx edx
         push    eax; save high score
+        ; Check if nickname is DEFAULT
+        cmp     byte [edx], STR_BASE_NICKNAME_FIRST_SYMBOL
+        je      .EndProc
         ; mov high to buffer
         mov     [GameBuffer.Score], ax
         stdcall Settings.EncodeWord
