@@ -46,27 +46,91 @@ else
         include 'super_secret_settings.asm'
 end if
 
+;#############READ FILE#########################
+; params inorder
+; [in, stack] ptr to filename
+; [in, stack] ptr to buf
+; [in, stack] file sz to read
+; [out, eax] amount of bytes read
+; -1 if invalid handle
+proc Settings.ReadFile ; uses eax ecx edx ebx
+        ; temp set pos!!!!!
+        xor     ebx, ebx
+        ; createfile
+        invoke  CreateFileA, dword[esp + 4 + 6*4] , GENERIC_READ, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
+        cmp     eax, INVALID_HANDLE_VALUE
+        je      .Exit
+        xchg    eax, ebx ; save handle in ebx (eax is zero)
+        ; read high
+        invoke  ReadFile, ebx, dword[esp + 8 + 3*4], dword[esp + 12 + 2*4], Settings.BytesProceed, eax
+        ; close file
+        invoke  CloseHandle, ebx
+        ; ret
+        mov     eax, [Settings.BytesProceed]
+.Exit:
+        ret 12
+endp
+;#############WRITE FILE########################
+; [in, stack] ptr to filename
+; [in, stack] ptr to buf
+; [in, stack] file sz to write
+; [out, eax] amount of bytes writen
+; -1 if invalid handle
+proc Settings.WriteFile ; uses eax ecx edx ebx
+        ; temp set pos!!!!!
+        xor     ebx, ebx
+        ; createfile
+        invoke  CreateFileA, dword [esp + 4 + 6*4], GENERIC_WRITE, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
+        cmp     eax, INVALID_HANDLE_VALUE
+        je      .Exit
+        xchg    eax, ebx ; save handle in ebx (eax is zero)
+        ; write high
+        invoke  WriteFile, ebx, dword [esp + 8 + 3*4], dword [esp + 12 + 2*4], Settings.BytesProceed, eax ; [esp + 16] is num of bytes
+        ; close file
+        invoke  CloseHandle, ebx
+        ; ret
+        mov     eax, [Settings.BytesProceed]
+.Exit:
+        ret 12
+endp
+;#############GET LAST NICKNAME#################
+; no params
+proc Settings.GetLastNick
+        ; set base values
+        mov     esi, NICKNAME_LEN
+        mov     edi, Game.NickName
+        ; try to read
+        stdcall Settings.ReadFile, Settings.File.Name, edi, esi
+        cmp     eax, NICKNAME_LEN
+        je      .EndProc ; eok
+        ; failed -- use base nick
+        mov     ecx, Str.BaseNickName
+        xchg    esi, ecx
+        rep     movsb
+.EndProc:
+        ret
+endp
+;#############SET LAST NICKNAME#################
+; [in, stack] ptr to filename
+; [in, stack] ptr to nick
+; [in, stack] file sz to nicklen
+proc Settings.SetLastNick  ; uses ebx esi
+        pop     esi  ; save ret
+        stdcall Settings.WriteFile
+        push    esi
+        ret
+endp
 ;#############GET HIGH SCORE####################
 ; [in]  ptr to nickname str (eax)
 ; [out] high score in eax
 proc Settings.GetHigh ; uses eax ebx ecx edx
         ; get player nickname filename
         cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, eax
-        ; reset ebx
-        xor     ebx, ebx
-        ; createfile
-        invoke  CreateFileA, Settings.strFilenameBuf, GENERIC_READ, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
-        xchg    eax, ebx ; save handle
-        cmp     eax, INVALID_HANDLE_VALUE
-        je      .EndProc
-@@:
         ; read high
-        invoke  ReadFile, ebx, Settings.buffer, FILE_SZ_TO_READ, Settings.BytesProceed, 0
-        ; close file
-        invoke  CloseHandle, ebx
+        stdcall Settings.ReadFile, Settings.strFilenameBuf, Settings.buffer, FILE_SZ_TO_READ
         ; check if smth readed
-        cmp     [Settings.BytesProceed], 0
-        je      .EndProc
+        cmp     eax, FILE_SZ_TO_READ
+        jne     .EndProc ; failed
         ; decode high score
         mov     bx, word [Settings.buffer + 2]
         movzx   eax, word [Settings.buffer]
@@ -97,17 +161,11 @@ proc Settings.SetHigh ; uses eax ebx ecx edx
         cinvoke wsprintfA, Settings.strFilenameBuf, Settings.Format.File, edx
         ; count cur state control sum
         call    Settings.CountControlSum
-        ; temp set pos!!!!!
-        xor     ebx, ebx
-        ; createfile
-        invoke  CreateFileA, Settings.strFilenameBuf, GENERIC_WRITE, FILE_SHARE_READ, ebx, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, ebx
-        xchg    eax, ebx ; save handle
-        cmp     eax, INVALID_HANDLE_VALUE
-        je      .EndProc
         ; write high
-        invoke  WriteFile, ebx, GameBuffer, dword [esp + 16], Settings.BytesProceed, 0 ; [esp + 16] is num of bytes
-        ; close file
-        invoke  CloseHandle, ebx
+        stdcall Settings.WriteFile, Settings.strFilenameBuf, GameBuffer, dword [esp + 8] ; [esp + 8] is num of bytes
+        ; check res
+        cmp     eax, dword [esp + 8]
+        jne     .EndProc
         ; count control sum
         call    Settings.CountControlSum + SPECIAL_CTR
         ; client broadcast

@@ -34,7 +34,7 @@
 
         NICKNAME_LEN                     =     8
         Settings.strTempNickName         db    '________'
-        Str.AdminNickName                db    'NOPLAYER';'_ARCHQL_'
+        Str.BaseNickName                 db    'NOPLAYER';'_ARCHQL_'
         Settings.strTempNickNameBlocked  db    '~~~~~~~~'
         ;========ANIMATIONS========================
         Glow.AnimAngle            dd    0.0
@@ -92,6 +92,7 @@
         Settings.PlaceFormat        db    '#%X', 0
         Settings.Format.File.Temp   db    '%.8s.ttr.tmp', 0   ;NICKNAME_LEN
         Settings.Format.File        db    '%.8s.ttr', 0       ;NICKNAME_LEN
+        Settings.File.Name          db    'lastnickname', 0
 
         ; # CLIENT
         if (SERVER_DEFINED)
@@ -323,7 +324,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 5
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 9
+        GAME_V_MINOR                    = 10
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

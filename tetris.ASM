@@ -47,11 +47,10 @@ start:
         mov     [Client.State], CLIENT_STATE_UUIDERROR ; Error
      @@:
         end if
-        ; set admin nickname
-        mov     ecx, NICKNAME_LEN
-        mov     edi, Game.NickName
-        mov     esi, Str.AdminNickName
-        rep     movsb
+        ; set nickname
+        stdcall Settings.GetLastNick
+        ; zero
+        xor     ebx, ebx
         ; =====
         ; Setup Game Version
         ; FORMATT: 1' Platform code' ASM? ' App type ' Version major ' Version minor ' DBG|RELEASE|BRANCH ' Random type ' Rotation type ' Speed type ' Reserved
@@ -342,11 +341,15 @@ proc WindowProc uses ebx esi edi,\
         fchs
         fistp   dword [sub_font_sz]
         ; get inverted scale
-        fst     dword [sub_inv_scale_f]
+        fld1
+        fdiv    st0, st1
+        fstp    dword [sub_inv_scale_f]
         fstp    dword [sub_scale_f]
-        mov     eax, 7F000000H
-        sub     eax, dword [sub_inv_scale_f]
-        mov     dword [sub_inv_scale_f], eax
+        ;fst     dword [sub_inv_scale_f]
+        ;fstp    dword [sub_scale_f]
+        ;mov     eax, 7F000000H
+        ;sub     eax, dword [sub_inv_scale_f]
+        ;mov     dword [sub_inv_scale_f], eax
         ; create font DUPLICATED TEST!!!
         mov     esi, sub_font; ptr to font struct
         stdcall View.CreateFont
@@ -638,15 +641,18 @@ proc WindowProc uses ebx esi edi,\
         ; end if
         end if
         ; save last logged nickname?
+        stdcall Settings.SetLastNick, Settings.File.Name, Game.NickName, NICKNAME_LEN
         ; music
         stdcall SoundPlayer.Close
+        ; zero
+        xor     ebx, ebx
         ; font lists
-        invoke  glDeleteLists, 0, NUM_OF_CHARACTERS
+        invoke  glDeleteLists, ebx, NUM_OF_CHARACTERS
         ; gl & window
-        invoke  wglMakeCurrent, 0, 0
+        invoke  wglMakeCurrent, ebx, ebx
         invoke  wglDeleteContext, [Wnd.hrc]
         invoke  ReleaseDC, [hwnd], [Wnd.hdc]
-        invoke  PostQuitMessage, 0
+        invoke  PostQuitMessage, ebx
         xor     eax, eax
   .finish:
         ret
