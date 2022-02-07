@@ -1,0 +1,194 @@
+;===========================
+  * VERSION -I- *
+   "Wow! It works!"
+    - included base controls and field
+    - all 16 bit logics converted to 32 bit
+    - winapi & opengl configured
+    * 1.1 *
+    - finally added lines destruction
+    - fixed color pallette
+    - fixed controls
+    - pause, restart added
+    - figure projection fixed
+    - pause ('P' key) & restart ('R' key) added
+    * 1.2 *
+    - fixed bug with collision and random crashes while playing
+    - added score save in "settings.txt"
+    - added game speed up when playing a while
+    - tests with letter
+  * VERSION -II- *
+   "Text support included"
+    - text with score finnally added
+    - tests with line destruction animation started
+    * 2.1 *
+    - Text now resizes when window changes size as blocks
+    - animation of line destruction added
+    * 2.2 *
+    - now color pallette same as was in DOS version 13h mode
+    - fixed endgame problem with overlapping figures
+    - increased glow time & size
+  * VERSION -III- *
+   "Music!"
+   - Own music format player added
+   - .amid -- midi messages file (included to .exe)
+   - font changed
+    * 3.1 *
+    - with small changes in algorithm and no change in music file size (but now unused zero byte in short midi message is used for delay to next note)
+    * 3.2 *
+    - Added game over sound effect
+    - color of preview figure became darker
+    - added game over and pause text
+    - fixed fonts
+    * 3.3 *
+   - HOLD feature added: once per figure you can swap current figure with a figure in buffer. If buffer is empty you'll immediatly get next figure.
+   - removed unused variables (memory reorganization)
+    * 3.4 *
+   - some minor optimizations
+   - now figs spawn at negative Y, this makes game field 2 lines larger
+   - music file redused almost twice in size
+    * 3.5 (Also known as 8kB version)*
+    - tetris_SEx.amid -- tetris super extended music file. (1 byte per note).
+    - music file trough some manipulations with bytes shrinked from 1,71 kb to less than 1 kb. Of course quality is also lower, but size is now pretty beatiful
+    - data section moved to code section to reduce num of wasted bytes
+  * VERSION -IV- *
+   "Leaderboard update"
+    - now with CTRL key holded you can press 8 letter keys to create new user to play
+    - unnesesary includes from opengl removed
+    - small fixes
+    - LB created (max 16) rcds
+    * 4.1 *
+    - LB became sorted
+    - text draw bug fixed
+    * 4.2 *
+    - game special added
+    * 4.3 *
+    - restart special added (game special)
+    - game special fixed
+    (!THIS VERSION WERE DISTRIBUTED AS OFFICIAL IN DECEMBER 2020. IT IS OUTDATED NOW! (but .ttr file READ only still supported))
+    (NEW VERSIONS DOESNT SUPPORT OLD .ttr FORMAT!)
+    * 4.4 *
+    - LB display bug fixed
+    - LB expanded to "infinite"
+    * 4.5 *
+    - .exe file size reduced to 10 kB (from 11 kB) (due to memory reorganization)
+    * 4.6 *
+    - added max score protection
+    - added music toggle on M key
+    - old score format is now unsupported (contact developer for additional info)
+    * 4.7 *
+    - fig draw bug fixed
+    - ttr file format changed (now it holds full game state)
+    - rotations fixed
+    - random fixed: now generates figures by a bag which has all unique 7 figures in random order
+    - added a game version control dword with general info about version
+    - added soft drop on SHIFT key
+    * 4.8 *
+    - added music volume control, '[' key is to decrease volume, ']' key is to increase volume
+    * 4.9 *
+    - memory reorganization (got additional 512 b)
+    - added .ttr.tmp files
+    * 4.10 *
+    - Nickname field now has red arrow pointed to cur edited letter
+    - Nickname field now protected from editing when score > 0
+    - This is RELEASE version
+  * VERSION -V- *
+   "Network update"
+    - started working in a direction to create a multiplayer network based game	
+    * 5.1 * - Leaderboard synhro added
+    - now client broadcasts register message thorug the net
+    - other clients reply this message with file update request (only when connected to then net!)
+    - .ttr file format changed (again) non critical
+    - Work with multiple game displays started
+    - minor fixes
+    // For devs
+    - Score procs became reusable (now request ptr to nick str)
+    - field proc requires ptr to field array
+    - LdScoreboard optimized
+    * 5.2 * - added synhro game start
+    - added synhro game start with same random seed 
+    - random generator fix -- figures generated correctly only when game restarted
+    - added file synhro when rcd score updated
+    - minor fixes
+    * 5.3 * - Added local net connected list
+    - local net connected list
+    - app connection to your machine (UUID)
+    - ping message
+    - selfsend protection
+    - samename clients protection
+    - state string changed (1 - online, 2 - connected, 3 - rejected)
+    - added second || thread to send ping
+    // For devs
+    - fixed messages switch
+    - started work with adapters list (send bug)
+    - KNOWN BUGS:
+    - if you have multiple adapters, "send" messages broadcasts fails
+    * 5.4 * Broadcast & filesend fixed
+    - fixed potential thread conflicts (partly)
+    - fixed major bug with file messages (now they work properly)
+    - added ping messages (list of users current online)
+    - added corresponding "invisible" for users timeout parameter. If client idles for too long, its disconnected.
+    - added same name protection (reject if same)
+    - fixed: disabled ingame nick change when registered
+    - Client restart registration added
+    - fixed problem with broadcasting to multiple adapters
+    - fixed selfsend
+    - fixed problex with clients with same name -- now every client has unique ID equals your machine (UUID)
+    * 5.5 * fixed UUID read error
+    - fixed UUID read error
+    - ping now sends full game frame (prep for visual clients)
+    - KNOWN BUG: same time game start is bugged
+    * 5.6 * User AOD & bug fixes
+    - added Leaderboard user AOD -- now user record is always displayed at Leaderboard and highligted in yellow
+    - changed: now zero rcds also showed at Leaderboard
+    - changed: DrawText wrap saved 10 bytes for each call
+    - fixed ListAllTTRFiles.SendFile -- didnt work when file score updated due to wrong send adress and msgCode and wrong order of encoding|decoding game frame
+    - added thread safe call wrap function
+    - fixed send functions (broadcast and send to sender now have same format)
+    - fixed Settings.DecodeWord is connected to Settings.buffer (thread conflict)
+    - fixed: MessageSendUpdates bug -- thread conflict
+    - major bug fixed: same time game start crashes and autostops (because of thread conflicts and several Game.Ini messages (game did not pause message incomes)
+    - other minor fixes
+    * 5.7 * Fixed thread conflict
+    - fixed sim game start
+    - fixed wrong msg len
+    - fixed unregistered start
+    - fixed crashes
+    - View reorganized
+    * 5.8 * Online game view added
+    - added view with fields of any player in the LAN (OGV)
+    - minor fixes & optimizations
+    * 5.9 * Menu swithch added (F2 key)
+    - menu #1 (base) contains LB and connections list
+    - menu #2 contains OGV
+    - font creation optimized
+    - OGV font support added
+    - minor optimizations
+    * fixes *
+    - fixed ping display
+    - added short russian readme
+    - minor view fixes
+    - scoreboard fixed -- display less than 16 players fixed
+    - base player became NOPLAYER
+    * 5.10 * Menu swithch added (F2 key)
+    - file read write and score read write splitted
+    - file read write minor fix
+    - last used nickname save added
+    - OGV display fixed (wrong scaling)
+    - minor optimizations
+    * fixes 2 *
+    - some small fixes to decrease size
+    - protection from default nicknames (Now default nicname is @DEFAULT)
+    - data moved to data
+
+  <PLANNED>
+  * VERSION -V- *
+    "Settings screen update"
+    - add settings screen with all game settings to change
+    - and info about .exe file
+    - add settings save
+    - add game save & load to file
+  * VERSION -VI- *
+    "Network update"
+    - add LB synhronization with server
+    - add multiplayer game
+    - add cloud gaming

@@ -55,6 +55,9 @@ All rectangular screen resolutions supported.
  LAN connection currently used for update leaderboard and synhro game start on same seed (use **F4** key to start. Game starts only if client has GAME OVER mode).
  Leaderboard isn't updated automatically. Use **R** key to do so.
  You can still get file updates if your state is REJCTED.
+ From version 5.9 added Online Game View (OGV). Every client in the same LAN sends it game frame with ping message. 
+ Other clients displays them.
+ To swap Menu #1 (Leaderboard) and Menu #2 (OGV) use **F2** key.
  
  To protect from clients with same name connection machine UUID used.
  
