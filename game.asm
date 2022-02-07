@@ -8,7 +8,7 @@ proc Game.IniField
 
         ; clear screen
         mov     edi, Game.BlocksArr
-        xor     eax, eax; set edx to 0
+        xor     eax, eax; set eax to 0
         inc     eax     ; set eax to 1
         mov     ecx, FIELD_H - 1
 .Clearloop:
@@ -632,10 +632,12 @@ endp
 
 ;#############GAME END ##############################
 proc Game.End
+        mov     esi, Game_1
         ; set playing false
-        cmp     [Game.Playing], FALSE
+        cmp     [esi + (Game.Playing - Game_1)], FALSE
         je      @F
-        mov     [Game.Playing], FALSE
+        mov     [esi + (Game.Playing - Game_1)], FALSE
+        mov     [esi + (Game.Pause - Game_1)], TRUE
         ; stop music
         stdcall SoundPlayer.Pause
         ; game cost

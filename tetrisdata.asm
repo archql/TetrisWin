@@ -209,7 +209,7 @@ MESSAGE_START_GAME_LEN =  ($ - GameMessage)
         Game.NextFig                    dw      ?
         Game.NextFigNumber              dw      7 dup ?
         Game.NextFigCtr                 dw      ?
-
+     Game_1:
         Game.FigX                       dw      ?
         Game.FigY                       dw      ?
         Game.FigPreviewY                dw      ?

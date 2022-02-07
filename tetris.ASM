@@ -527,9 +527,12 @@ proc WindowProc uses ebx esi edi,\
         jnz     .regularKeyEvent
         ; check if connected to network with fixed nickname
         if (SERVER_DEFINED)
-        cmp     [Client.State], CLIENT_STATE_REGISTERED
+        ; try to save some bytes
+        mov     esi, Client.State
+        ; mk changes
+        cmp     word [esi], CLIENT_STATE_REGISTERED
         je      .regularKeyEvent
-        cmp     [Client.State], CLIENT_STATE_ONLINE
+        cmp     word [esi], CLIENT_STATE_ONLINE
         je      .regularKeyEvent
         end if
         ; activate edit mode
@@ -544,18 +547,24 @@ proc WindowProc uses ebx esi edi,\
         stdcall Game.End
         stdcall Game.Initialize
 @@:
+        ; try to save some bytes (2)
+        ;mov     esi, Game.Playing
+        ; do actions
         cmp     eax, 'P'
         jne     @F
+        ;cmp     word [Game.Playing], TRUE
+        ;je      @F
         stdcall SoundPlayer.Pause
-        xor     [Game.Pause], 1
+        xor     word [Game.Pause], TRUE
 @@:
         if (SERVER_DEFINED)
         ; MENU CHANGE VIEW
         cmp     eax, VK_F2
         jne     @F
         ;mov     ax, [View.MenuChosen]
-        inc     word [View.MenuChosen]
-        and     word [View.MenuChosen], 1; Menus amount
+        mov     esi, View.MenuChosen
+        inc     word [esi]
+        and     word [esi], 1; Menus amount
 @@:
         ; CLIENT START
         cmp     eax, VK_F3
@@ -566,8 +575,8 @@ proc WindowProc uses ebx esi edi,\
         ; CLIENT REQUEST GAME (SAME SEED)
         cmp     eax, VK_F4
         jne     @F
-        cmp     [Game.Playing], TRUE
-        je      @F
+        cmp     [Game.Pause], TRUE
+        jne     @F
         ; send msg
         stdcall Client.RequestGame
 @@:

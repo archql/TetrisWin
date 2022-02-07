@@ -35,9 +35,6 @@ proc Client.RequestGame ; Can be bugged call (2 threads using same mem)
         mov     edi, MESSAGE_START_GAME_LEN
         mov     ebx, MSG_CODE_START_GAME ; msg len
         stdcall Client.ThSafeCall, Client.Broadcast
-        ; start game (IF NOT SELF ACTIVATION)
-        ;stdcall Game.Initialize
-        ;mov     [Game.Pause], 0
 @@:
         ret
 endp
@@ -434,17 +431,20 @@ proc Client.ThRecv,\
    ;### ; ======================
 .MessageStartGame:
         ; Here set rnd gen if game stopped
-        cmp     [Game.Playing], TRUE
-        je      .EndMessage
+        cmp     [Game.Score], 0
+        jne     .EndMessage
+        cmp     [Game.Pause], TRUE
+        jne     .EndMessage
         ; set rnd gen ; GAME MEM USAGE -- PROPERTY OF MAIN THREAD!!!
         mov     eax, dword [Client.recvbuff + (Random.dSeed - GameMessage)]
         mov     dword [Random.dPrewNumber], eax
         mov     dword [Random.dSeed], eax
-        mov     [Game.Playing], TRUE ; To prevent activalion from next messages
-        ; clear field
-        stdcall Client.ThSafeCall, Game.IniField
+        ;mov     [Game.Playing], TRUE ; To prevent activalion from next messages
         ; start game
         stdcall Client.ThSafeCall, Game.Initialize ; USES GAME MEM -- PROPERTY OF MAIN THREAD!!! CONFLICT!!!
+        ; wait for field clear
+        invoke  Sleep, 500
+        ; start game
         mov     [Game.Pause], 0
         ; exit
         jmp     .EndMessage
