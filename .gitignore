@@ -7,8 +7,11 @@ RCDS_SAVE_1
 *.ttr.real
 *.zip
 *.notexe
+*.exe
+*.EXE
 *.notzip
 *.png
+*.fas
 ConvertTTRtoNewVersion.exe
 tetris-surface.EXE
 tetris-surface-2.EXE

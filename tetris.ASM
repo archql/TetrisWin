@@ -153,8 +153,10 @@ proc WindowProc uses ebx esi edi,\
         je      .wmkeyup
         cmp     ebx, WM_DESTROY
         je      .wmdestroy
-  .defwndproc:
-        invoke  DefWindowProc,[hwnd],ebx,[wparam],[lparam]
+        cmp     ebx, WM_CHAR
+        je      .wmchar
+  .defwndproc:  ; EBX must be unchanged! = wmsg
+        invoke  DefWindowProc,[hwnd],[wmsg],[wparam],[lparam]
         jmp     .finish
   .wmcreate:
         invoke  GetDC,[hwnd]
@@ -297,7 +299,30 @@ proc WindowProc uses ebx esi edi,\
 
         cmp     [View.MenuChosen], 0
         je      .ViewMenu_1
+        cmp     [View.MenuChosen], 1
+        je      .ViewMenu_2
 
+        ; #####################
+        ; #     -MENU #3-     #
+        ; # draw chat         #
+        ; #####################
+   .ViewMenu_3:
+        ; if font is not created -- create
+        mov     esi, chat_font; ptr to font struct
+        mov     eax, dword [esi]
+        test    eax, eax
+        jnz     @F
+        mov     dword [esi + 4], 20; TIMED (SCREEN FONT DIV 2)
+        stdcall View.CreateFont
+    @@:
+        invoke  glListBase, dword [esi]
+        ; draw chat
+        call    View.DrawChat
+
+        ; Return text draw
+        invoke  glListBase, [Wnd.nFontBase]
+
+        jmp     .ViewMenu_End
         ; #####################
         ; #     -MENU #2-     #
         ; # draw other fields #
@@ -512,6 +537,19 @@ proc WindowProc uses ebx esi edi,\
 
         xor     eax,eax
         jmp     .finish
+  .wmchar:
+        ; got ansi char
+        ; save key pressed
+        mov     eax, [wparam]
+        ;mov     eax
+        ; check if chat activated
+        ;if (CHAT_DEFINED)
+        cmp     [View.MenuChosen], 2
+        jne     .ignoreChatInput
+        include 'chat.asm'
+    .ignoreChatInput:
+        ; exit
+        jmp     .defwndproc
   .wmkeydown:
         ; save key pressed
         mov     ebx, [wparam]
@@ -555,7 +593,7 @@ proc WindowProc uses ebx esi edi,\
         jne     @F
         ;mov     ax, [View.MenuChosen]
         inc     word [View.MenuChosen]
-        and     word [View.MenuChosen], 1; Menus amount
+        and     word [View.MenuChosen], 11b; Menus amount
 @@:
         ; CLIENT START
         cmp     eax, VK_F3

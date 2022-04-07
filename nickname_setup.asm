@@ -30,11 +30,7 @@
         ; dec to cur symbol
         dec     edi
         ; ld new symbol
-        mov     al, '_'
-        push    edi
-        add     edi, Settings.strTempNickName
-        stosb
-        pop     edi
+        mov     byte [edi + Settings.strTempNickName], '_'  ; got 4 bytes
         jmp     .endFileNameGet
 @@:
         cmp     eax, VK_LEFT ; go one smbl left
@@ -60,10 +56,7 @@
         cmp     edi, LB_NAME_STR_LEN
         jae     .defwndproc
         ; ld new symbol
-        push    edi
-        add     edi, Settings.strTempNickName
-        stosb
-        pop     edi
+        mov     byte [edi + Settings.strTempNickName], al  ; got 8 bytes
         ; go to next
         inc     edi
         ; return

@@ -161,6 +161,9 @@ Unitialized_mem:
      sub_font:
         sub_font_base                   dd      ?
         sub_font_sz                     dd      ?
+     chat_font:
+        .sub_font_base                   dd      ?
+        .sub_font_sz                     dd      ?
 
         ; # MESSAGE CODES
         MSG_CODE_BASE_SERVER            = $F000
@@ -174,6 +177,8 @@ Unitialized_mem:
         MSG_CODE_START_GAME             =   8 + MSG_CODE_BASE_CLIENT
         MSG_CODE_PING                   = $FF + MSG_CODE_BASE_CLIENT
 
+        MSG_CODE_BASE_CHAT              = $B000
+
 
         ; # BUFFER TO SCORE WRITE & GAME RESTORE
         Client.CritSection              RTL_CRITICAL_SECTION    ?
@@ -182,7 +187,7 @@ GameMessage:
         Client.MessageCode              dw      ?
         CLIENT_PCID_LEN                 = 36
         Client.PCID                     db      CLIENT_PCID_LEN dup ?, ? ; zero term
-        CLIENT_BUF_LEN                  = 16
+        CLIENT_BUF_LEN                  = 32; 16 (increased due to send chat msg buf needed)
         Client.Buffer                   db      CLIENT_BUF_LEN dup ? ; Buffer for client message addl parameters
 GameBuffer:
         ; Its defines base .ttr file data
@@ -302,22 +307,36 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         Settings.fileData               WIN32_FIND_DATAA            ?
         LB_NAME_STR_LEN                 = NICKNAME_LEN
         LB_ISTR_RCD_LEN                 = 17
-        LB_ISTR_RCD_LEN_POW             = 5; Real mem sz allocated 2^LB_RCDS_AMOUNT
+        LB_ISTR_RCD_LEN_POW             = 5; Real mem sz allocated 2^*
         LB_PRIO_RCD_LEN                 = 4
         LB_BASE_RCDS_AMOUNT             = 16
-        LB_MAX_RCDS_AMOUNT              = 1024
+        LB_MAX_RCDS_AMOUNT              = 1024 ; NEVER CHECKED!!
 
+UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when started (so its protected from page allocation error & from unini mem errorrs)
         ; Filled up with zeros!
-        CLIENT_MAX_CONN                 = 64
+        CLIENT_MAX_CONN                 = 64 ; NEVER CHECKED!!
         CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 + FILE_SZ_TO_WRITE ; NICK + "word" ping
         Client.ClientsDataArr           db     (CLIENT_MAX_CONN) * (CLIENT_CL_RCD_LEN) dup ? ; temp nick name usage
 
-        UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when started so its protected from page allocation error
 
+
+        ; Buffer for adapters info table
         CLIENT_ADAPTERS_BUF_MAX         = 1024
         Client.IPAddrTableBuf           db     (CLIENT_ADAPTERS_BUF_MAX) dup ?
         ; LB LINE STRUCT = [17 bytes Info = {place str - 3}{nick - 8}{score - 6}][ empty (11) ][is cur usr? (0)][4 bytes - prio prd {score - 2}{place - 2}]
         Settings.LeaderBoardArr         db     (LB_MAX_RCDS_AMOUNT)*(1 shl LB_ISTR_RCD_LEN_POW) dup ?
+
+        ; CHAT BUFFER
+        CHAT_MAX                        =  1024
+        CHAT_MSG_RCD                    =  5 ; Real mem sz allocated 2^*
+        CHAT_MSG_LEN                    =  (1 shl CHAT_MSG_RCD)
+        CHAT_MSG_OFF                    =  NICKNAME_LEN + 2
+        CHAT_MSG_MAX                    =  CHAT_MSG_LEN - CHAT_MSG_OFF
+        Chat.Length                     dw    ?
+        Chat.MsgPos                     dw    ?
+        Chat.InpPos                     dw    ?
+        Chat.Buf                        db    CHAT_MSG_LEN dup ?
+        Chat.Table                      db    CHAT_MAX*CHAT_MSG_LEN dup ?
 
         ; GAME VERSION
         ; -- App?                       (3 bits)
@@ -334,9 +353,9 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         ; -- ASM used?                  (1 bit)
         GAME_V_ASM                      = TRUE
         ; -- Version major (max 255)
-        GAME_V_MAJOR                    = 5
+        GAME_V_MAJOR                    = 6
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 11
+        GAME_V_MINOR                    = 0
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

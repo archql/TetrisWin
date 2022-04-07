@@ -42,6 +42,44 @@ proc View.FastYellowColor uses ecx
         ret
 endp
 
+;#############DRAW CHAT###############
+; DRAW chat
+; - ClientsDataArr (read)
+proc View.DrawChat
+
+        ;mov     esi, Client.ClientsDataArr
+        mov     ecx, FIELD_H ; loop ctr (hei * 2, bc font size / 2)
+.PrintChatLoop:
+        push    ecx      ; loop Ctr
+
+        mov     esi, FIELD_H ; *2
+        sub     esi, ecx ; Y pos
+
+        mov     edi, Chat.Buf ; its addr in a table (of current msg)
+        ;test    esi, esi ; if its first element
+        jz      @F
+        ; its non first element
+        movzx   edi, word [Chat.MsgPos]
+        sub     edi, esi ; edi is index in the table
+        inc     edi
+        ;test    edi, edi ; if its < 0 -- skip
+        js      .SkipLine
+        shl     edi, CHAT_MSG_RCD
+        add     edi, Chat.Table ; edi is addr in the table
+@@:
+        push    ebx
+        stdcall View.DrawText, FIELD_W + 2 + 8, ecx, CHAT_MSG_LEN, eax, edi;esi, CHAT_MSG_LEN, eax, edi
+        pop     ebx
+.SkipLine:
+        ; loop
+        pop     ecx
+        loop    .PrintChatLoop
+
+
+
+        ret
+endp
+
 ;#############DRAW LEADERBOARD###############
 ; safe wrap required
 ; uses - LB mem (read)

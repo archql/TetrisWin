@@ -24,6 +24,32 @@ SO_REUSEADDR                = 0x0004
         Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         Client.QuaryKey             db    'MachineGuid', 0
 
+
+; # send Chat msg
+proc Client.SendChatMsg ; Can be bugged call (2 threads using same mem)
+
+        cmp     [Client.State], CLIENT_STATE_REGISTERED
+        jne      @F ; failed to rg
+        ; move msg to buf
+        mov     esi, Chat.Buf
+        mov     edi, Client.Buffer
+        mov     ecx, CHAT_MSG_LEN ; 32 == buf.len
+        rep movsb
+        ; send chat msg
+        mov     edi, MESSAGE_BASE_LEN
+        mov     ebx, MSG_CODE_BASE_CHAT ; msg len
+        stdcall Client.ThSafeCall, Client.Broadcast
+        ; clear buf
+        mov     edi, Chat.Buf
+        mov     al,  ' '
+        mov     ecx, CHAT_MSG_LEN ; 32 == buf.len
+        rep stosb
+        ; set ptr to zero
+        mov     [Chat.InpPos], 0
+@@:
+        ret
+endp
+
 ; # send RequestGame msg
 proc Client.RequestGame ; Can be bugged call (2 threads using same mem)
 
@@ -274,6 +300,10 @@ proc Client.ThRecv,\
         ; get msgID
         movzx   eax, word [Client.recvbuff + Client.MessageCode - GameMessage]; controlMsg
         ; SWITCH msg codes  (some of them require filter selfsend msgs)
+        ;cmp     ax, MSG_CODE_BASE_CHAT
+
+        cmp     ax, MSG_CODE_BASE_CHAT
+         je      .MessageChatMsg
         cmp     ax, MSG_CODE_KEYCONTROL
          je      .MessageKeyControl
         cmp     ax, MSG_CODE_PING
@@ -296,6 +326,34 @@ proc Client.ThRecv,\
         cmp     ax, MSG_CODE_TTR
          je      .MessageGotTTR
         ; DEFAULT BEHAVIOUR
+        jmp     .EndMessage
+   ;### ; ======================
+.MessageChatMsg:
+        ; ignore msg if its from me (name == & from localhost)
+        mov     esi, Client.recvbuff + (Game.NickName - GameMessage)
+        mov     edi, Game.NickName
+        mov     ecx, NICKNAME_LEN
+        repe cmpsb
+        jne     .Ok_L
+        cmp     [Client.Sender_addr.sin_addr], 0x0100007f
+        jne     .EndMessage
+     .Ok_L:
+        ; chat message arrived -- copy it
+        mov     esi, Client.recvbuff + Client.Buffer - GameMessage
+        movzx   edi, [Chat.Length]; cur rcd
+        push    edi
+        shl     edi, CHAT_MSG_RCD
+        add     edi, Chat.Table ; table of rcds   (got msg pos)
+        mov     ecx, CHAT_MSG_LEN
+        rep movsb
+        ; update len
+        inc     [Chat.Length]
+        ; update pos (MsgPos == Length)
+        pop     edi
+        cmp     di, [Chat.MsgPos]
+        jne     @F
+        inc     [Chat.MsgPos]
+@@:
         jmp     .EndMessage
    ;### ; ======================
 .MessageKeyControl:
