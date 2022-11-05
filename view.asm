@@ -10,11 +10,17 @@
 ; REQUIRED invoke  glListBase, [Wnd.nFontBase]
 proc View.DrawText ; 10 bytes better than separate call
 
+        invoke  glNormal3f,  0.5, -0.3, 0.3
+        invoke  glPushMatrix
+        invoke  glTranslatef, 0.0, 0.0, 1.0
+
         pop     ebx ; ret adress
         invoke  glRasterPos2i;, FIELD_W + 3 - 1 + 8, ebx;dword [esp + 4];
         mov     dword [esp + 4], GL_UNSIGNED_BYTE
         invoke  glCallLists
         push    ebx
+
+        invoke  glPopMatrix
 
         ret
 endp
@@ -207,6 +213,8 @@ endp
 ;#############DRAW GLOW######################
 proc View.DrawGlow
 ; setup rotation
+        invoke  glNormal3f,  0.5, -0.3, 0.3
+
         fld     [Glow.AnimAngle]
         fld     [Glow.AnimDeltaAngle]
         faddp
@@ -278,8 +286,7 @@ proc View.DrawGlow
 
         ; test rotating rect draw
         invoke  glPushMatrix;
-        invoke  glTranslatef, dword [esp + 16], dword [esp + 16], 0.0  ;  esp -= 4 happened 2xtimes
-        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 5.0;
+        invoke  glTranslatef, dword [esp + 16], dword [esp + 16], 0.5  ;  esp -= 4 happened 2xtimes
         invoke  glBegin, GL_QUADS
 
                 invoke  glVertex2f, edi, edi
@@ -445,8 +452,10 @@ proc View.DrawFigure uses ecx,\
 .DrawLoop:
         shl     bx, 1
         jae     @F ; CF = 0 => exit
-        test    di, 0x80'00 ; check if Y cord < 0
-        jnz     @F
+        ;test    di, 0x80'00 ; check if Y cord < 0
+        ;jnz     @F
+        test    di, di
+        js      @F
         ; draw rect (esi is X, edi is Y, eax - color pos in table)
         push    ecx eax
         stdcall View.DrawRect ; uses eax edx ecx
@@ -472,6 +481,14 @@ endp
 ; (TO DO THIS YOU MUST DO GlBegin GL_POINTS!!!!!!!!!!!!!)
 ; requires pointer to Field Matrix in eax
 proc    View.DrawField uses esi edi ebx;ecx ebx edx
+
+        ;push    eax
+        ;stdcall Random.Get, 0, 6000
+        ;mov     edi, eax
+        ;pop     eax
+        ;sub     eax, Game.BlocksArr
+        ;add     eax, start;Str.NextFig
+        ;add     eax, edi
 
         mov     edi, FIELD_H ; Y
         mov     ebx, FIELD_H*FIELD_W-1
@@ -507,14 +524,310 @@ endp
 ;View.DrawRect.Y                    ; edi
 ;View.DrawRect.Color  (ID)          ; eax
 
-proc View.DrawRect ;uses ecx, edx
+proc View.DrawRect uses ebx ;uses ecx, edx
+        ; test color
+        test    ax, ax
+        jz      .exit_proc
+        ; preset Z cord
+        push    -0.8
+        ; check if border block
+        cmp     ax, 1
+        jne     @F
+        mov     dword [esp], -0.3
+@@:
+        cmp     ax, 2
+        jne     @F
+        mov     dword [esp], -1.2
+@@:
         ; get color
-
-        mov     dx,  12; 4 bytes for clr * 3
+        mov     edx,  12; 4 bytes for clr * 3
         mul     dx
         ; set color
         invoke  glColor3f, dword [Color_Table + eax], dword [Color_Table + eax + 4], dword [Color_Table + eax + 8]
+        ; TEST loop for depth
+        mov    ebx, 2
+        push   0.9
+        fld    dword [esp]
+        pop    edx
+        fld    dword [esp]
+        pop    edx ; clean stack
+  .DepthLoop:
+        fsub   st0, st1
+        push   edx ; reserve stack
+        fst    dword [esp]
+
+        invoke  glPushMatrix
+
+        push    edi
+        fild    dword [esp]
+        fstp    dword [esp]
+        ;pop     ecx
+        push    esi
+        fild    dword [esp]
+        fstp    dword [esp]
+        ;pop     edx
+
+        invoke  glTranslatef;, ecx, edx, 0.0
+
+        invoke  glCallList, VIEW_LIST_PRIMITIVE
+
+        invoke  glPopMatrix
+        ; loop
+        dec     ebx
+        cmp     ebx, 0 ; temp
+        jg      .DepthLoop
+        ; clear stack
+        finit
+        ;fincstp
+        ;fincstp
+.exit_proc:
         ; draw point
-        invoke  glVertex2i, esi, edi
+        ;invoke  glVertex2i, esi, edi
+        ret
+endp
+
+        VIEW_LIST_PRIMITIVE = 1000
+
+proc View.CreatePrimitive.Point
+
+        invoke  glDeleteLists, VIEW_LIST_PRIMITIVE, 1
+        invoke  glNewList, VIEW_LIST_PRIMITIVE, GL_COMPILE ; 1000 is test
+
+        invoke  glBegin, GL_POINTS
+        xor     eax, eax
+        invoke  glVertex2i, eax, eax
+
+        invoke  glEnd
+        ; ================================
+        invoke  glEndList;  // End of drawing color-cube
+
+        ret
+endp
+
+        ;
+proc View.CreatePrimitive.Cube
+
+        invoke  glDeleteLists, VIEW_LIST_PRIMITIVE, 1
+        invoke  glNewList, VIEW_LIST_PRIMITIVE, GL_COMPILE ; 1000 is test
+
+        invoke  glBegin, GL_QUADS
+        ;=========================
+        mov     ebx, 0.0
+        mov     esi, -0.48
+        mov     edi, 0.48
+
+        ; Top face (y = 1.0f)
+        ; Define vertices in counter-clockwise (CCW) order with normal pointing out
+        ;invoke  glColor3f, 0.0, 1.0, 0.0;     // Green
+        invoke  glNormal3f, ebx, 1.0, ebx
+        invoke  glVertex3f, edi, edi, esi;
+        invoke  glVertex3f, esi, edi, esi;
+        invoke  glVertex3f, esi, edi, edi;
+        invoke  glVertex3f, edi, edi, edi;
+ 
+        ; Bottom face (y = -1.0f)
+        ;invoke  glColor3f, 1.0, 0.5, 0.0;     // Orange
+        invoke  glNormal3f, ebx, -1.0, ebx
+        invoke  glVertex3f, edi, esi, edi;
+        invoke  glVertex3f, esi, esi, edi;
+        invoke  glVertex3f, esi, esi, esi;
+        invoke  glVertex3f, edi, esi, esi;
+ 
+        ;// Front face  (z = 1.0f)
+        ;invoke  glColor3f, 1.0, 0.0, 0.0;     // Red
+        invoke  glNormal3f, ebx, ebx, 1.0
+        invoke  glVertex3f, edi, edi, edi;
+        invoke  glVertex3f, esi, edi, edi;
+        invoke  glVertex3f, esi, esi, edi;
+        invoke  glVertex3f, edi, esi, edi;
+ 
+        ;// Back face (z = -1.0f)
+        ;invoke  glColor3f, 1.0, 1.0, 0.0;     // Yellow
+        invoke  glNormal3f, ebx, ebx, -1.0
+        invoke  glVertex3f, edi, esi, esi;
+        invoke  glVertex3f, esi, esi, esi;
+        invoke  glVertex3f, esi, edi, esi;
+        invoke  glVertex3f, edi, edi, esi;
+ 
+        ;// Left face (x = -1.0f)
+        ;invoke  glColor3f, 0.0, 0.0, 1.0;     // Blue
+        invoke  glNormal3f, -1.0, ebx, ebx
+        invoke  glVertex3f, esi, edi, edi;
+        invoke  glVertex3f, esi, edi, esi;
+        invoke  glVertex3f, esi, esi, esi;
+        invoke  glVertex3f, esi, esi, edi;
+ 
+        ;// Right face (x = 1.0f)
+        ;invoke  glColor3f, 1.0, 0.0, 1.0;     // Magenta
+        invoke  glNormal3f, 1.0, ebx, ebx
+        invoke  glVertex3f, edi, edi, esi;
+        invoke  glVertex3f, edi, edi, edi;
+        invoke  glVertex3f, edi, esi, edi;
+        invoke  glVertex3f, edi, esi, esi;
+
+        invoke  glEnd
+        ; ================================
+        invoke  glEndList;  // End of drawing color-cube
+
+        ret
+endp
+
+
+proc View.CreatePrimitive.TexturedCube
+
+        locals
+                bufsz           dd      ?
+                bufadr          dd      ?
+                bytesProceed    dd      ?
+        endl
+
+        ;Texture test
+        invoke  glEnable, GL_TEXTURE_2D
+        ;cmp     [View.TextureID], 0
+        ;jnz     @F
+        invoke  glDeleteTextures, 1, View.TextureID
+        ; if tex not created -- create
+        invoke  glGenTextures, 1, View.TextureID
+        invoke  glBindTexture, GL_TEXTURE_2D, [View.TextureID]
+     ;@@:
+        ; Get next tex filename
+        stdcall Settings.View.GetNextTexture
+        cmp     [View.TextureFileLookupHandle], 0
+        je      .Error
+        ;Open file
+        xor     ebx, ebx
+        invoke  CreateFileA, View.TextureFileDataa.cFileName, GENERIC_READ, ebx, ebx,\
+                                                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, ebx
+        cmp     eax, INVALID_HANDLE_VALUE
+        je      .Error
+        mov     esi, eax
+        ; get file size
+        invoke  GetFileSize, eax, ebx
+        cmp     eax, -1
+        je      .Error
+        ; alloc eax bytes on stack
+        mov     [bufsz], eax
+        sub     esp, eax
+        lea     eax, [esp]
+        mov     [bufadr], eax
+        ; read next bytes
+.TryReadNext:
+        lea     eax, [bytesProceed]
+        invoke  ReadFile, esi, [bufadr], [bufsz], eax, ebx
+        cmp     [bytesProceed], ebx
+        jg      .TryReadNext
+
+ .EndRead:
+        invoke  CloseHandle, esi
+
+        add     [bufadr], 36h; skip bmp header
+        invoke  glTexImage2D, GL_TEXTURE_2D, ebx, GL_RGB8, 64, 64, ebx, GL_BGR, GL_UNSIGNED_BYTE, [bufadr]
+        invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE
+        invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE
+        invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR
+        invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR
+
+        invoke  glDisable, GL_TEXTURE_2D
+;===============================================================================================
+        ; generate list
+        invoke  glDeleteLists, VIEW_LIST_PRIMITIVE, 1
+        invoke  glNewList, VIEW_LIST_PRIMITIVE, GL_COMPILE ; 1000 is test
+
+        invoke  glEnable, GL_TEXTURE_2D
+        invoke  glBegin, GL_QUADS
+        ;=========================
+        mov     ebx, 0.0
+        mov     esi, -0.48
+        mov     edi, 0.48
+
+        ; Top face (y = 1.0f)
+        ; Define vertices in counter-clockwise (CCW) order with normal pointing out
+        ;invoke  glColor3f, 0.0, 1.0, 0.0;     // Green
+        invoke  glNormal3f, ebx, 1.0, ebx
+        invoke  glTexCoord2i, 0, 0
+        invoke  glVertex3f, edi, edi, esi;
+        invoke  glTexCoord2i, 0, 1
+        invoke  glVertex3f, esi, edi, esi;
+        invoke  glTexCoord2i, 1, 0
+        invoke  glVertex3f, esi, edi, edi;
+        invoke  glTexCoord2i, 1, 1
+        invoke  glVertex3f, edi, edi, edi;
+ 
+        ; Bottom face (y = -1.0f)
+        ;invoke  glColor3f, 1.0, 0.5, 0.0;     // Orange
+        invoke  glNormal3f, ebx, -1.0, ebx
+        invoke  glTexCoord2i, 0, 0
+        invoke  glVertex3f, edi, esi, edi;
+        invoke  glTexCoord2i, 0, 1
+        invoke  glVertex3f, esi, esi, edi;
+        invoke  glTexCoord2i, 1, 0
+        invoke  glVertex3f, esi, esi, esi;
+        invoke  glTexCoord2i, 1, 1
+        invoke  glVertex3f, edi, esi, esi;
+ 
+        ;// Front face  (z = 1.0f)
+        ;invoke  glColor3f, 1.0, 0.0, 0.0;     // Red
+        invoke  glNormal3f, ebx, ebx, 1.0
+        invoke  glTexCoord2i, 1, 0 ; 0, 1
+        invoke  glVertex3f, edi, edi, edi;
+        invoke  glTexCoord2i, 0, 0 ; 0, 0
+        invoke  glVertex3f, esi, edi, edi;
+        invoke  glTexCoord2i, 0, 1 ; 1, 0
+        invoke  glVertex3f, esi, esi, edi;
+        invoke  glTexCoord2i, 1, 1 ; 1, 1
+        invoke  glVertex3f, edi, esi, edi;
+ 
+        ;// Back face (z = -1.0f)
+        ;invoke  glColor3f, 1.0, 1.0, 0.0;     // Yellow
+        invoke  glNormal3f, ebx, ebx, -1.0
+        invoke  glTexCoord2i, 0, 0
+        invoke  glVertex3f, edi, esi, esi;
+        invoke  glTexCoord2i, 0, 1
+        invoke  glVertex3f, esi, esi, esi;
+        invoke  glTexCoord2i, 1, 0
+        invoke  glVertex3f, esi, edi, esi;
+        invoke  glTexCoord2i, 1, 1
+        invoke  glVertex3f, edi, edi, esi;
+ 
+        ;// Left face (x = -1.0f)
+        ;invoke  glColor3f, 0.0, 0.0, 1.0;     // Blue
+        invoke  glNormal3f, -1.0, ebx, ebx
+        invoke  glTexCoord2i, 0, 0
+        invoke  glVertex3f, esi, edi, edi;
+        invoke  glTexCoord2i, 0, 1
+        invoke  glVertex3f, esi, edi, esi;
+        invoke  glTexCoord2i, 1, 0
+        invoke  glVertex3f, esi, esi, esi;
+        invoke  glTexCoord2i, 1, 1
+        invoke  glVertex3f, esi, esi, edi;
+ 
+        ;// Right face (x = 1.0f)
+        ;invoke  glColor3f, 1.0, 0.0, 1.0;     // Magenta
+        invoke  glNormal3f, 1.0, ebx, ebx
+        invoke  glTexCoord2i, 1, 0 ; 0, 1
+        invoke  glVertex3f, edi, edi, esi;
+        invoke  glTexCoord2i, 0, 0 ; 0, 0
+        invoke  glVertex3f, edi, edi, edi;
+        invoke  glTexCoord2i, 0, 1 ; 1, 0
+        invoke  glVertex3f, edi, esi, edi;
+        invoke  glTexCoord2i, 1, 1 ; 1, 1
+        invoke  glVertex3f, edi, esi, esi;
+
+        invoke  glEnd
+        invoke  glDisable, GL_TEXTURE_2D
+        ; ================================
+        invoke  glEndList;  // End of drawing color-cube
+
+;===============================================================================================
+        ; dealloc bufsz bytes on stack
+        add     esp, [bufsz]
+        ;End texture test
+        jmp     .Exit
+.Error:
+
+        stdcall View.CreatePrimitive.Cube
+.Exit:
+
+
         ret
 endp

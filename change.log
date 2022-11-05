@@ -175,11 +175,21 @@
     - last used nickname save added
     - OGV display fixed (wrong scaling)
     - minor optimizations
-    * fixes 2 *
+    * fixes 2 * (as 5.11)
     - some small fixes to decrease size
     - protection from default nicknames (Now default nicname is @DEFAULT)
     - data moved to data
-
+	- This is RELEASE version
+  * VERSION -VI- *
+   "Chat update"
+    - started working in a direction to create a chat
+	- minor optimizations
+	- chat added (max msg size is 22 letters)
+	- selfsend protection
+	- chat is nonscrollable
+	// For devs
+	- fixed defwindowproc error
+	
   <PLANNED>
   * VERSION -V- *
     "Settings screen update"
@@ -189,6 +199,6 @@
     - add game save & load to file
   * VERSION -VI- *
     "Network update"
-    - add LB synhronization with server
-    - add multiplayer game
+    - add LB synhronization with server (DONE)
+    - add multiplayer game (DONE)
     - add cloud gaming

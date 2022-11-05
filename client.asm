@@ -19,8 +19,8 @@ SO_REUSEADDR                = 0x0004
 
 ; protected strings
         Wnd.Text                    db    'Launch error :/', 0
-        Wnd.class                   TCHAR 'FASMW32',0
-        Wnd.title                   TCHAR 'TETRIS WIN ASM by Artiom Drankevich',0
+        Wnd.class                   db    'FASMW32',0
+        Wnd.title                   db    'TETRIS WIN ASM by Artiom Drankevich',0
         Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         Client.QuaryKey             db    'MachineGuid', 0
 
@@ -325,6 +325,8 @@ proc Client.ThRecv,\
          je      .MessageRegister
         cmp     ax, MSG_CODE_TTR
          je      .MessageGotTTR
+        cmp     ax, MSG_CODE_PROXY
+         je      .MessageProxy
         ; DEFAULT BEHAVIOUR
         jmp     .EndMessage
    ;### ; ======================
@@ -460,6 +462,8 @@ proc Client.ThRecv,\
 .MessageGotTTR:
         ; got ttrs msg
         ; check if in msg score is valid
+        ; TEMP!!!!!!!!!!!!!!!!!!!!!!
+        ;mov     dword [Game.BlocksArr+40], 0x01010101
         ; TEMP COPY
         movzx   eax, word [Client.recvbuff + (GameBuffer.Score       - GameMessage)]
         mov     bx,  word [Client.recvbuff + (GameBuffer.ControlWord - GameMessage)]
@@ -469,6 +473,9 @@ proc Client.ThRecv,\
         test    bx, bx
         jnz     .EndMessageTTR ; failed to decode
         push    eax ; save got highscore
+
+        ; TEMP!!!!!!!!!!!!!!!!!!!!!!
+        ;mov     dword [Game.BlocksArr+40], 0x02020202
         ; get own file data
         mov     eax, Client.recvbuff + (Client.Buffer - GameMessage); nickname ptr in such msg
         push    eax ; save Nick ptr
@@ -507,6 +514,17 @@ proc Client.ThRecv,\
         ; exit
         jmp     .EndMessage
    ;### ; ======================
+.MessageProxy:
+        ; Here if acting as proxy packet arrived
+        ; -- safe copy it; GAME MEM USAGE -- PROPERTY OF MAIN THREAD!!!
+        mov     esi, Client.recvbuff + GameBuffer - GameMessage
+        mov     edi, GameBuffer ; table of rcds   (got msg pos)
+        mov     ecx, FILE_SZ_TO_WRITE
+        rep movsb
+
+        ; exit
+        jmp     .EndMessage
+        ;### ; ======================
 .EndMessage:
 .FailedToRecieve:
 

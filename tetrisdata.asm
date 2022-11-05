@@ -42,8 +42,8 @@
         ;Glow.Arr                  db    FIELD_H dup 0
         ;========VIEW==============================
         Color_Table     dd      0.0, 0.0, 0.0,\   ;0.271, 0.271, 0.271,\
-                                0.7, 0.7, 0.7,\
-                                0.25, 0.25, 0.25,\
+                                0.271, 0.271, 0.271,\   ;0.7, 0.7, 0.7
+                                0.1, 0.1, 0.1,\  ;0.25, 0.25, 0.25
                                 1.0, 0.5098, 0.0,\
                                 0.0, 0.0, 1.0,\
                                 0.2549, 0.0, 1.0,\
@@ -85,6 +85,7 @@
 
         ; # SETTINGS
         ; addl data to ld scoreboard
+        View.strTextureFileFilter   db    '*.bmp', 0
         Settings.strFileFilter      db    '*.ttr', 0
         Settings.PlaceFormat        db    '#%X', 0
         Settings.Format.File.Temp   db    '%.8s.ttr.tmp', 0   ;NICKNAME_LEN
@@ -119,6 +120,38 @@
                                         1100'0000b or 3, 10 , 0, 0,\
                                         1100'0000b or 4, 127, 0, 0; gunshot
 
+        View.TexNameStr           db    'tex.bmp', 0
+
+        if (HELP_DEFINED)
+        Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
+        Help.Str.LEN    = $ - Help.Str1
+        Help.Str2       db      '>Game control:             '
+        Help.Str3       db      ' P   -- pause              '
+        Help.Str4       db      ' R   -- restart            '
+        Help.Str5       db      ' ESC -- stop/exit          '
+        Help.Str6       db      '>Figure control:           '
+        Help.Str7       db      ' < > -- move               '
+        Help.Str8       db      ' ^ v -- rotate             '
+        Help.Str9       db      ' H   -- hold once per spawn'
+        Help.Str10      db      ' SPACE- hard drop          '
+        Help.Str11      db      ' SHIFT- soft drop          '
+        Help.Str12      db      '>Music control:            '
+        Help.Str13      db      ' ] [ -- inc/dec volume     '
+        Help.Str14      db      ' M   -- mute toggle        '
+        Help.Str16      db      '>Register control:         '
+        Help.Str17      db      ' Hold CTRL key & write nick'
+        Help.Str18      db      ' use arrows to navigate    '
+        Help.Str19      db      '>Menu control:             '
+        Help.Str20      db      ' use F2 key to toggle menus'
+        Help.Str21      db      '>Network control:          '
+        Help.Str22      db      ' F3 - mk try to connect    '
+        Help.Str23      db      '  if state is @RGSTRD - OK '
+        Help.Str24      db      ' F4 - start online game syn'
+        Help.Str25      db      '  must be GAME OVER status '
+        Help.LPos:
+        Help.LEN        = ($ -  Help.Str1) / Help.Str.LEN
+        end if
+
 ; ################################################
 ; ####### UNINITIALIZED MEMORY HERE!!!!! #########
 ; ################################################
@@ -148,6 +181,16 @@ Unitialized_mem:
         DFIELD_W                        dq      ?
         clock                           dd      ?
         rect_size                       dd      ? ; initialization
+
+        View.FieldAngleDraw             dd      ?
+        View.HFieldAngleDraw            dd      ?
+
+        View.TextureID                  dd      ?
+
+        View.TextureFileLookupHandle    dd      ? ; if zero, then noninitialized
+        ; to be initialized, call special function
+        View.TextureFileDataa           WIN32_FIND_DATAA        ?
+
         ; sub draw data
      sub_:
         sub_rect_size                   dd      ?
@@ -162,12 +205,13 @@ Unitialized_mem:
         sub_font_base                   dd      ?
         sub_font_sz                     dd      ?
      chat_font:
-        .sub_font_base                   dd      ?
-        .sub_font_sz                     dd      ?
+        .sub_font_base                  dd      ?
+        .sub_font_sz                    dd      ?
 
         ; # MESSAGE CODES
-        MSG_CODE_BASE_SERVER            = $F000
-        MSG_CODE_KEYCONTROL             = 1 + MSG_CODE_BASE_SERVER
+        MSG_CODE_BASE_PROXY             = $F000
+        MSG_CODE_KEYCONTROL             = 1 + MSG_CODE_BASE_PROXY
+        MSG_CODE_PROXY                  = 2 + MSG_CODE_BASE_PROXY
 
         MSG_CODE_BASE_CLIENT            = $A000
         MSG_CODE_REGISTER               =   1 + MSG_CODE_BASE_CLIENT

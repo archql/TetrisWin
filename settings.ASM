@@ -186,7 +186,8 @@ proc Settings.SetHigh ; uses eax ebx ecx edx
 endp
 
 ;#############LIST ALL FILES (and call PROC param)####################
-; [in] PROC: requires pointer to proc as param in stack
+; params (inorder)
+; [in, stack] PROC: requires pointer to PROC
 ; [in, optional] esi, edi as params for PROC
 proc Settings.ListAllTTRFiles; uses eax ebx ecx edx
 
@@ -208,6 +209,8 @@ proc Settings.ListAllTTRFiles; uses eax ebx ecx edx
         inc     ecx
         test    eax, eax; find next file result in eax
         jnz     .Loop_Find
+.FinishedFind:
+        invoke  FindClose, ebx
 .EndProc:
         ret     4
 endp
@@ -235,7 +238,7 @@ proc Settings.ListAllTTRFiles.LBline; write got str to rcd
         mov     eax, Settings.fileData.cFileName
         stdcall Settings.GetHigh ; ret high in eax
         pop     ebx ; ld handle
-        ;test    eax, eax     ; BEFORE -- IGNORED CORRYPTED DATA; NOW -- TRY TO ENCOUNT IT
+        ;test    eax, eax     ; BEFORE -- IGNORED CORRYPTED DATA; NOW -- TRY TO CONSIDER IT
         ;jz      .EndTryLdFile; corrypted (or zero)
         ; set high
         inc     edi
@@ -274,4 +277,43 @@ proc Settings.ListAllTTRFiles.LBline; write got str to rcd
 
         ret
 endp
+
+;#############LIST ALL FILES####################
+; params (inorder)
+proc Settings.View.GetNextTexture; uses eax ebx
+
+        mov     ebx, [View.TextureFileLookupHandle]
+        cmp     ebx, 0
+        jne     .TryGetNextFile
+.TryOpenFile:
+        invoke  FindFirstFile, View.strTextureFileFilter, View.TextureFileDataa
+        mov     [View.TextureFileLookupHandle], eax ; remember the handle
+        jmp     .EndProc ; in any case everything is ok
+
+.TryGetNextFile:
+        ; find next
+        invoke  FindNextFile, ebx, View.TextureFileDataa
+        ; loop
+        test    eax, eax; find next file result in eax
+        jnz     .EndProc ; succeeded to find next file
+        ; check whats happened ??
+        invoke  FindClose, ebx
+        jmp     .TryOpenFile ; try again
+
+.EndProc:
+        ret
+endp
+;#############LIST ALL FILES close####################
+; params (inorder)
+proc Settings.View.GetNextTexture.Close
+
+        mov     eax, [View.TextureFileLookupHandle]
+        cmp     eax, 0
+        jz      @F
+        invoke  FindClose, eax
+
+@@:
+        ret
+endp
+
 

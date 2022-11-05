@@ -9,14 +9,15 @@
 		деструктивного кода в приложение. 
 	В случае технических неполадок, потери данных, упущенной выгоды, 
 		возникновения внезапного желания уничтожения клавиатуры,
-		сексуального отклонения, войны, и любых других негативных последствий, 
+		психического отклонения, войны, и любых других негативных последствий, 
 		возникших в связи с использованием приложения, автор не несет 
 		никакой ответственности.
 	Вы осознаете риски использования приложения.
 	Запрещено и незаконно использовать это приложение в коммерческих целях.
+	Запрещено и незаконно изменять исходный код в деструктивных целях.
 	В случае нарушения данного соглашения Вы обязуетесь
 		Продать левую почку и пожертвовать всю выручку приюту для бездомных животных
-		Продать себя в сексуальное рабство автору, если Вы женщина, или же привести другую жертву женского пола
+		Продать себя в рабство автору, если Вы женщина, или же привести другую жертву женского пола
 		До конца своих дней выращивать бульбу в селе под Барановичами
 	Вы осознаете, что отклонение данного соглашения ничего не изменит.
 
@@ -31,13 +32,14 @@ automatically acknowledge this license agreement
 		malicious code into the application.
 	The author is not responsible for technical problems, data loss, lost profits,
 		a sudden desire to destroy Your keyboard,
-		sexual deviation, war and any other negative consequences,
-		as a result of using the application 
-	You understand the risks of using the application.
+		psyhological deviation, war and any other negative consequences
+		as a result of the application usage 
+	You understand the risks of the application usage 
 	It is prohibited and illegal to use this application for commercial purposes.
+	It is prohibited and illegal to change source code for destructive purposes.
 	In case of agreement violation, you'll forced to
 		Sell your left kidney and donate all money to an animal shelter
-		Sell yourself into sexual slavery to the author or bring in another female victim
+		Sell yourself into slavery to the author or bring in another female victim
 		Grow potatoes in a village near Baranovichi till the end of time
 	You understand that rejecting this agreement will not change anything.
 
