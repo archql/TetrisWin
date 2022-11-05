@@ -8,50 +8,50 @@ This tetris version tested on Windows 10 & Windows 7.
 Graphics based on OpenGL lib.
 All rectangular screen resolutions supported.
 
-#### CONTROLS:
- - move left          -- <
- - move right         -- > 
- - rotate clockwise   -- ^
- - move anticlockwise -- v
- - quit               -- ESC
- - hard drop          -- SPACE
- - soft drop          -- SHIFT
- - pause              -- P
- - restart            -- R
- - hold               -- H
- - mute music	      -- M
- - increase volume    -- ']'
- - decrease volume    -- '\['
+### CONTROLS:
+ - move left . . . . . . . . . . . . .  <
+ - move right . . . . . . . . . . . . > 
+ - rotate clockwise . . . . . . .  ^
+ - move anticlockwise . . . .  v
+ - quit . . . . . .  . . . . . . . . . . . . ESC
+ - hard drop . . . . . . . . . . . . . SPACE
+ - soft drop . . . . . . . . . . . . . . SHIFT
+ - pause . . . . . . . . . . . . . . . . . P
+ - restart  . . . . . . . . . . . . . . . . R
+ - hold . . . . . . . . . . . . . . . . . . H
+ - mute music . . . . . . . . . . .  M
+ - increase volume . . . . . . .  ']'
+ - decrease volume . . . . . . . '\['
  
 
-#### NICKNAME CONTROLS:
- to activate edit mode -- hold CTRL
+### NICKNAME CONTROLS:
+ to activate edit mode &mdash; hold CTRL
  with all keys pressed
- - write			  -- A..Z
- - move left          -- <
- - move right         -- > 
- - rm symbol          -- BACKSPACE
- - accept changes     -- ENTER
+ - write . . . . . . . . . . . .  A..Z
+ - move left . . . . . . . . <
+ - move right  . . . . . .  > 
+ - rm symbol  . . . . . . . BACKSPACE
+ - accept changes . . . ENTER
  
 #### NETWORK CONTROLS:
  Network connection works only in LAN mode.
  You can software that creates virtual LAN.
  To work with network app sends UDP packets to port 7000. 
  It uses special prefixes for messages to differ them.
- For now there is 2 types of prefixes -- Client & Control.
+ For now there is 2 types of prefixes &mdash; Client & Control.
  I'm going to create tetris API with all information
  about network packets and their formats.
  
- Client has 5 states:
- - OFFLINE -- client isn't connected to network.
- - ON-LINE -- client is connected to network, but registration isn't completed.
- - REGSTRD -- client is registered in network and now can send & recieve all nessesary messages
- - REJCTED -- client tried to connect to LAN, which already has client with same nickname connected.
- - UUIDERR -- client tried to read UUID of your machine and its failed. Equals OFFLINE mode except you can not use online features.
+**Client has 5 states**:
+ - OFFLINE &mdash; client isn't connected to network.
+ - ON-LINE &mdash; client is connected to network, but registration isn't completed.
+ - REGSTRD &mdash; client is registered in network and now can send & recieve all nessesary messages
+ - REJCTED &mdash; client tried to connect to LAN, which already has client with same nickname connected.
+ - UUIDERR &mdash; client tried to read UUID of your machine and its failed. Equals OFFLINE mode except you can not use online features.
  
  **Use *F3* key to make try to connect to LAN** (your current state is OFFLINE). If it's worked properly your state is ON-LINE. 
  Next client sends register message and waits (cur 500 ms). If your next state is REGSTRD everything went good!
- If you got REJCTED message -- change you nickname & try to connect again (use **F3** key).
+ If you got REJCTED message &mdash; change you nickname & try to connect again (use **F3** key).
  LAN connection currently used for update leaderboard and synhro game start on same seed (use **F4** key to start. Game starts only if client has GAME OVER mode).
  Leaderboard isn't updated automatically. Use **R** key to do so.
  You can still get file updates if your state is REJCTED.
@@ -73,7 +73,7 @@ All rectangular screen resolutions supported.
  Ping messages contains full game frame so your game can be visualized remotely with 200 ms precision.
 
 #### What is '.amid' files?
-'.amid' file -- its file with short midi messages, every message is 4 bytes long,
+'.amid' file &mdash; its file with short midi messages, every message is 4 bytes long,
  format is control + track num byte ,note_num byte, note_velocity byte, zero byte (now delay to next note in ms / 2)
  This file is generated using my another progmam, written on delphi,
  that converts notes into midi messages.
@@ -88,7 +88,7 @@ Compressed super extended  '.amid' file ( _CSEx ) holds only one byte per note a
  
  
 #### What is '.ttr' files?
-'.ttr' file -- its tetris record file with max score. Its name can be only 8 bytes long and responses for nickname of a player.
+'.ttr' file &mdash; its tetris record file with max score. Its name can be only 8 bytes long and responses for nickname of a player.
 
 New version also encrypted and holds full game frame information.
 This information is enough to restore game process without any additional information or files. 
