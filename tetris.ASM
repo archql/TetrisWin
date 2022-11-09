@@ -338,7 +338,7 @@ proc WindowProc uses ebx esi edi,\
         add     [clock], eax; reset timer
 
         ; here draw procedure
-        include 'drawproc.asm'
+        include 'drawporoc.asm'
 
         invoke  SwapBuffers,[Wnd.hdc]
 
@@ -502,7 +502,7 @@ proc WindowProc uses ebx esi edi,\
 
         mov     esi, View.FieldAngleDraw
         ; save key pressed + params data
-        mov     ebx, word [wparam]  ; The high-order word indicates the distance the wheel is rotated
+        mov     ebx, dword [wparam]  ; The high-order word indicates the distance the wheel is rotated
         ; check if ctrl is pressed
         test    bx, MK_CONTROL
         jz      @F
@@ -511,7 +511,7 @@ proc WindowProc uses ebx esi edi,\
 @@:
         xor     bx, bx ; clear lower part
         ; calculate next angle
-        fld     [esi]
+        fld     dword [esi]
         fld1
         fld1
         faddp
@@ -520,7 +520,7 @@ proc WindowProc uses ebx esi edi,\
         fchs
 @@:
         faddp
-        fstp    [esi]
+        fstp    dword [esi]
 
 
         jmp     .defwndproc
@@ -676,7 +676,8 @@ import opengl,\
          glTexImage2D, 'glTexImage2D',\
          glTexParameteri, 'glTexParameteri',\
          glTexCoord2i, 'glTexCoord2i',\
-         glDisable, 'glDisable'
+         glDisable, 'glDisable',\
+         glDeleteTextures, 'glDeleteTextures'
 
 import glu,\
          gluPerspective, 'gluPerspective',\
