@@ -207,10 +207,10 @@
         ; apply rotation
         xor     ebx, ebx
         invoke  glPushMatrix
-        invoke  glTranslatef, 6.5, ebx, ebx      ; -20.5, -12.0, -45.0
+        invoke  glTranslatef, 6.5, 12.0, ebx      ; -20.5, -12.0, -45.0
         invoke  glRotatef, [View.FieldAngleDraw], ebx, 1.0, ebx
         invoke  glRotatef, [View.HFieldAngleDraw], 1.0, ebx, ebx
-        invoke  glTranslatef, -6.5, ebx, ebx
+        invoke  glTranslatef, -6.5, -12.0, ebx
 
         ; draw preview figure
         mov     bx,  word [Game.CurFig]; figure

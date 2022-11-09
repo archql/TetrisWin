@@ -202,7 +202,7 @@ proc WindowProc uses ebx esi edi,\
         pop     ebp
         add     esp, 4 * 4
 
-        push    1.0 1.5 1.5 1.5
+        push    1.0 2.0 2.0 2.0
         push    ebp
         mov     ebp, esp
         add     ebp, 4

@@ -349,7 +349,7 @@ proc View.DrawGame uses ebx ;
         invoke  glTranslatef, [ecx + (sub_x_pos - sub_)], [ecx + (sub_y_pos - sub_)], 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
 
         ; set draw
-        invoke  glBegin, GL_POINTS
+        ;invoke  glBegin, GL_POINTS
         ; set base pos
         mov     eax, esi ; base pos
         add     eax, NICKNAME_LEN + 2 + (Game.BlocksArr - GameBuffer)
@@ -369,7 +369,7 @@ proc View.DrawGame uses ebx ;
         pop     esi
 
         ; end draw
-        invoke  glEnd
+        ;invoke  glEnd
 
         ; set clr
         stdcall View.FastWhiteColor
@@ -744,11 +744,11 @@ proc View.CreatePrimitive.TexturedCube
         ; Define vertices in counter-clockwise (CCW) order with normal pointing out
         ;invoke  glColor3f, 0.0, 1.0, 0.0;     // Green
         invoke  glNormal3f, ebx, 1.0, ebx
-        invoke  glTexCoord2i, 0, 0
+        invoke  glTexCoord2i, 1, 0 ; 0, 1
         invoke  glVertex3f, edi, edi, esi;
-        invoke  glTexCoord2i, 0, 1
+        invoke  glTexCoord2i, 0, 0
         invoke  glVertex3f, esi, edi, esi;
-        invoke  glTexCoord2i, 1, 0
+        invoke  glTexCoord2i, 0, 1
         invoke  glVertex3f, esi, edi, edi;
         invoke  glTexCoord2i, 1, 1
         invoke  glVertex3f, edi, edi, edi;
@@ -756,11 +756,11 @@ proc View.CreatePrimitive.TexturedCube
         ; Bottom face (y = -1.0f)
         ;invoke  glColor3f, 1.0, 0.5, 0.0;     // Orange
         invoke  glNormal3f, ebx, -1.0, ebx
-        invoke  glTexCoord2i, 0, 0
+        invoke  glTexCoord2i, 1, 0 ; 0, 1
         invoke  glVertex3f, edi, esi, edi;
-        invoke  glTexCoord2i, 0, 1
+        invoke  glTexCoord2i, 0, 0 ; 0, 0
         invoke  glVertex3f, esi, esi, edi;
-        invoke  glTexCoord2i, 1, 0
+        invoke  glTexCoord2i, 0, 1
         invoke  glVertex3f, esi, esi, esi;
         invoke  glTexCoord2i, 1, 1
         invoke  glVertex3f, edi, esi, esi;
@@ -780,25 +780,25 @@ proc View.CreatePrimitive.TexturedCube
         ;// Back face (z = -1.0f)
         ;invoke  glColor3f, 1.0, 1.0, 0.0;     // Yellow
         invoke  glNormal3f, ebx, ebx, -1.0
-        invoke  glTexCoord2i, 0, 0
+        invoke  glTexCoord2i, 0, 1 ; 0, 1
         invoke  glVertex3f, edi, esi, esi;
-        invoke  glTexCoord2i, 0, 1
+        invoke  glTexCoord2i, 1, 1 ; 0, 0
         invoke  glVertex3f, esi, esi, esi;
-        invoke  glTexCoord2i, 1, 0
+        invoke  glTexCoord2i, 1, 0 ; 1, 0
         invoke  glVertex3f, esi, edi, esi;
-        invoke  glTexCoord2i, 1, 1
+        invoke  glTexCoord2i, 0, 0 ; 1, 1
         invoke  glVertex3f, edi, edi, esi;
  
         ;// Left face (x = -1.0f)
         ;invoke  glColor3f, 0.0, 0.0, 1.0;     // Blue
         invoke  glNormal3f, -1.0, ebx, ebx
-        invoke  glTexCoord2i, 0, 0
+        invoke  glTexCoord2i, 1, 0 ; 0, 1
         invoke  glVertex3f, esi, edi, edi;
-        invoke  glTexCoord2i, 0, 1
+        invoke  glTexCoord2i, 0, 0 ; 0, 0
         invoke  glVertex3f, esi, edi, esi;
-        invoke  glTexCoord2i, 1, 0
+        invoke  glTexCoord2i, 0, 1 ; 1, 0
         invoke  glVertex3f, esi, esi, esi;
-        invoke  glTexCoord2i, 1, 1
+        invoke  glTexCoord2i, 1, 1 ; 1, 1
         invoke  glVertex3f, esi, esi, edi;
  
         ;// Right face (x = 1.0f)
