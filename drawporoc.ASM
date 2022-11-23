@@ -190,6 +190,33 @@
         stdcall View.DrawText, FIELD_W + 3, FIELD_H, CLIENT_STR_LEN, eax, ebx
         end if
 
+        ; draw background texture
+        mov     ax, [Game.Pause]
+        xor     ax, 1
+        and     ax, [Game.Playing]
+        jnz     @F
+
+        invoke  glDisable, GL_LIGHTING
+        xor     edi, edi
+        mov     esi, 1
+        invoke  glPushMatrix
+        invoke  glTranslatef, 6.0, 6.0, -5.0
+        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 5.0;
+        invoke  glEnable, GL_TEXTURE_2D
+        invoke  glBegin, GL_QUADS
+                invoke  glTexCoord2i, edi, edi
+                invoke  glVertex2i,  (FIELD_W - 2) / 2,  (FIELD_W - 2) / 2
+                invoke  glTexCoord2i, edi, esi
+                invoke  glVertex2i,  (FIELD_W - 2) / 2, -(FIELD_W - 2) / 2
+                invoke  glTexCoord2i, esi, esi
+                invoke  glVertex2i, -(FIELD_W - 2) / 2, -(FIELD_W - 2) / 2
+                invoke  glTexCoord2i, esi, edi
+                invoke  glVertex2i, -(FIELD_W - 2) / 2,  (FIELD_W - 2) / 2
+        invoke  glEnd
+        invoke  glDisable, GL_TEXTURE_2D
+        invoke  glPopMatrix
+        invoke  glEnable, GL_LIGHTING
+   @@:
         ; draw
         ;invoke  glBegin, GL_POINTS
 
