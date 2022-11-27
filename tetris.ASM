@@ -1,7 +1,7 @@
 ;include '%fasminc%/win32a.inc' ;;ax
 ;include '%fasminc%/win32a.inc'
 
-format PE GUI 6.0
+format PE GUI 4.0
 stack 0x100000
 
 include 'win32ax.inc'
@@ -38,8 +38,8 @@ if (SERVER_DEFINED)
         invoke  RegOpenKeyExA, HKEY_LOCAL_MACHINE, Client.QuaryValue, ebx, KEY_READ or KEY_WOW64_64KEY, Client.KeyHandle
         test    eax, eax
         jnz     @F
-        ; Client.QuaryKey - 1 = NULL STRING
-        invoke  RegGetValueA, [Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen
+        ; Client.QuaryKey - 1 = NULL STRING  ;[Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen
+        invoke  RegQueryValueExA, [Client.KeyHandle], Client.QuaryKey, ebx, ebx, Client.PCID, Client.PCIDBufLen
         test    eax, eax
      @@:
         jz      @F
@@ -337,7 +337,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         add     [clock], eax; reset timer
 
         ; here draw procedure
-        include 'drawporoc.asm'
+        include 'drawproc.asm'
 
         invoke  SwapBuffers,[Wnd.hdc]
 

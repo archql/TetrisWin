@@ -493,7 +493,9 @@ proc Client.ThRecv,\
         jmp     .EndMessageTTR
      .DataIsUpToDate:
         ; reset stack
-        add esp, 8
+        ;add esp, 8
+        pop     eax
+        pop     eax
      .EndMessageTTR:
         jmp     .EndMessage
    ;### ; ======================

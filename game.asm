@@ -388,12 +388,12 @@ proc Game.KeyEvent uses eax
         stdcall Game.CheckOnEnd
         test    eax, eax ; temp snd off
         pop     eax
-        jnz     Game.End
+        jz      @F
+        ; play end snd temp
+        mov     [SoundPlayer.EndGameTick], 4
+        jmp     Game.End
+@@:
         push    eax
-        ;jz      @F
-        ;stdcall Game.End
-        ;jmp     .End_key_event
-;@@:
         ; unblock hold usage
         and     word [Game.Holded], FALSE;MY_FALSE; set ifhold to true
 
@@ -640,8 +640,6 @@ proc Game.End
         mov     [Game.Playing], ax
         ; stop music
         stdcall SoundPlayer.Pause
-        ; play end snd temp
-        mov     [SoundPlayer.EndGameTick], 4
         ; set rotation to initial pos
         ;mov     [Glow.AnimAngle], 0
         ; === game cost
