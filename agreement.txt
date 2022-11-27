@@ -1,8 +1,6 @@
-==== (RU) ЛИЦЕНЗИОННОЕ СОГЛАШЕНИЕ ====
-Запуская приложение Тетрис (далее приложение) на любом устройстве, Вы
-тем самым автоматически признаете настоящее лицензионное соглашение
-(далее соглашение):
-	Автором приложения является студент БГУИР Артём Дранкевич.
+==== (RU) СОГЛАШЕНИЕ ====
+Запуская приложение ТетрисВин любой версии (далее приложение) на любом устройстве, Вы
+тем самым автоматически признаете настоящее тролль-соглашение (дополнительно к MIT License)
 	Вы имеете право на распространение и копирование данного приложения.
 	Вы можете использовать его по назначению сколько душе угодно.
 	Автор со своей стороны сообщает, что он не встаивал какого-либо 
@@ -20,12 +18,13 @@
 		Продать себя в рабство автору, если Вы женщина, или же привести другую жертву женского пола
 		До конца своих дней выращивать бульбу в селе под Барановичами
 	Вы осознаете, что отклонение данного соглашения ничего не изменит.
+	Вы осознаете, что данное приложение никак НЕ ОТНОСИТСЯ к The Tetris Company, Inc. и созданно с целью
+		развития навыков и приемов программирования на ассемблере и только для этого.
+		Автор считает своим здесь написанный код на ассемблере и ТОЛЬКО
 
-==== (EN) LICENCE AGREEMENT ====
-By launching the Tetris application (hereinafter referred to as the application) on any device, you
-automatically acknowledge this license agreement
-(hereinafter the agreement):
-	The author of the application is a student of BSUIR Artiom Drankevich.
+==== (EN) AGREEMENT ====
+By launching the TetrisWin application of any version (hereinafter referred to as the application) on any device, you
+automatically acknowledge this troll-agreement (additionally to the MIT License)
 	You have the right to distribute and copy this application.
 	You can use it for its intended purpose as much time as you wish.
 	The author reports that he did not include
@@ -37,12 +36,15 @@ automatically acknowledge this license agreement
 	You understand the risks of the application usage 
 	It is prohibited and illegal to use this application for commercial purposes.
 	It is prohibited and illegal to change source code for destructive purposes.
-	In case of agreement violation, you'll forced to
+	In case of agreement violation, you undertake to
 		Sell your left kidney and donate all money to an animal shelter
 		Sell yourself into slavery to the author or bring in another female victim
 		Grow potatoes in a village near Baranovichi till the end of time
-	You understand that rejecting this agreement will not change anything.
+	You understand that this agreement will not change anything.
+	You understand that this application IS NOT reffered to The Tetris Company, Inc. and created with purpose of
+		assembly skills improvement and only for this. 
+		The author claims the rights on the assembly code written here ONLY
 
 ============================================
-==== YES I AGREE (ДА, Я ПРИНИМАЮ) [ ]
+==== YES I AGREE (ДА, Я ПРИНИМАЮ) [ ] (Для запуска создать файл AGREE (без расширения)) / For use create file AGREE (without extension))
 ==== NO I DISAGREE (НЕТ, Я НЕ ПРИНИМАЮ) [ Х ]

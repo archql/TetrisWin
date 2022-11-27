@@ -23,6 +23,7 @@ SO_REUSEADDR                = 0x0004
         Wnd.title                   db    'TETRIS WIN ASM by Artiom Drankevich',0
         Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         Client.QuaryKey             db    'MachineGuid', 0
+        WndCreationCheck            db    'ACCEPT', 0
 
 
 ; # send Chat msg
@@ -540,15 +541,12 @@ endp
 proc Client.ListAllTTRFiles.SendFile ; esi -- ptr to name str, edi -- ptr to send function (TODO -- create sendbuf)
         push    ebx esi edi; required to save it!
 
-        ; get score
-        mov     eax, esi
-        stdcall Settings.GetHigh  ; SETTINGS BUF MEM USAGE -- PROPERTY OF MAIN THREAD!!!
-        push    eax
         ; enter critical section
         invoke  EnterCriticalSection, Client.CritSection
 
-        ; fill in msg
-        pop     eax
+        ; get score
+        mov     eax, esi
+        stdcall Settings.GetHigh  ; SETTINGS BUF MEM USAGE -- PROPERTY OF MAIN THREAD!!!
         ; mov high to buffer
         mov     [GameBuffer.Score], ax
         stdcall Settings.EncodeWord

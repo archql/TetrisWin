@@ -37,11 +37,8 @@ proc Settings.EncodeWord; got in ax (doestn change!), res in bx, uses cx
 endp
 
 if (IS_GITHUB_VERSION)
-        SPECIAL_CTR = 0
-        proc Settings.CountControlSum
-             ; Doing actually nothing here
-             ret
-        endp
+        Settings.CountControlSum.SPECIAL_CTR dd Settings.EncodeWord - 1
+        Settings.CountControlSum = Settings.EncodeWord - 1
 else
         include 'super_secret_settings.asm'
 end if
@@ -170,7 +167,7 @@ proc Settings.SetHigh ; uses eax ebx ecx edx
         cmp     eax, dword [esp + 8]
         jne     .EndProc
         ; count control sum
-        call    Settings.CountControlSum + SPECIAL_CTR
+        call    [Settings.CountControlSum.SPECIAL_CTR]
         ; client broadcast
         if (SERVER_DEFINED)
         cmp     [Client.State], CLIENT_STATE_OFFLINE

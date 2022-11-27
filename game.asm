@@ -297,10 +297,11 @@ proc Game.KeyEvent uses eax
         inc     dx ; dec
 @@:
         and     dx, 0000'0000'0000'0011b ; masked rotation
+
+Game.KeyEvent.NonKeyPositionChange: ; bx is fig, esi edi - cords
         ; get figure (duplicated!)
         add     bx, dx ; apply rotation
         shl     bx, 1  ; each fig is 2 bytes long
-
         mov     bx, [figArr + ebx] ; is cur figure
 
         ; check collisions
@@ -597,7 +598,7 @@ proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
 
         ; result set
         xor     eax, eax
-
+        ; loop cnt
         xor     ecx, ecx
         mov     cl, 16; setup loop
 

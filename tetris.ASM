@@ -27,6 +27,11 @@ section '.code' code executable readable  ; code section
 start:
         ; zero
         xor     ebx, ebx
+        ; agree
+        mov     esi, WndCreationCheck
+        invoke  GetFileAttributes, esi
+        test    eax, eax
+        js      aaaa_error
         ; zero allocated memory
         xor     eax, eax
         mov     ecx, UNINI_MEM_LEN
@@ -125,6 +130,8 @@ end if
         invoke  DispatchMessage, esi
         jmp     msg_loop
 
+aaaa_error:
+        invoke  MessageBox, ebx, esi, esi, ebx
 creation_error:
         invoke  MessageBox, ebx, Wnd.Text, Wnd.title, MB_OK or MB_ICONERROR;
   end_loop:
@@ -141,6 +148,8 @@ endp
 proc WindowProc ,\;uses ebx esi edi,\
                 hwnd, wmsg, wparam, lparam
         mov     ebx, [wmsg]
+        cmp     ebx, WM_MOUSEMOVE
+        je      .wmmousemove
         cmp     ebx, WM_CREATE
         je      .wmcreate
         cmp     ebx, WM_SIZE
@@ -157,9 +166,45 @@ proc WindowProc ,\;uses ebx esi edi,\
         je      .wmchar
         cmp     ebx, WM_MOUSEWHEEL
         je      .wmmousewheel
+        cmp     ebx, WM_LBUTTONDOWN
+        je      .wmmousedown
+        cmp     ebx, WM_RBUTTONDOWN
+        je      .wmrmousedown
   .defwndproc:
         pop     ebp
         jmp     [DefWindowProc]
+  .wmmousemove:
+        cmp     [Game.Pause], 1
+        je      .IgnoreFigMove
+        cmp     [Game.Playing], 1
+        jne     .IgnoreFigMove
+        movzx   eax, word [lparam]
+        push    eax
+        fild    dword [esp]
+        fdiv    [rect_size]
+        fistp   dword [esp]
+
+        pop     eax
+        sub     eax, 7
+        cmp     ax, 0
+        jl      .IgnoreFigMove
+        cmp     ax, FIELD_W - 3
+        jg      .IgnoreFigMove
+
+        ; TEST TEST !!!!!!!!!!!!!!!!!!!!!!!
+        movzx   ebx, [Game.CurFigNumber]
+        shl     bx, 2
+        mov     ecx, ebx
+        mov     esi, eax ; collider X
+        movzx   edi, word [Game.FigY] ; initial Y
+        mov     dx, word [Game.CurFigRotation]
+        ; get figure place at fig array
+        push    .IgnoreFigMove
+        push    eax
+        xor     eax, eax
+        jmp     Game.KeyEvent.NonKeyPositionChange ; pops eax
+   .IgnoreFigMove:
+        jmp     .finish
   .wmcreate:
         invoke  GetDC,[hwnd]
         mov     [Wnd.hdc], eax
@@ -501,30 +546,57 @@ proc WindowProc ,\;uses ebx esi edi,\
         jmp     .defwndproc
 
   .wmmousewheel:
-
-        mov     esi, View.FieldAngleDraw
         ; save key pressed + params data
         mov     ebx, dword [wparam]  ; The high-order word indicates the distance the wheel is rotated
+        mov     esi, View.FieldAngleDraw
         ; check if ctrl is pressed
         test    bx, MK_CONTROL
-        jz      @F
-        ; ctrl is pressed
-        add     esi, 4 ; use next dword -- View.HFieldAngleDraw
+        jnz     @F
+        ; check if shift is pressed
+        test    bx, MK_SHIFT
+        jz      .RegularWheel
+        add     esi, 4
 @@:
-        xor     bx, bx ; clear lower part
         ; calculate next angle
         fld     dword [esi]
         fld1
         fld1
         faddp
-        cmp     ebx, 0
-        jg      @F
+        test    ebx, ebx
+        js      @F
         fchs
 @@:
         faddp
         fstp    dword [esi]
 
+        jmp     .EndWheel
+   .RegularWheel:
+        cmp     [Game.Pause], 1
+        je      .EndWheel
+        cmp     [Game.Playing], 1
+        jne     .EndWheel
+        mov     eax, VK_DOWN
+        test    ebx, ebx
+        js      @F
+        mov     eax, VK_UP
+     @@:
+        stdcall Game.KeyEvent
+   .EndWheel:
+        jmp     .defwndproc
 
+   .wmrmousedown:
+        mov     eax, 'H'
+   .wmmousedown:
+        cmp     [Game.Pause], 1
+        je      .EndWmmousedown
+        cmp     [Game.Playing], 1
+        jne     .EndWmmousedown
+        cmp     al, 'H'
+        je      @F
+        mov     eax, ' '
+      @@:
+        stdcall Game.KeyEvent
+      .EndWmmousedown:
         jmp     .defwndproc
 
   .wmdestroy:

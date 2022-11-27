@@ -16,6 +16,7 @@ All rectangular screen resolutions supported (at least for gameplay).
 #### INSTALLATION:
 - [if required] change extension .notexe to .exe (.notzip to .zip and unpack)
 - place .exe in any folder (preffered empty and not system-protected)
+- read agreement.txt before use
 - its all!
 
 #### WARNING!
