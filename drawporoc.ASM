@@ -201,18 +201,19 @@
         xor     edi, edi
         xor     esi, esi
         inc     esi
+        mov     ebx, 7.0
         invoke  glPushMatrix
-        invoke  glTranslatef, 7.0, 7.0, edi
-        invoke  glRotatef, [Glow.AnimAngle], edi, edi, 5.0;
+        invoke  glTranslatef, ebx, ebx, edi
+        invoke  glRotatef, [Glow.AnimAngle], edi, edi, ebx; esi
         invoke  glEnable, GL_TEXTURE_2D
         invoke  glBegin, GL_QUADS
-                invoke  glTexCoord2i, edi, edi
+                invoke  glTexCoord2i, esi, edi;edi, edi
                 invoke  glVertex2i,  (FIELD_W - 2) / 2,  (FIELD_W - 2) / 2
-                invoke  glTexCoord2i, edi, esi
+                invoke  glTexCoord2i, edi, edi;edi, esi
                 invoke  glVertex2i, -(FIELD_W - 2) / 2,  (FIELD_W - 2) / 2
-                invoke  glTexCoord2i, esi, esi
+                invoke  glTexCoord2i, edi, esi;esi, esi
                 invoke  glVertex2i, -(FIELD_W - 2) / 2, -(FIELD_W - 2) / 2
-                invoke  glTexCoord2i, esi, edi
+                invoke  glTexCoord2i, esi, esi;esi, edi
                 invoke  glVertex2i,  (FIELD_W - 2) / 2, -(FIELD_W - 2) / 2
         invoke  glEnd
         invoke  glDisable, GL_TEXTURE_2D

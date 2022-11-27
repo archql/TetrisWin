@@ -318,7 +318,7 @@ proc View.DrawGlow
         ret
 endp
 
-
+; UNUSED
 proc View.DrawEffectElement
 
 
@@ -338,7 +338,7 @@ proc View.DrawEffectElement
         ; draw background texture
         invoke  glPushMatrix
         invoke  glTranslatef, dword [esp + 20], dword [esp + 20], 0.5
-        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 5.0;
+        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 0.5;
         invoke  glEnable, GL_TEXTURE_2D
         invoke  glBegin, GL_QUADS
                 invoke  glTexCoord2i, 0, 1

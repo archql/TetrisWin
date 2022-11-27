@@ -386,15 +386,14 @@ proc Game.KeyEvent uses eax
 
         ; check on loose
         stdcall Game.CheckOnEnd
-        xor     ax, 1
-        test    ax, ax ; temp snd off
-        jnz     @F
-        ; play end snd temp
-        mov     [SoundPlayer.EndGameTick], 4
-        ;;;;;;;;;;;
-        stdcall Game.End
-        jmp     .End_key_event
-@@:
+        test    eax, eax ; temp snd off
+        pop     eax
+        jnz     Game.End
+        push    eax
+        ;jz      @F
+        ;stdcall Game.End
+        ;jmp     .End_key_event
+;@@:
         ; unblock hold usage
         and     word [Game.Holded], FALSE;MY_FALSE; set ifhold to true
 
@@ -428,11 +427,7 @@ proc Game.CheckOnEnd uses ebx ecx
         mov     ecx, FIELD_W - 2
         mov     ebx, FIELD_W * TOP_LINE + 1; from TOP_LINE line
 .CheckLoop:
-        cmp     byte [ebx + Game.BlocksArr], 0
-        je      @F
-        mov     eax, TRUE
-        jmp     .EndProc
-@@:
+        or      al, byte [ebx + Game.BlocksArr];, 0
         inc     ebx
         loop    .CheckLoop
 .EndProc:
@@ -645,7 +640,11 @@ proc Game.End
         mov     [Game.Playing], ax
         ; stop music
         stdcall SoundPlayer.Pause
-        ; game cost
+        ; play end snd temp
+        mov     [SoundPlayer.EndGameTick], 4
+        ; set rotation to initial pos
+        ;mov     [Glow.AnimAngle], 0
+        ; === game cost
         ; check score if new high
         mov     cx, [Game.HighScore]
         movzx   eax, word [Game.Score]

@@ -120,8 +120,6 @@ end if
                                         1100'0000b or 3, 10 , 0, 0,\
                                         1100'0000b or 4, 127, 0, 0; gunshot
 
-        View.TexNameStr           db    'tex.bmp', 0
-
         if (HELP_DEFINED)
         Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
         Help.Str.LEN    = $ - Help.Str1

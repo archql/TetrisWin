@@ -53,16 +53,16 @@ proc SoundPlayer.EndEventUpdate; got eax in [esp] as param
         jb      @F
         add     [SoundPlayer.CurTick], ax
 
-        mov     ecx, ebx
-        stdcall Settings.Music.Play
+        ;mov     ecx, ebx
+        ;stdcall Settings.Music.Play
 
         ; get midi message
-        mov      eax, 0x007F2590
-        mov      ah, bl
-        shl      ah, 2
-        add      ah, 22
+        mov      ecx, 0x007F2590
+        mov      ch, bl
+        shl      ch, 2
+        add      ch, 22
         ; play midi message
-        invoke   midiOutShortMsg, [midihandle],  eax;
+        stdcall  Settings.Music.Play;invoke   midiOutShortMsg, [midihandle],  eax;
 
         mov      eax, 0x007F2591
         mov      ah, bl
@@ -113,11 +113,12 @@ proc SoundPlayer.PlayNextEx uses ebx
 .PlayPackOfNotes:
         push     ecx
         movzx    ecx, word [SoundPlayer.Notes + ebx]
-        ;or       ecx, 0x007F0000
         or       ecx, [SoundPlayer.VolumeMask]
         invoke   midiOutShortMsg, [midihandle],  ecx
 
-        add      ebx, NOTES_PACK_BYTES; 2 bytes per note
+        ;add      ebx, NOTES_PACK_BYTES; 2 bytes per note
+        inc      ebx
+        inc      ebx
         pop      ecx
         loop     .PlayPackOfNotes
 
@@ -153,10 +154,10 @@ proc SoundPlayer.PlayNextSEx uses ebx
 
         ;movzx    ecx, byte [SoundPlayer.Notes + ebx]
         or       ecx, [SoundPlayer.VolumeMask]
-        or       ecx, 0x00000090  ; regulat midi msg
+        or       cl, 0x90  ; regulat midi msg
         or       ch, byte [SoundPlayer.Notes + ebx]
-        test     ch, 1000'0000b
-        jnz      @F
+        test     ch, ch ; 1000'0000b
+        js       @F
         xor      cl, 0x30
 @@:
         and      ch, 0111'1111b
