@@ -13,6 +13,8 @@ RCDS_SAVE_1
 *.png
 *.fas
 *.bmp
+*.mp3
+*.wav
 ConvertTTRtoNewVersion.exe
 tetris-surface.EXE
 tetris-surface-2.EXE

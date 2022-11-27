@@ -337,7 +337,7 @@ proc Client.ThRecv,\
         mov     ecx, NICKNAME_LEN
         repe cmpsb
         jne     .Ok_L
-        cmp     [Client.Sender_addr.sin_addr], 0x0100007f
+        cmp     [Client.Sender_addr.sin_addr], 0x0100007f  ; 127.0.0.1
         jne     .EndMessage
      .Ok_L:
         ; chat message arrived -- copy it

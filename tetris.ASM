@@ -2,8 +2,8 @@
 ;include '%fasminc%/win32a.inc'
 
 format PE GUI 6.0
+stack 0x100000
 
-include 'macro/proc32.inc'
 include 'win32ax.inc'
 
 entry start
@@ -23,9 +23,7 @@ entry start
         INC_EVERY_FIGS=15 ;2^N-1
 
 ;===========================
-;section '.data' data readable writable
-;===========================
-section '.code' code executable readable ;writable  ; code section
+section '.code' code executable readable  ; code section
 start:
         ; zero
         xor     ebx, ebx
@@ -35,18 +33,20 @@ start:
         mov     edi, Unitialized_mem
         rep     stosb
         ; set Client.PCID (unique PC ID)
-        if (SERVER_DEFINED)
-        invoke  RegOpenKeyExA, HKEY_LOCAL_MACHINE, Client.QuaryValue, ebx, KEY_READ or 0x0100, Client.KeyHandle   ;KEY_WOW64_64KEY
+if (SERVER_DEFINED)
+           KEY_WOW64_64KEY = 0x0100
+        invoke  RegOpenKeyExA, HKEY_LOCAL_MACHINE, Client.QuaryValue, ebx, KEY_READ or KEY_WOW64_64KEY, Client.KeyHandle
         test    eax, eax
         jnz     @F
-        invoke  RegGetValueA, [Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen ; Client.QuaryKey - 1 -- NULL STRING
+        ; Client.QuaryKey - 1 = NULL STRING
+        invoke  RegGetValueA, [Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen
         test    eax, eax
      @@:
         jz      @F
         ; Throw error
         mov     [Client.State], CLIENT_STATE_UUIDERROR ; Error
      @@:
-        end if
+end if
         ; set nickname
         stdcall Settings.GetLastNick
         ; zero
@@ -102,7 +102,7 @@ start:
 
         if (SERVER_DEFINED)
         ; create critical section to protect write-send (for multithreaded app)
-        invoke  InitializeCriticalSectionAndSpinCount, Client.CritSection, 0x400 ; 0x400 tries to capture crit section b4 go to core speed
+        invoke  InitializeCriticalSection, Client.CritSection
         end if
 
         ; call music ini
@@ -138,7 +138,7 @@ endp
 
 ;############# WindowProc ####################
 
-proc WindowProc uses ebx esi edi,\
+proc WindowProc ,\;uses ebx esi edi,\
                 hwnd, wmsg, wparam, lparam
         mov     ebx, [wmsg]
         cmp     ebx, WM_CREATE
@@ -157,9 +157,9 @@ proc WindowProc uses ebx esi edi,\
         je      .wmchar
         cmp     ebx, WM_MOUSEWHEEL
         je      .wmmousewheel
-  .defwndproc:  ; EBX must be unchanged! = wmsg
-        invoke  DefWindowProc,[hwnd],[wmsg],[wparam],[lparam]
-        jmp     .finish
+  .defwndproc:
+        pop     ebp
+        jmp     [DefWindowProc]
   .wmcreate:
         invoke  GetDC,[hwnd]
         mov     [Wnd.hdc], eax
@@ -202,7 +202,8 @@ proc WindowProc uses ebx esi edi,\
         pop     ebp
         add     esp, 4 * 4
 
-        push    1.0 2.0 2.0 2.0
+        mov     eax, 2.0
+        push    1.0 eax eax eax
         push    ebp
         mov     ebp, esp
         add     ebp, 4
@@ -225,12 +226,15 @@ proc WindowProc uses ebx esi edi,\
         jmp     .finish
   .wmsize:
         xor     ebx, ebx
-        invoke  GetClientRect, [hwnd], Wnd.rc
-        invoke  glViewport, ebx, ebx, [Wnd.rc.right], [Wnd.rc.bottom]
+        mov     esi, Wnd.rc
+        invoke  GetClientRect, [hwnd], esi
+        add     esi, Wnd.font - Wnd.rc
+        invoke  glViewport, ebx, ebx, [esi + (Wnd.rc.right - Wnd.font)], [esi + (Wnd.rc.bottom - Wnd.font)]
 
-        sub     esp, 4; reserve stack for cell width
+        ; reserve stack for cell width
+        push    eax
         ; get rect size
-        fild    dword [Wnd.rc.bottom]
+        fild    dword [esi + (Wnd.rc.bottom - Wnd.font)]
         fdiv    [DFIELD_H]
         fst     dword [esp]; save cell width
 
@@ -238,19 +242,19 @@ proc WindowProc uses ebx esi edi,\
         frndint  ; round
         fst     [rect_size]
         fchs
-        fistp   [Wnd.fontSz]
+        fistp   [esi + (Wnd.fontSz - Wnd.font)]
 
         ; get width ratio
-        fild    [Wnd.rc.right]
+        fild    [esi + (Wnd.rc.right - Wnd.font)]
         ; use saved cell width
         fdiv    dword [esp]
         ; move stack back
-        add     esp, 4
+        pop     eax
         ; get result
         fstp    [DFIELD_W]
 
         ; create font DUPLICATED TEST!!!
-        mov     esi, Wnd.font; ptr to font struct
+        ;mov     esi, Wnd.font; ptr to font struct; already in the esi
         stdcall View.CreateFont
 
         ;===============================================================
@@ -261,16 +265,9 @@ proc WindowProc uses ebx esi edi,\
         invoke  gluPerspective, double -30.0, double -1.8, double 0.1, double 100.0  ; 2nd is w / h
 
         invoke  glMatrixMode, GL_MODELVIEW
-        invoke  glLoadIdentity
-        ;invoke  gluLookAt,\
-        ;double -8.0, double -3.0, double 0.0,\
-        ;double -8.0, double -3.0, double 0.0,\
-        ;double 0.0, double 0.0, double 10.0
-
-
         ; 3D TEST TEST TEST
         ;===============================================================
-        ; set projection
+        ; set projection (THIS IS 2D version)
         ;invoke  glMatrixMode, GL_PROJECTION
         ;invoke  glLoadIdentity
 
@@ -278,6 +275,7 @@ proc WindowProc uses ebx esi edi,\
         ;invoke  glOrtho, ebx, ebx, double [DFIELD_W], double [DFIELD_H], ebx, ebx, double -1.0, double 1.0
 
         ;invoke  glMatrixMode, GL_MODELVIEW
+        ;===============================================================
 
         ; exit with success
         xor     eax,eax
@@ -291,9 +289,10 @@ proc WindowProc uses ebx esi edi,\
         stdcall SoundPlayer.EndEventUpdate; got eax in [esp] as param
 
         ; CHECK IF GAME RUNNING
-        cmp     [Game.Playing], TRUE
-        jne     .animation
-        cmp     [Game.Pause], FALSE
+        xor     ax, ax
+        cmp     [Game.Playing], ax
+        je      .animation
+        cmp     [Game.Pause], ax
         jne     .animation
 
         ; update keypress
@@ -307,8 +306,8 @@ proc WindowProc uses ebx esi edi,\
     ;@@:
 
         ; check on snd
-        test    [Game.MusicOff], 1
-        jnz     @F
+        cmp     [Game.MusicOff], ax
+        jne     @F
         mov     eax, dword [esp]
         stdcall SoundPlayer.Update ; got eax in [esp] as param
 @@:
@@ -348,7 +347,6 @@ proc WindowProc uses ebx esi edi,\
         ; got ansi char
         ; save key pressed
         mov     eax, [wparam]
-        ;mov     eax
         ; check if chat activated
         ;if (CHAT_DEFINED)
         cmp     [View.MenuChosen], 2
@@ -368,8 +366,8 @@ proc WindowProc uses ebx esi edi,\
         cmp     [View.MenuChosen], 2
         je      .regularKeyEvent_except_R_P
         ; check if keyboard mode activated
-        test    ebx, 0x00'00'80'00
-        jz      .regularKeyEvent
+        test    bx, bx ; ebx, 0x00'00'80'00
+        jns     .regularKeyEvent
         ; check if game ended
         cmp    [Game.Score], 0
         jnz     .regularKeyEvent
@@ -424,8 +422,12 @@ proc WindowProc uses ebx esi edi,\
         ; JUST STUPID TEST
         cmp     eax, VK_F5
         jne     @F
+        ; mk snd
+        push    eax
+        invoke  midiOutShortMsg, [midihandle], 0x006F2B99
         ; ini client if not ini
         stdcall View.CreatePrimitive.TexturedCube
+        pop     eax
 @@:
         ; MUSIC
         cmp     eax, 'M'
@@ -548,7 +550,7 @@ proc WindowProc uses ebx esi edi,\
         ; primitive list
         invoke  glDeleteLists, VIEW_LIST_PRIMITIVE, 1
         ; gl & window
-        invoke  wglMakeCurrent, ebx, ebx
+        invoke  wglMakeCurrent, [Wnd.hdc], ebx
         invoke  wglDeleteContext, [Wnd.hrc]
         invoke  ReleaseDC, [hwnd], [Wnd.hdc]
         invoke  PostQuitMessage, ebx

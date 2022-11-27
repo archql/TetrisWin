@@ -316,4 +316,39 @@ proc Settings.View.GetNextTexture.Close
         ret
 endp
 
+;#############CALL SOUND####################
+; params (inorder)
+;[in, ecx] - midi message code
+proc Settings.Music.Play uses ebx
+
+        ; get mem for str
+        push    eax
+        push    eax
+        push    eax
+        lea     ebx, [esp]
+        ; save note
+        push    ecx
+        cinvoke wsprintfA, ebx, Settings.Music.HexFormat, ecx    ;Settings.Music.HexFormat
+        ; convert ecx to hex code
+        invoke  GetFileAttributes, ebx
+        test    eax, eax
+        js     .Exit_Not
+
+        SND_ASYNC = 0x01
+        invoke  PlaySound, ebx, 0, SND_ASYNC   ;
+        test    eax, eax
+        jnz     .Exit_OK
+
+.Exit_Not:
+        ; playsound failed, so use midi instead
+        invoke   midiOutShortMsg, [midihandle], dword [esp] ; note is on stack
+.Exit_OK:
+        pop     eax
+        pop     eax
+        pop     eax
+        pop     eax
+
+        ret
+endp
+
 

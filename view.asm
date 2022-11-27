@@ -1,6 +1,7 @@
 
 ;#############DRAW TEXT #####################
 ;  USES EBX!!!
+; eax ecx edx
 ;  params inorder
 ;  - [in, stack] X cord
 ;  - [in, stack] Y cord
@@ -8,9 +9,10 @@
 ;  - [in, stack] ANY
 ;  - [in, stack] strptr
 ; REQUIRED invoke  glListBase, [Wnd.nFontBase]
+; ENABLES lighting gl!!!!!!!!!!!!!!!!
 proc View.DrawText ; 10 bytes better than separate call
 
-        invoke  glNormal3f,  0.5, -0.3, 0.3
+        invoke  glDisable, GL_LIGHTING
         invoke  glPushMatrix
         invoke  glTranslatef, 0.0, 0.0, 1.0
 
@@ -21,6 +23,7 @@ proc View.DrawText ; 10 bytes better than separate call
         push    ebx
 
         invoke  glPopMatrix
+        invoke  glEnable, GL_LIGHTING
 
         ret
 endp
@@ -51,7 +54,7 @@ endp
 ;#############DRAW CHAT###############
 ; DRAW chat
 ; - ClientsDataArr (read)
-proc View.DrawChat
+proc View.DrawChat uses ebx; uses ecx ebx esi edi
 
         ;mov     esi, Client.ClientsDataArr
         mov     ecx, FIELD_H ; loop ctr (hei * 2, bc font size / 2)
@@ -62,26 +65,23 @@ proc View.DrawChat
         sub     esi, ecx ; Y pos
 
         mov     edi, Chat.Buf ; its addr in a table (of current msg)
-        ;test    esi, esi ; if its first element
+        ;test    esi, esi ; if its first element ; flags already set!
         jz      @F
         ; its non first element
         movzx   edi, word [Chat.MsgPos]
         sub     edi, esi ; edi is index in the table
         inc     edi
-        ;test    edi, edi ; if its < 0 -- skip
+        ;test    edi, edi ; if its < 0 -- skip  ; flags already set!
         js      .SkipLine
         shl     edi, CHAT_MSG_RCD
         add     edi, Chat.Table ; edi is addr in the table
 @@:
-        push    ebx
+        ; uses ebx
         stdcall View.DrawText, FIELD_W + 2 + 8, ecx, CHAT_MSG_LEN, eax, edi;esi, CHAT_MSG_LEN, eax, edi
-        pop     ebx
 .SkipLine:
         ; loop
         pop     ecx
         loop    .PrintChatLoop
-
-
 
         ret
 endp
@@ -89,7 +89,6 @@ endp
 ;#############DRAW LEADERBOARD###############
 ; safe wrap required
 ; uses - LB mem (read)
-; first -- alloc mem for flag (if cur usr founded)
 proc View.DrawLeaderboard
         ; alloc mem for flag
         xor     eax, eax
@@ -211,9 +210,11 @@ proc View.DrawConnections
 endp
 
 ;#############DRAW GLOW######################
+; enables gl lighting!!!!!!
 proc View.DrawGlow
 ; setup rotation
-        invoke  glNormal3f,  0.5, -0.3, 0.3
+        ;invoke  glNormal3f,  0.5, -0.3, 0.3
+        invoke  glDisable, GL_LIGHTING
 
         fld     [Glow.AnimAngle]
         fld     [Glow.AnimDeltaAngle]
@@ -284,6 +285,7 @@ proc View.DrawGlow
         add     esp, 4         ; reset stack (temp)
         fstp    dword [esp + 8]
 
+        ;call    View.DrawEffectElement
         ; test rotating rect draw
         invoke  glPushMatrix;
         invoke  glTranslatef, dword [esp + 16], dword [esp + 16], 0.5  ;  esp -= 4 happened 2xtimes
@@ -303,13 +305,54 @@ proc View.DrawGlow
         ; load loop cntr (Y cord)
         pop     ecx    ;(sp+=4)
         ; free stack (from reserved for X and Y cord)
-        add     esp, 8 ;(sp+=8)
+        ;add     esp, 8 ;(sp+=8)
+        pop     ebx
+        pop     ebx
         ; go next
       .glow_skip:
         dec     ecx
         test    ecx, ecx
         jnz  .glow_draw
         ; end test glow draw
+        invoke  glEnable, GL_LIGHTING
+        ret
+endp
+
+
+proc View.DrawEffectElement
+
+
+        ; test rotating rect draw
+        ;invoke  glPushMatrix;
+        ;invoke  glTranslatef, dword [esp + 16], dword [esp + 16], 0.5  ;  esp -= 4 happened 2xtimes
+        ;invoke  glBegin, GL_QUADS
+
+                ;invoke  glVertex2f, edi, edi
+                ;invoke  glVertex2f, esi, edi
+                ;invoke  glVertex2f, esi, esi
+                ;invoke  glVertex2f, edi, esi
+
+        ;invoke  glEnd
+        ;invoke  glPopMatrix
+
+        ; draw background texture
+        invoke  glPushMatrix
+        invoke  glTranslatef, dword [esp + 20], dword [esp + 20], 0.5
+        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 5.0;
+        invoke  glEnable, GL_TEXTURE_2D
+        invoke  glBegin, GL_QUADS
+                invoke  glTexCoord2i, 0, 1
+                invoke  glVertex2f, edi, edi
+                invoke  glTexCoord2i, 1, 1
+                invoke  glVertex2f, esi, edi
+                invoke  glTexCoord2i, 1, 0
+                invoke  glVertex2f, esi, esi
+                invoke  glTexCoord2i, 0, 0
+                invoke  glVertex2f, edi, esi
+        invoke  glEnd
+        invoke  glDisable, GL_TEXTURE_2D
+        invoke  glPopMatrix
+
         ret
 endp
 
@@ -395,7 +438,7 @@ endp
 
 ;#############CREATE FONT####################
 ; params inorder
-; - ptr to font struct (esi) (dword base, dword size : inorder)
+; [in, esi] ptr to font struct (dword base, dword size : inorder)
 proc View.CreateFont
         ; create font
         xor     ebx, ebx
@@ -438,36 +481,35 @@ proc View.DrawFigure uses ecx,\
         mov     eax, [color]
         ; set x pos
         ;mov     si, [View.DrawFigure.X]
-        inc     si
+        inc      si
         ; set y pos
         ;mov     di, [View.DrawFigure.Y]
-        inc     di
+        inc      di
         ; set fig info
         ;mov     bx, [View.DrawFigure.Fig]
         ;mov     ebx, [View.DrawFigure.Color]
         ; setup loop
-        mov     ecx, 16
+        xor     ecx, ecx
+        mov     cl, 16
 
         ; inner loop -- draw line of matrix
 .DrawLoop:
         shl     bx, 1
         jae     @F ; CF = 0 => exit
-        ;test    di, 0x80'00 ; check if Y cord < 0
-        ;jnz     @F
-        test    di, di
+        test    edi, edi
         js      @F
         ; draw rect (esi is X, edi is Y, eax - color pos in table)
         push    ecx eax
         stdcall View.DrawRect ; uses eax edx ecx
         pop     eax ecx
 @@:
-        inc     si; setup cords
+        inc     esi; setup cords
         dec     ecx
-        test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b
+        test    cl, 0000'0011b
         jnz     @F
 .nextLine:
         sub     si, 4
-        inc     di
+        inc     edi
 @@:
         inc     ecx
         loop    .DrawLoop
@@ -529,16 +571,17 @@ proc View.DrawRect uses ebx ;uses ecx, edx
         test    ax, ax
         jz      .exit_proc
         ; preset Z cord
-        push    -0.8
+        mov     edx, -0.8
         ; check if border block
         cmp     ax, 1
         jne     @F
-        mov     dword [esp], -0.3
+        mov     edx, -0.3
 @@:
         cmp     ax, 2
         jne     @F
-        mov     dword [esp], -1.2
+        mov     edx, -1.2
 @@:
+        push    edx
         ; get color
         mov     edx,  12; 4 bytes for clr * 3
         mul     dx
@@ -612,7 +655,7 @@ proc View.CreatePrimitive.Cube
 
         invoke  glBegin, GL_QUADS
         ;=========================
-        mov     ebx, 0.0
+        xor     ebx, ebx
         mov     esi, -0.48
         mov     edi, 0.48
 
@@ -729,6 +772,7 @@ proc View.CreatePrimitive.TexturedCube
 
         invoke  glDisable, GL_TEXTURE_2D
 ;===============================================================================================
+.Error:
         ; generate list
         invoke  glDeleteLists, VIEW_LIST_PRIMITIVE, 1
         invoke  glNewList, VIEW_LIST_PRIMITIVE, GL_COMPILE ; 1000 is test
@@ -821,11 +865,6 @@ proc View.CreatePrimitive.TexturedCube
 ;===============================================================================================
         ; dealloc bufsz bytes on stack
         add     esp, [bufsz]
-        ;End texture test
-        jmp     .Exit
-.Error:
-
-        stdcall View.CreatePrimitive.Cube
 .Exit:
 
 

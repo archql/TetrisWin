@@ -32,10 +32,10 @@
         NICKNAME_LEN                     =     8
         Settings.strTempNickName         db    '________'
         STR_BASE_NICKNAME_FIRST_SYMBOL   =     '@'
-        Str.BaseNickName                 db    STR_BASE_NICKNAME_FIRST_SYMBOL ,'DEFAULT';'_ARCHQL_'
+        Str.BaseNickName                 db    STR_BASE_NICKNAME_FIRST_SYMBOL ,'DEFAULT'
         Settings.strTempNickNameBlocked  db    '~~~~~~~~'
         ;========ANIMATIONS========================
-        Glow.AnimDeltaAngle       dd    20.0
+        Glow.AnimDeltaAngle       dd    2.0
         Glow.SZ_delta             dd    0.05
         ;Glow.right                dd    ?
         ;Glow.left                 dd    ?
@@ -53,7 +53,7 @@
                                 1.0, 0.0, 0.5098,\
                                 1.0, 0.0, 0.2549,\
                                 1.0, 0.0, 0.0,\
-                                1.0, 0.2549, 0.0,\;;;;
+                                1.0, 0.2549, 0.0,\
                                 1.0, 0.745, 0.0,\
                                 1.0, 1.0, 0.0,\
                                 0.745, 1.0, 0.0,\
@@ -78,7 +78,7 @@
                                 0110_1100_0000_0000b, 0100_0110_0010_0000b, 0000_0110_1100_0000b, 1000_1100_0100_0000b,\ ; S
                                 1100_0110_0000_0000b, 0010_0110_0100_0000b, 0000_1100_0110_0000b, 0100_1100_1000_0000b,\ ; Z
                                 0100_1110_0000_0000b, 0100_0110_0100_0000b, 0000_1110_0100_0000b, 0100_1100_0100_0000b   ; T
-                                ;0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\ ; O
+                                ;0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\
                                 ;0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b,\
                                 ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b;,\;
         figNum          =       ($ - figArr)/8 - 1
@@ -88,12 +88,13 @@
         View.strTextureFileFilter   db    '*.bmp', 0
         Settings.strFileFilter      db    '*.ttr', 0
         Settings.PlaceFormat        db    '#%X', 0
+        Settings.Music.HexFormat    db    '#%X.wav', 0
         Settings.Format.File.Temp   db    '%.8s.ttr.tmp', 0   ;NICKNAME_LEN
         Settings.Format.File        db    '%.8s.ttr', 0       ;NICKNAME_LEN
         Settings.File.Name          db    'lastnickname', 0
 
         ; # CLIENT
-        if (SERVER_DEFINED)
+if (SERVER_DEFINED)
         Client.dIPAddrTableSz       dd    CLIENT_ADAPTERS_BUF_MAX
         Client.PCIDBufLen           dd    CLIENT_PCID_LEN + CLIENT_BUF_LEN + 1 ; Buffer for key isnt large enough but it isnt dangerous??
 
@@ -108,8 +109,7 @@
         Client.StrRegistered        db    '@REGSTRD'
         Client.StrRgRejected        db    '@REJCTED'
         Client.StrKeyFail           db    '@UUIDERR'
-        end if
-        ;IP_4_BROADCAST_VAL      dd              0xFF'FF'FF'FF
+end if
 
         ;# SoundPlayer
         SoundPlayer.Notes         file    'tetris_ex.amid' ; ex
@@ -160,7 +160,7 @@ Unitialized_mem:
         Wnd.msg                         MSG                     ?
         Wnd.paintstruct                 PAINTSTRUCT             ?
         Wnd.pfd                         PIXELFORMATDESCRIPTOR   ?
-     Wnd.font:
+     Wnd.font:  ; Wnd.rc & FONT united based on TETRIS INI CODE
         Wnd.nFontBase                   dd                      ?
         Wnd.fontSz                      dd                      ?
 
@@ -399,7 +399,7 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 6
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 2
+        GAME_V_MINOR                    = 4
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

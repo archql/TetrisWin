@@ -466,7 +466,7 @@ endp
 ;#############CHECK ON FULL LINES AND COUNT SCORE ####################
 proc Game.CheckOnLine uses dx ebx ecx
 
-        xor     ax, ax; score
+        xor     eax, eax; score
         mov     ebx, 1           ; full w
         mov     ecx, FIELD_H - 1 ; full hei - 1
 .CheckLoop:
@@ -484,7 +484,7 @@ proc Game.CheckOnLine uses dx ebx ecx
         stdcall Game.RmLine
 
         ; rm line end
-        inc     ax; add score
+        inc     eax; add score
 
 .skipLine:
         pop     ebx
@@ -493,7 +493,7 @@ proc Game.CheckOnLine uses dx ebx ecx
         pop     ecx
         loop    .CheckLoop
  ; END LOOP
-        test    ax, ax  ; add score
+        test    eax, eax  ; add score
         jz      .EndProc
 
         ;push    ax
@@ -502,10 +502,13 @@ proc Game.CheckOnLine uses dx ebx ecx
         ;pop     ax
         ; sound eff
         push    eax ecx edx
+        ; BANG EFFECT
         cmp     al, 4
         jl      @F
         push    eax
-        invoke  midiOutShortMsg, [midihandle], 0x007F2594
+        mov     ecx, 0x007F2594
+        stdcall Settings.Music.Play
+        ;invoke  midiOutShortMsg, [midihandle], 0x007F2594
         pop     eax
 @@:
         mov     ecx, 0x007F0093
@@ -513,7 +516,8 @@ proc Game.CheckOnLine uses dx ebx ecx
         shl     ch, 2
         add     ch, 40
         ;mov     word [SoundPlayer.LineGameTick], ax
-        invoke   midiOutShortMsg, [midihandle],  ecx ;
+        ;invoke   midiOutShortMsg, [midihandle],  ecx ;
+        stdcall Settings.Music.Play
         pop     edx ecx eax
         ;  == == =
 
@@ -538,7 +542,6 @@ proc Game.CheckOnLine uses dx ebx ecx
         ret
 endp
 
-
 ;#############MOVES FIGURE TO FIELD ARRAY ####################
 ; - fig   -- 2 bytes figure
 ; - x     -- x cord
@@ -559,20 +562,21 @@ proc Game.PlaceFigure ;uses eax ecx esi edi ebx
 
 
         xchg    al, cl ; mov color to al
-        mov     ecx, 16; setup loop
+        xor     ecx, ecx
+        mov     cl, 16; setup loop
 
         ; inner loop -- line of matrix
 .DrawLoop:
         shl     bx, 1
         jae     @F ; CF = 0 => exit
-        test    si, 0x80'00 ; check if cord < 0
-        jnz     @F
+        test    si, si ; check if cord < 0
+        js      @F
         ; paste figure
         mov     byte [esi + Game.BlocksArr], al
 @@:
-        inc     si ; setup cords
+        inc     esi ; setup cords
         dec     ecx
-        test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b; if % 4 => move to next line
+        test    cl, 0000'0011b; if % 4 => move to next line
         jnz     @F
         add     si, FIELD_W - 4
 @@:
@@ -599,21 +603,22 @@ proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
         ; result set
         xor     eax, eax
 
-        mov     ecx, 16
+        xor     ecx, ecx
+        mov     cl, 16; setup loop
 
         ; inner loop -- draw line of matrix
 .DrawLoop:
         shl     bx, 1
         jae     @F ; CF = 0 => exit
-        test    si, 0x80'00 ; check if cord < 0
-        jnz     @F
+        test    si, si ; check if cord < 0
+        js      @F
         ; check collision
         cmp     byte [esi + Game.BlocksArr], 0
         jne     .Collided
 @@:
         inc     si; setup cords
         dec     ecx
-        test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b
+        test    cl, 0000'0011b
         jnz     @F
         add     si, FIELD_W - 4
 @@:
@@ -622,7 +627,8 @@ proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
 
         jmp     .EndProc
 .Collided:
-        mov     eax, TRUE
+        ;mov     eax, TRUE
+        inc     eax
 .EndProc:
         ret
 endp
@@ -632,10 +638,11 @@ endp
 
 ;#############GAME END ##############################
 proc Game.End
+        xor     ax, ax
         ; set playing false
-        cmp     [Game.Playing], FALSE
+        cmp     [Game.Playing], ax
         je      @F
-        mov     [Game.Playing], FALSE
+        mov     [Game.Playing], ax
         ; stop music
         stdcall SoundPlayer.Pause
         ; game cost

@@ -191,27 +191,29 @@
         end if
 
         ; draw background texture
-        mov     ax, [Game.Pause]
-        xor     ax, 1
-        and     ax, [Game.Playing]
-        jnz     @F
+        ;mov     ax, [Game.Pause]
+        ;xor     ax, 1
+        ;and     ax, [Game.Playing]
+        cmp     [Game.Playing], 1
+        je      @F
 
         invoke  glDisable, GL_LIGHTING
         xor     edi, edi
-        mov     esi, 1
+        xor     esi, esi
+        inc     esi
         invoke  glPushMatrix
-        invoke  glTranslatef, 6.0, 6.0, -5.0
-        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 5.0;
+        invoke  glTranslatef, 7.0, 7.0, edi
+        invoke  glRotatef, [Glow.AnimAngle], edi, edi, 5.0;
         invoke  glEnable, GL_TEXTURE_2D
         invoke  glBegin, GL_QUADS
                 invoke  glTexCoord2i, edi, edi
                 invoke  glVertex2i,  (FIELD_W - 2) / 2,  (FIELD_W - 2) / 2
                 invoke  glTexCoord2i, edi, esi
-                invoke  glVertex2i,  (FIELD_W - 2) / 2, -(FIELD_W - 2) / 2
+                invoke  glVertex2i, -(FIELD_W - 2) / 2,  (FIELD_W - 2) / 2
                 invoke  glTexCoord2i, esi, esi
                 invoke  glVertex2i, -(FIELD_W - 2) / 2, -(FIELD_W - 2) / 2
                 invoke  glTexCoord2i, esi, edi
-                invoke  glVertex2i, -(FIELD_W - 2) / 2,  (FIELD_W - 2) / 2
+                invoke  glVertex2i,  (FIELD_W - 2) / 2, -(FIELD_W - 2) / 2
         invoke  glEnd
         invoke  glDisable, GL_TEXTURE_2D
         invoke  glPopMatrix
@@ -242,11 +244,11 @@
         ; draw preview figure
         mov     bx,  word [Game.CurFig]; figure
         movzx   esi, word [Game.FigX]  ; X
-        push    bx esi ; save
+        push    ebx esi ; save
         movzx   edi, word [Game.FigPreviewY]  ; Y
         stdcall View.DrawFigure, 2
         ; draw figure
-        pop     esi bx
+        pop     esi ebx
         movzx   edi, word [Game.FigY]  ; Y
         movzx   eax, byte [Game.CurFigColor]; movzx
         stdcall View.DrawFigure, eax

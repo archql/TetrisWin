@@ -53,6 +53,9 @@ proc SoundPlayer.EndEventUpdate; got eax in [esp] as param
         jb      @F
         add     [SoundPlayer.CurTick], ax
 
+        mov     ecx, ebx
+        stdcall Settings.Music.Play
+
         ; get midi message
         mov      eax, 0x007F2590
         mov      ah, bl
@@ -177,8 +180,6 @@ proc SoundPlayer.PlayNextSEx uses ebx
 
         ret
 endp
-                        ; 1001 -- play; 1000 - stop; kkk - note num, vvv - volume
-                        ;format 1001'nnnn   kk  0vvvvvvvv
 
 
 
