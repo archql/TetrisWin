@@ -334,7 +334,20 @@ proc Settings.Music.Play uses ebx
         SND_ASYNC = 0x01
         invoke  PlaySound, ebx, 0, SND_ASYNC   ;
         test    eax, eax
-        jnz     .Exit_OK
+        jz     .Exit_Not
+
+        ; try load texture
+        mov     dword [ebx + 8], 'bmp0' and 0x00FFFFFF
+        invoke  GetFileAttributes, ebx
+        test    eax, eax
+        js     .Exit_OK
+        ; load texture
+        push    esi edi
+        mov     esi, ebx
+        stdcall View.CreatePrimitive.TexturedCube
+        pop     edi esi
+        ; exit
+        jmp    .Exit_OK
 
 .Exit_Not:
         ; playsound failed, so use midi instead

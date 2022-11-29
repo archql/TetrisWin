@@ -260,6 +260,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         invoke  glEnable, GL_COLOR_MATERIAL
 
         ; set Gl List
+        xor     esi, esi
         stdcall View.CreatePrimitive.TexturedCube
 
 
@@ -276,6 +277,11 @@ proc WindowProc ,\;uses ebx esi edi,\
         add     esi, Wnd.font - Wnd.rc
         invoke  glViewport, ebx, ebx, [esi + (Wnd.rc.right - Wnd.font)], [esi + (Wnd.rc.bottom - Wnd.font)]
 
+         ; get screen ratio
+        fild    dword [esi + (Wnd.rc.right - Wnd.font)]; wdt
+        fidiv   dword [esi + (Wnd.rc.bottom - Wnd.font)] ; hei
+        fchs
+        fstp    [ratio] ; screen ratio
         ; reserve stack for cell width
         push    eax
         ; get rect size
@@ -307,7 +313,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         invoke  glMatrixMode, GL_PROJECTION
         invoke  glLoadIdentity
 
-        invoke  gluPerspective, double -30.0, double -1.8, double 0.1, double 100.0  ; 2nd is w / h
+        invoke  gluPerspective, double -30.0, double [ratio], double 0.1, double 100.0  ; 2nd is w / h
 
         invoke  glMatrixMode, GL_MODELVIEW
         ; 3D TEST TEST TEST
@@ -317,7 +323,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         ;invoke  glLoadIdentity
 
         ;xor     ebx, ebx ; double 0.0 == double push 0
-        ;invoke  glOrtho, ebx, ebx, double [DFIELD_W], double [DFIELD_H], ebx, ebx, double -1.0, double 1.0
+        ;invoke  glOrtho, ebx, ebx, double [DFIELD_W], double [DFIELD_H], ebx, ebx, double -1.0, double 1000.0
 
         ;invoke  glMatrixMode, GL_MODELVIEW
         ;===============================================================
@@ -471,6 +477,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         push    eax
         invoke  midiOutShortMsg, [midihandle], 0x006F2B99
         ; ini client if not ini
+        xor     esi, esi
         stdcall View.CreatePrimitive.TexturedCube
         pop     eax
 @@:

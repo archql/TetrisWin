@@ -588,7 +588,7 @@ proc View.DrawRect uses ebx ;uses ecx, edx
         ; set color
         invoke  glColor3f, dword [Color_Table + eax], dword [Color_Table + eax + 4], dword [Color_Table + eax + 8]
         ; TEST loop for depth
-        mov    ebx, 2
+        ;mov    ebx, 2
         push   0.9
         fld    dword [esp]
         pop    edx
@@ -615,10 +615,11 @@ proc View.DrawRect uses ebx ;uses ecx, edx
         invoke  glCallList, VIEW_LIST_PRIMITIVE
 
         invoke  glPopMatrix
-        ; loop
-        dec     ebx
-        cmp     ebx, 0 ; temp
-        jg      .DepthLoop
+        ; DEPTH loop
+        ;dec     ebx
+        ;cmp     ebx, 0 ; temp
+        ;jg      .DepthLoop
+
         ; clear stack
         finit
         ;fincstp
@@ -715,8 +716,8 @@ proc View.CreatePrimitive.Cube
         ret
 endp
 
-
-proc View.CreatePrimitive.TexturedCube
+; [in, esi] ptr to tex file or null
+proc View.CreatePrimitive.TexturedCube  ; uses eax ebx ecx edx esi edi
 
         locals
                 bufsz           dd      ?
@@ -733,13 +734,18 @@ proc View.CreatePrimitive.TexturedCube
         invoke  glGenTextures, 1, View.TextureID
         invoke  glBindTexture, GL_TEXTURE_2D, [View.TextureID]
      ;@@:
+        ; check if file ld needed
+        test    esi, esi
+        jnz     @F
         ; Get next tex filename
         stdcall Settings.View.GetNextTexture
         cmp     [View.TextureFileLookupHandle], 0
         je      .Error
+        mov     esi, View.TextureFileDataa.cFileName
+    @@:
         ;Open file
         xor     ebx, ebx
-        invoke  CreateFileA, View.TextureFileDataa.cFileName, GENERIC_READ, ebx, ebx,\
+        invoke  CreateFileA, esi, GENERIC_READ, ebx, ebx,\
                                                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, ebx
         cmp     eax, INVALID_HANDLE_VALUE
         je      .Error
@@ -764,7 +770,9 @@ proc View.CreatePrimitive.TexturedCube
         invoke  CloseHandle, esi
 
         add     [bufadr], 36h; skip bmp header
-        invoke  glTexImage2D, GL_TEXTURE_2D, ebx, GL_RGB8, 64, 64, ebx, GL_BGR, GL_UNSIGNED_BYTE, [bufadr]
+        mov     eax, [bufadr]
+        mov     eax, [eax - 20h]
+        invoke  glTexImage2D, GL_TEXTURE_2D, ebx, GL_RGB8, eax, eax, ebx, GL_BGR, GL_UNSIGNED_BYTE, [bufadr]
         invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE
         invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE
         invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR

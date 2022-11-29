@@ -123,29 +123,10 @@ end if
         if (HELP_DEFINED)
         Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
         Help.Str.LEN    = $ - Help.Str1
-        Help.Str2       db      '>Game control:             '
-        Help.Str3       db      ' P   -- pause              '
-        Help.Str4       db      ' R   -- restart            '
-        Help.Str5       db      ' ESC -- stop/exit          '
-        Help.Str6       db      '>Figure control:           '
-        Help.Str7       db      ' < > -- move               '
-        Help.Str8       db      ' ^ v -- rotate             '
-        Help.Str9       db      ' H   -- hold once per spawn'
-        Help.Str10      db      ' SPACE- hard drop          '
-        Help.Str11      db      ' SHIFT- soft drop          '
-        Help.Str12      db      '>Music control:            '
-        Help.Str13      db      ' ] [ -- inc/dec volume     '
-        Help.Str14      db      ' M   -- mute toggle        '
-        Help.Str16      db      '>Register control:         '
-        Help.Str17      db      ' Hold CTRL key & write nick'
-        Help.Str18      db      ' use arrows to navigate    '
-        Help.Str19      db      '>Menu control:             '
-        Help.Str20      db      ' use F2 key to toggle menus'
-        Help.Str21      db      '>Network control:          '
-        Help.Str22      db      ' F3 - mk try to connect    '
-        Help.Str23      db      '  if state is @RGSTRD - OK '
-        Help.Str24      db      ' F4 - start online game syn'
-        Help.Str25      db      '  must be GAME OVER status '
+        Help.Str2       db      'For help read README       '
+        Help.Str3       db      '    find more more at:     '
+        Help.Str4       db      'github.com/archql/TetrisWin'
+        Help.Str5       db      '      archql (c) 2022      '
         Help.LPos:
         Help.LEN        = ($ -  Help.Str1) / Help.Str.LEN
         end if
@@ -167,6 +148,8 @@ Unitialized_mem:
         Wnd.hdc                         dd      ?
 
         Wnd.wc                          WNDCLASS        ?
+
+        ratio                           dq      ?
 
         Wnd.rc                          RECT    ?
         ; # Glow data
@@ -205,6 +188,8 @@ Unitialized_mem:
      chat_font:
         .sub_font_base                  dd      ?
         .sub_font_sz                    dd      ?
+
+        Game.randomEndSpecialId         dw      ?
 
         ; # MESSAGE CODES
         MSG_CODE_BASE_PROXY             = $F000
@@ -397,7 +382,7 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 6
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 4
+        GAME_V_MINOR                    = 6
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

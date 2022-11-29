@@ -249,8 +249,8 @@ proc Game.KeyEvent uses eax
 
         ; swap cur and buffered
         xchg    word [Game.HoldedFigNum], cx
-        cmp     cx, -1 ; if holded fig isnt set yet
-        jne     @F
+        test    cx, cx ; if holded fig isnt set yet
+        jns     @F     ; works if figs < 127
         push    eax
         stdcall Game.GenNewFig;; REGISTERS!!!!
         pop     eax
@@ -634,15 +634,20 @@ endp
 
 ;#############GAME END ##############################
 proc Game.End
-        xor     ax, ax
+        xor     eax, eax
         ; set playing false
         cmp     [Game.Playing], ax
         je      @F
         mov     [Game.Playing], ax
+        ; set rotation to initial pos
+        mov     [Glow.AnimAngle], eax
         ; stop music
         stdcall SoundPlayer.Pause
-        ; set rotation to initial pos
-        ;mov     [Glow.AnimAngle], 0
+        ; set random end effect
+        stdcall Random.Get, 1, 4
+        mov     [Game.randomEndSpecialId], ax
+        ; call here effect ???
+
         ; === game cost
         ; check score if new high
         mov     cx, [Game.HighScore]

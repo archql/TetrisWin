@@ -45,12 +45,12 @@ proc SoundPlayer.EndEventUpdate; got eax in [esp] as param
 
         movzx   ebx, word [SoundPlayer.EndGameTick]
         test    ebx, ebx
-        jz      @F
+        jz      .ExitProc
 
         ; define sound tick update
         sub     ax, [SoundPlayer.CurTick]
         cmp     ax, 260; temp//180
-        jb      @F
+        jb      .ExitProc
         add     [SoundPlayer.CurTick], ax
 
         ;mov     ecx, ebx
@@ -62,7 +62,14 @@ proc SoundPlayer.EndEventUpdate; got eax in [esp] as param
         shl      ch, 2
         add      ch, 22
         ; play midi message
-        stdcall  Settings.Music.Play;invoke   midiOutShortMsg, [midihandle],  eax;
+        push     ecx
+        invoke   midiOutShortMsg, [midihandle],  ecx;
+        pop      ecx
+        ; check if end game effect required
+        cmp      bl, byte [Game.randomEndSpecialId]
+        jne      @F
+        stdcall  Settings.Music.Play
+@@:
 
         mov      eax, 0x007F2591
         mov      ah, bl
@@ -72,7 +79,7 @@ proc SoundPlayer.EndEventUpdate; got eax in [esp] as param
 
         dec     ebx
         mov     word [SoundPlayer.EndGameTick], bx
-@@:
+.ExitProc:
         ret
 endp
 

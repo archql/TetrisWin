@@ -143,6 +143,22 @@ Other sizes are not guarantied to work! Possible outcome is game crash
  - *special* name must be formatted as midi hex code text prefixed with '#' symbol and postfixed with '.wav' 
  - now (v6.4) game end, line clear and bang sounds are replaceable
  
+#### Replaceable music messages (v6.4+)
+ - All files must be in .wav format (file constists of name listed below postfixed with .wav)
+ - end game event is played one from 4 presented randomly
+ - additionally sound played changes texture to one which name formatted as midi hex code text 
+ prefixed with '#' symbol and postfixed with '.bmp' (if such image presented) 
+ - What? - When? 
+   - #7F2C93 - 1 line cleared
+   - #7F3093 - 2 lines cleared
+   - #7F3493 - 3 lines cleared
+   - #7F3893 - 4 lines cleared
+   - #7F2594 - bang sound when 4 lines cleared (conflicts with previous)
+   - #7F2690 - end game event 1 (on loose)
+   - #7F2290 - end game event 2 (on loose)
+   - #7F1E90 - end game event 3 (on loose)
+   - #7F1A90 - end game event 4 (on loose)
+ 
  
 ## For developers
 
