@@ -134,6 +134,9 @@ endp
 proc Client.Send ; requires msgId & msgSz
 
         mov     word [Client.MessageCode], bx
+        mov     ax, MYPORT
+        xchg    ah, al
+        mov     [Client.Sender_addr.sin_port], ax
         invoke  sendto, [Client.psocket], GameMessage, edi, 0, Client.Sender_addr, sizeof.sockaddr_in
 
         ret
