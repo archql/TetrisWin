@@ -25,7 +25,7 @@ Logics is fully based on my previous tetris variant, see [this](https://github.c
  - Antiviruses might block this app because of the way of a virus detection used
  - Firewall might block network features of this app even in `ON-LINE` state!
 
-### 🖱️CONTROLS⌨️
+### ⌨️CONTROLS⌨️
 | **Ingame action**    | **Key to trigger it**|
 | -------------------- |:------------------:| 
 | move left            |  <                 |
@@ -39,6 +39,19 @@ Logics is fully based on my previous tetris variant, see [this](https://github.c
 | restart              |  R                 |
 | hold                 |  H                 |
 | special *not recommended* | ENTER (*costs 100 score*)|
+
+#### 🖱️MOUSE CONTROLS🖱️
+| **Ingame action**    | **Mouse action**|
+| -------------------- |:------------------:| 
+| move left            |  move left (inside the field)  |
+| move right           |  move right (inside the field) |
+| rotate clockwise     |  wheel rotation |
+| rotate anticlockwise |  wheel rotation |
+| hard drop            |  Left button click  |
+| hold                 |  Right button click |
+
+*Be careful with mouse while playing using keyboard!*
+*Planned* add a way to disable mouse
 
 #### 🎵 MUSIC CONTROLS 🎵
 
@@ -87,6 +100,8 @@ with all keys pressed
  
 - *in theory* nicknames can use first 128 ANSI symbols, 
 	but support of such nicknames is *not guaranteed*! 
+- there is nickname `@DEFAULT` which does not save your score nor displays on Leaderboard 
+- your last used nickname is auto saved by the app
 
 #### 🥇LEADERBOARD INFORMATION:🥇
 
@@ -132,7 +147,7 @@ with all keys pressed
  - Ping message sends every 200 ms. Client checks all ping records also every 200 ms.
  - If timeout value became 0, client removes corresponding ping record.
  - if you have *REJCTED* state - change your nickname and retry (use F3 key).
- - you will recieve leaderboard updates even in *REJCTED* state.
+ - you will recieve leaderboard updates even in `REJCTED` state.
  - Ping messages contains full game frame so your game can be visualized remotely with 200 ms precision.
  - To protect from clients with same name connection machine UUID used.
  - There is possible to remote control your gameplay from another computer connected to same LAN (and gameplay only).
@@ -146,7 +161,7 @@ with all keys pressed
  - by default, client displays 3D using colored cubes
  - cubes can be textured by placing *\*.bmp* files with *any* name to the folder with game
  - ⚠️**WARNING! BMP must be *R8* *G8* *B8* formatted (*24 bit*) and its size less than 100 kB!**
-**Other sizes are not guarantied to work! Possible outcome is game crash**
+**Other sizes are not guaranteed to work! Possible outcome is game crash**
  - client will use BMP files automatically when they are presented
  - you can place multiple BMPs to the game folder and swap them with **F5** key
  - game field can be rotated by mouse wheel along Z axis (X axis if ctrl key holded).
@@ -155,7 +170,7 @@ with all keys pressed
 
  - music is based on **winmm** lib and windows emulation of MIDI.
  - music consists of 2 parts - `background` and `effect`
- - `background` music is included to the exe (1811 bytes) and its volume be controlled
+ - `background` music is included to the exe (1811 bytes) and its volume can be controlled
  - `background` music enables when game session is running
  - `effect` music have different kinds and conditions for it
  - `effect` music volume cant be changed
@@ -173,10 +188,10 @@ with all keys pressed
  - now (v6.4) game end, line clear and bang sounds are replaceable
  
 ### 💠Replaceable event music and textures (v6.6+)💠
- - All files must be in .wav format (file constists of name listed below postfixed with .wav)
+ - All files must be in .wav format (filename constists of name listed in the table below postfixed with .wav)
  - end game event is played one from 3 presented randomly (*can be 4 but random is stupid*)
- - additionally sound played changes texture to one which name formatted as midi hex code text 
- prefixed with '#' symbol and postfixed with '.bmp' (if such image presented) 
+ - additionally sound played changes texture to one which filename constists of name 
+ listed in the table below postfixed with .bmp)
  
 | **What?**    | **When?**|
 | ------- | ------------------ | 
@@ -193,7 +208,7 @@ with all keys pressed
 ### 📑Gameplay save📑
 
 - all gameplay is saved in `.ttr` files. 
-- you must not edit them
+- ⚠️**WARN**⚠️ *Full `.ttr`* file is the only valid proof for your score! You must not edit it or provide it to anybody except officials in order to protect your score! You can store this file separatly from other game files for additional protection.
 - additional info is [here](#what-is-ttr-files)
  
  
@@ -253,8 +268,6 @@ New `'.ttr'` files are supported in old versions (But they are readonly, write w
 Now it is part of `.ttr`
 *Full `.ttr`* is now **406** bytes long file.
 
-⚠️**WARN**⚠️ *Full `.ttr`* file is the only valid proof for your score! You must not edit it or provide it to anybody except officials in order to protect your score! You can store this file separatly from other game files for additional protection.
-
 `'.ttr.tmp'` file is same format file as `'.ttr'` file. But it used to save gameplay of a player.
 
 ### Network protocol (5.+)
@@ -285,5 +298,13 @@ Now it is part of `.ttr`
  - current structure of `.ttr`, `NetFrame` and `GameFrame` can be located in the `'tetrisdata.asm'`
   
 ### `.ttr` protection
+
+## Author
+
+*Artiom Drankevich* (**archql**)
+
+artem.drankevich@gmail.com
+
+
 
 

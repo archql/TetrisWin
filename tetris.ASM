@@ -22,6 +22,9 @@ entry start
 
         INC_EVERY_FIGS=15 ;2^N-1
 
+        BRIGHTNESS_COEFF_BIG = TRUE
+        VIEW_3D = FALSE
+
 ;===========================
 section '.code' code executable readable  ; code section
 start:
@@ -246,8 +249,11 @@ proc WindowProc ,\;uses ebx esi edi,\
         invoke  glLightfv, GL_LIGHT0, GL_POSITION, ebp
         pop     ebp
         add     esp, 4 * 4
-
-        mov     eax, 2.0
+    if BRIGHTNESS_COEFF_BIG
+        mov     eax, 2.0; BRIGHTNESS_COEFF
+    else
+        mov     eax, 1.0
+    end if
         push    1.0 eax eax eax
         push    ebp
         mov     ebp, esp
@@ -309,7 +315,6 @@ proc WindowProc ,\;uses ebx esi edi,\
         stdcall View.CreateFont
 
         ;===============================================================
-    VIEW_3D = FALSE
         ; 3D TEST TEST TEST
     if VIEW_3D
         invoke  glMatrixMode, GL_PROJECTION
