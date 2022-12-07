@@ -117,7 +117,6 @@ with all keys pressed
  - Next client sends register message and waits (cur 500 ms). If your next state is `REGSTRD` everything went good!
  - If you got `REJCTED` state &mdash; change you nickname & try to connect again (use **F3** key).
  - LAN connection is also used for leaderboard update.
-
  - You can still get file updates if your state is `REJCTED`.
  - From version **5.9** Online Game View (**OGV**) is added. Every client in the same LAN sends its game frame with ping message. 
  - Other clients display them.
@@ -131,9 +130,7 @@ with all keys pressed
  - To control clients online ping messages used. If client got such message it checks it's nickname
  registers it and set timeout value (cur 10 \* 200 ms = 2 s).
  - Ping message sends every 200 ms. Client checks all ping records also every 200 ms.
- 
  - If timeout value became 0, client removes corresponding ping record.
- 
  - if you have *REJCTED* state - change your nickname and retry (use F3 key).
  - you will recieve leaderboard updates even in *REJCTED* state.
  - Ping messages contains full game frame so your game can be visualized remotely with 200 ms precision.

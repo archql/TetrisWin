@@ -48,3 +48,4 @@ automatically acknowledge this troll-agreement (additionally to the MIT License)
 ============================================
 ==== YES I AGREE (ДА, Я ПРИНИМАЮ) [ ] (Для запуска создать файл AGREE (без расширения)) / For use create file AGREE (without extension))
 ==== NO I DISAGREE (НЕТ, Я НЕ ПРИНИМАЮ) [ Х ]
+
