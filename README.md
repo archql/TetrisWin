@@ -1,17 +1,14 @@
 # TetrisWin
-This is my implementation of famous tetris game on fasm. But for windows ;). Now everybody can simply run it on Windows 10!
+This is my implementation of famous tetris game on fasm. But for windows ;)
 There I used some materials from my laborotory works done while studying at BSUIR. Also this is my coursework.
 Logics is fully based on my previous tetris variant, see https://github.com/archql/tetris-fasm repo.
-To work properly, its requires several fasm .inc files (they are not mine; find them in ..\fasm folder in the (for example) https://github.com/Konctantin/FASM or just google it). 
-To compile it requires fasm.
-Graphics based on OpenGL.
-All rectangular screen resolutions supported (at least for gameplay).
 
 ## For users
 
 ### SUPPORTED VERSIONS
 
 - This version tested on Windows 11, Windows 10, Windows 7 and Windows XP. Windows XP requires additional check.
+- All rectangular screen resolutions supported (at least for gameplay).
 
 #### INSTALLATION:
 - [if required] change extension .notexe to .exe (.notzip to .zip and unpack)
@@ -161,6 +158,11 @@ Other sizes are not guarantied to work! Possible outcome is game crash
  
  
 ## For developers
+
+### Build & compile
+To build properly, its requires several fasm .inc files (they are not mine; find them in ..\fasm folder in the (for example) https://github.com/Konctantin/FASM or just google it). 
+To compile it requires fasm.
+Graphics based on OpenGL.
 
 ### What is '.amid' files?
 '.amid' file &mdash; file with short midi messages, every message is 4 bytes long,

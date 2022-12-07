@@ -396,12 +396,12 @@ Game.KeyEvent.NonKeyPositionChange: ; bx is fig, esi edi - cords
 @@:
         push    eax
         ; unblock hold usage
-        and     word [Game.Holded], FALSE;MY_FALSE; set ifhold to true
+        and     word [Game.Holded], FALSE
 
         ; speed up
         ; inc counts of figure
         inc     [Game.FigsPlaced]
-        ; encount new speed
+        ; count new speed
         test    [Game.FigsPlaced], INC_EVERY_FIGS; 111; every 16 figs
         jnz     @F
         fild    [Game.TickSpeed]
@@ -409,11 +409,10 @@ Game.KeyEvent.NonKeyPositionChange: ; bx is fig, esi edi - cords
         fmulp   st1, st0
         fistp   [Game.TickSpeed]
 @@:
-        ; check on scrore
+        ; check on score
         stdcall Game.CheckOnLine
         ; gen new fig (temp)
         stdcall Game.GenNewFig
-        ;mov     [Game.FigY], 0
 
 .End_key_event:
         ret
@@ -644,8 +643,8 @@ proc Game.End
         ; stop music
         stdcall SoundPlayer.Pause
         ; set random end effect
-        stdcall Random.Get, 1, 4
-        mov     [Game.randomEndSpecialId], ax
+        stdcall Random.Get, 2, 4
+        mov     byte [Game.randomEndSpecialId], al
         ; call here effect ???
 
         ; === game cost

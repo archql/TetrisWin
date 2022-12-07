@@ -185,7 +185,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         fistp   dword [esp]
 
         pop     eax
-        sub     eax, 7
+        sub     eax, 2
         cmp     ax, 0
         jl      .IgnoreFigMove
         cmp     ax, FIELD_W - 3
@@ -261,7 +261,7 @@ proc WindowProc ,\;uses ebx esi edi,\
 
         ; set Gl List
         xor     esi, esi
-        stdcall View.CreatePrimitive.TexturedCube
+        stdcall View.CreatePrimitive.TexturedCube ; Point;
 
 
         ; set clock
@@ -309,23 +309,27 @@ proc WindowProc ,\;uses ebx esi edi,\
         stdcall View.CreateFont
 
         ;===============================================================
+    VIEW_3D = FALSE
         ; 3D TEST TEST TEST
+    if VIEW_3D
         invoke  glMatrixMode, GL_PROJECTION
         invoke  glLoadIdentity
 
-        invoke  gluPerspective, double -30.0, double [ratio], double 0.1, double 100.0  ; 2nd is w / h
+        invoke  gluPerspective, double -30.0, double [ratio], double -100.0, double 100.0  ; 2nd is w / h
 
         invoke  glMatrixMode, GL_MODELVIEW
         ; 3D TEST TEST TEST
+    else
         ;===============================================================
         ; set projection (THIS IS 2D version)
-        ;invoke  glMatrixMode, GL_PROJECTION
-        ;invoke  glLoadIdentity
+        invoke  glMatrixMode, GL_PROJECTION
+        invoke  glLoadIdentity
 
-        ;xor     ebx, ebx ; double 0.0 == double push 0
-        ;invoke  glOrtho, ebx, ebx, double [DFIELD_W], double [DFIELD_H], ebx, ebx, double -1.0, double 1000.0
+        xor     ebx, ebx ; double 0.0 == double push 0
+        invoke  glOrtho, ebx, ebx, double [DFIELD_W], double [DFIELD_H], ebx, ebx, double -1.0, double 1000.0
 
-        ;invoke  glMatrixMode, GL_MODELVIEW
+        invoke  glMatrixMode, GL_MODELVIEW
+    end if
         ;===============================================================
 
         ; exit with success

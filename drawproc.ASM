@@ -2,8 +2,11 @@
         invoke  glClear, GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT
 
         invoke  glLoadIdentity
+   if VIEW_3D
         invoke  glTranslatef, -20.5, -12.0, -45.0;  // Move right and into the screen
-
+   else
+        invoke  glTranslatef, 0.0, 0.0, -40.0;  // Move right and into the screen
+   end if
         cmp     [View.MenuChosen], 0
         je      .ViewMenu_1
         cmp     [View.MenuChosen], 1
