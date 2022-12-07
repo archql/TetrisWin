@@ -32,18 +32,18 @@
         NICKNAME_LEN                     =     8
         Settings.strTempNickName         db    '________'
         STR_BASE_NICKNAME_FIRST_SYMBOL   =     '@'
-        Str.BaseNickName                 db    STR_BASE_NICKNAME_FIRST_SYMBOL ,'DEFAULT';'_ARCHQL_'
+        Str.BaseNickName                 db    STR_BASE_NICKNAME_FIRST_SYMBOL ,'DEFAULT'
         Settings.strTempNickNameBlocked  db    '~~~~~~~~'
         ;========ANIMATIONS========================
-        Glow.AnimDeltaAngle       dd    20.0
+        Glow.AnimDeltaAngle       dd    2.0
         Glow.SZ_delta             dd    0.05
         ;Glow.right                dd    ?
         ;Glow.left                 dd    ?
         ;Glow.Arr                  db    FIELD_H dup 0
         ;========VIEW==============================
         Color_Table     dd      0.0, 0.0, 0.0,\   ;0.271, 0.271, 0.271,\
-                                0.7, 0.7, 0.7,\
-                                0.25, 0.25, 0.25,\
+                                0.271, 0.271, 0.271,\   ;0.7, 0.7, 0.7
+                                0.1, 0.1, 0.1,\  ;0.25, 0.25, 0.25
                                 1.0, 0.5098, 0.0,\
                                 0.0, 0.0, 1.0,\
                                 0.2549, 0.0, 1.0,\
@@ -53,7 +53,7 @@
                                 1.0, 0.0, 0.5098,\
                                 1.0, 0.0, 0.2549,\
                                 1.0, 0.0, 0.0,\
-                                1.0, 0.2549, 0.0,\;;;;
+                                1.0, 0.2549, 0.0,\
                                 1.0, 0.745, 0.0,\
                                 1.0, 1.0, 0.0,\
                                 0.745, 1.0, 0.0,\
@@ -78,21 +78,23 @@
                                 0110_1100_0000_0000b, 0100_0110_0010_0000b, 0000_0110_1100_0000b, 1000_1100_0100_0000b,\ ; S
                                 1100_0110_0000_0000b, 0010_0110_0100_0000b, 0000_1100_0110_0000b, 0100_1100_1000_0000b,\ ; Z
                                 0100_1110_0000_0000b, 0100_0110_0100_0000b, 0000_1110_0100_0000b, 0100_1100_0100_0000b   ; T
-                                ;0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\ ; O
+                                ;0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b, 0000'0110_0110'0000b,\
                                 ;0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b, 0100'1110_0100'0000b,\
                                 ;0000'1110_1010'0000b, 0110'0100_0110'0000b, 1010'1110_0000'0000b, 1100'0100_1100'0000b;,\;
         figNum          =       ($ - figArr)/8 - 1
 
         ; # SETTINGS
         ; addl data to ld scoreboard
+        View.strTextureFileFilter   db    '*.bmp', 0
         Settings.strFileFilter      db    '*.ttr', 0
         Settings.PlaceFormat        db    '#%X', 0
+        Settings.Music.HexFormat    db    '#%X.wav', 0
         Settings.Format.File.Temp   db    '%.8s.ttr.tmp', 0   ;NICKNAME_LEN
         Settings.Format.File        db    '%.8s.ttr', 0       ;NICKNAME_LEN
         Settings.File.Name          db    'lastnickname', 0
 
         ; # CLIENT
-        if (SERVER_DEFINED)
+if (SERVER_DEFINED)
         Client.dIPAddrTableSz       dd    CLIENT_ADAPTERS_BUF_MAX
         Client.PCIDBufLen           dd    CLIENT_PCID_LEN + CLIENT_BUF_LEN + 1 ; Buffer for key isnt large enough but it isnt dangerous??
 
@@ -107,8 +109,7 @@
         Client.StrRegistered        db    '@REGSTRD'
         Client.StrRgRejected        db    '@REJCTED'
         Client.StrKeyFail           db    '@UUIDERR'
-        end if
-        ;IP_4_BROADCAST_VAL      dd              0xFF'FF'FF'FF
+end if
 
         ;# SoundPlayer
         SoundPlayer.Notes         file    'tetris_ex.amid' ; ex
@@ -119,6 +120,17 @@
                                         1100'0000b or 3, 10 , 0, 0,\
                                         1100'0000b or 4, 127, 0, 0; gunshot
 
+        if (HELP_DEFINED)
+        Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
+        Help.Str.LEN    = $ - Help.Str1
+        Help.Str2       db      'For help read README       '
+        Help.Str3       db      '    find more more at:     '
+        Help.Str4       db      'github.com/archql/TetrisWin'
+        Help.Str5       db      '      archql (c) 2022      '
+        Help.LPos:
+        Help.LEN        = ($ -  Help.Str1) / Help.Str.LEN
+        end if
+
 ; ################################################
 ; ####### UNINITIALIZED MEMORY HERE!!!!! #########
 ; ################################################
@@ -127,7 +139,7 @@ Unitialized_mem:
         Wnd.msg                         MSG                     ?
         Wnd.paintstruct                 PAINTSTRUCT             ?
         Wnd.pfd                         PIXELFORMATDESCRIPTOR   ?
-     Wnd.font:
+     Wnd.font:  ; Wnd.rc & FONT united based on TETRIS INI CODE
         Wnd.nFontBase                   dd                      ?
         Wnd.fontSz                      dd                      ?
 
@@ -136,6 +148,8 @@ Unitialized_mem:
         Wnd.hdc                         dd      ?
 
         Wnd.wc                          WNDCLASS        ?
+
+        ratio                           dq      ?
 
         Wnd.rc                          RECT    ?
         ; # Glow data
@@ -148,6 +162,16 @@ Unitialized_mem:
         DFIELD_W                        dq      ?
         clock                           dd      ?
         rect_size                       dd      ? ; initialization
+
+        View.FieldAngleDraw             dd      ?
+        View.HFieldAngleDraw            dd      ?
+
+        View.TextureID                  dd      ?
+
+        View.TextureFileLookupHandle    dd      ? ; if zero, then noninitialized
+        ; to be initialized, call special function
+        View.TextureFileDataa           WIN32_FIND_DATAA        ?
+
         ; sub draw data
      sub_:
         sub_rect_size                   dd      ?
@@ -162,12 +186,15 @@ Unitialized_mem:
         sub_font_base                   dd      ?
         sub_font_sz                     dd      ?
      chat_font:
-        .sub_font_base                   dd      ?
-        .sub_font_sz                     dd      ?
+        .sub_font_base                  dd      ?
+        .sub_font_sz                    dd      ?
+
+        Game.randomEndSpecialId         dw      ?
 
         ; # MESSAGE CODES
-        MSG_CODE_BASE_SERVER            = $F000
-        MSG_CODE_KEYCONTROL             = 1 + MSG_CODE_BASE_SERVER
+        MSG_CODE_BASE_PROXY             = $F000
+        MSG_CODE_KEYCONTROL             = 1 + MSG_CODE_BASE_PROXY
+        MSG_CODE_PROXY                  = 2 + MSG_CODE_BASE_PROXY
 
         MSG_CODE_BASE_CLIENT            = $A000
         MSG_CODE_REGISTER               =   1 + MSG_CODE_BASE_CLIENT
@@ -355,7 +382,7 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 6
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 0
+        GAME_V_MINOR                    = 6
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

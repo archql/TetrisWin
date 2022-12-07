@@ -249,8 +249,8 @@ proc Game.KeyEvent uses eax
 
         ; swap cur and buffered
         xchg    word [Game.HoldedFigNum], cx
-        cmp     cx, -1 ; if holded fig isnt set yet
-        jne     @F
+        test    cx, cx ; if holded fig isnt set yet
+        jns     @F     ; works if figs < 127
         push    eax
         stdcall Game.GenNewFig;; REGISTERS!!!!
         pop     eax
@@ -297,10 +297,11 @@ proc Game.KeyEvent uses eax
         inc     dx ; dec
 @@:
         and     dx, 0000'0000'0000'0011b ; masked rotation
+
+Game.KeyEvent.NonKeyPositionChange: ; bx is fig, esi edi - cords
         ; get figure (duplicated!)
         add     bx, dx ; apply rotation
         shl     bx, 1  ; each fig is 2 bytes long
-
         mov     bx, [figArr + ebx] ; is cur figure
 
         ; check collisions
@@ -386,22 +387,21 @@ proc Game.KeyEvent uses eax
 
         ; check on loose
         stdcall Game.CheckOnEnd
-        xor     ax, 1
-        test    ax, ax ; temp snd off
-        jnz     @F
+        test    eax, eax ; temp snd off
+        pop     eax
+        jz      @F
         ; play end snd temp
         mov     [SoundPlayer.EndGameTick], 4
-        ;;;;;;;;;;;
-        stdcall Game.End
-        jmp     .End_key_event
+        jmp     Game.End
 @@:
+        push    eax
         ; unblock hold usage
-        and     word [Game.Holded], FALSE;MY_FALSE; set ifhold to true
+        and     word [Game.Holded], FALSE
 
         ; speed up
         ; inc counts of figure
         inc     [Game.FigsPlaced]
-        ; encount new speed
+        ; count new speed
         test    [Game.FigsPlaced], INC_EVERY_FIGS; 111; every 16 figs
         jnz     @F
         fild    [Game.TickSpeed]
@@ -409,11 +409,10 @@ proc Game.KeyEvent uses eax
         fmulp   st1, st0
         fistp   [Game.TickSpeed]
 @@:
-        ; check on scrore
+        ; check on score
         stdcall Game.CheckOnLine
         ; gen new fig (temp)
         stdcall Game.GenNewFig
-        ;mov     [Game.FigY], 0
 
 .End_key_event:
         ret
@@ -428,11 +427,7 @@ proc Game.CheckOnEnd uses ebx ecx
         mov     ecx, FIELD_W - 2
         mov     ebx, FIELD_W * TOP_LINE + 1; from TOP_LINE line
 .CheckLoop:
-        cmp     byte [ebx + Game.BlocksArr], 0
-        je      @F
-        mov     eax, TRUE
-        jmp     .EndProc
-@@:
+        or      al, byte [ebx + Game.BlocksArr];, 0
         inc     ebx
         loop    .CheckLoop
 .EndProc:
@@ -466,7 +461,7 @@ endp
 ;#############CHECK ON FULL LINES AND COUNT SCORE ####################
 proc Game.CheckOnLine uses dx ebx ecx
 
-        xor     ax, ax; score
+        xor     eax, eax; score
         mov     ebx, 1           ; full w
         mov     ecx, FIELD_H - 1 ; full hei - 1
 .CheckLoop:
@@ -484,7 +479,7 @@ proc Game.CheckOnLine uses dx ebx ecx
         stdcall Game.RmLine
 
         ; rm line end
-        inc     ax; add score
+        inc     eax; add score
 
 .skipLine:
         pop     ebx
@@ -493,7 +488,7 @@ proc Game.CheckOnLine uses dx ebx ecx
         pop     ecx
         loop    .CheckLoop
  ; END LOOP
-        test    ax, ax  ; add score
+        test    eax, eax  ; add score
         jz      .EndProc
 
         ;push    ax
@@ -502,10 +497,13 @@ proc Game.CheckOnLine uses dx ebx ecx
         ;pop     ax
         ; sound eff
         push    eax ecx edx
+        ; BANG EFFECT
         cmp     al, 4
         jl      @F
         push    eax
-        invoke  midiOutShortMsg, [midihandle], 0x007F2594
+        mov     ecx, 0x007F2594
+        stdcall Settings.Music.Play
+        ;invoke  midiOutShortMsg, [midihandle], 0x007F2594
         pop     eax
 @@:
         mov     ecx, 0x007F0093
@@ -513,7 +511,8 @@ proc Game.CheckOnLine uses dx ebx ecx
         shl     ch, 2
         add     ch, 40
         ;mov     word [SoundPlayer.LineGameTick], ax
-        invoke   midiOutShortMsg, [midihandle],  ecx ;
+        ;invoke   midiOutShortMsg, [midihandle],  ecx ;
+        stdcall Settings.Music.Play
         pop     edx ecx eax
         ;  == == =
 
@@ -538,7 +537,6 @@ proc Game.CheckOnLine uses dx ebx ecx
         ret
 endp
 
-
 ;#############MOVES FIGURE TO FIELD ARRAY ####################
 ; - fig   -- 2 bytes figure
 ; - x     -- x cord
@@ -559,20 +557,21 @@ proc Game.PlaceFigure ;uses eax ecx esi edi ebx
 
 
         xchg    al, cl ; mov color to al
-        mov     ecx, 16; setup loop
+        xor     ecx, ecx
+        mov     cl, 16; setup loop
 
         ; inner loop -- line of matrix
 .DrawLoop:
         shl     bx, 1
         jae     @F ; CF = 0 => exit
-        test    si, 0x80'00 ; check if cord < 0
-        jnz     @F
+        test    si, si ; check if cord < 0
+        js      @F
         ; paste figure
         mov     byte [esi + Game.BlocksArr], al
 @@:
-        inc     si ; setup cords
+        inc     esi ; setup cords
         dec     ecx
-        test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b; if % 4 => move to next line
+        test    cl, 0000'0011b; if % 4 => move to next line
         jnz     @F
         add     si, FIELD_W - 4
 @@:
@@ -598,22 +597,23 @@ proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
 
         ; result set
         xor     eax, eax
-
-        mov     ecx, 16
+        ; loop cnt
+        xor     ecx, ecx
+        mov     cl, 16; setup loop
 
         ; inner loop -- draw line of matrix
 .DrawLoop:
         shl     bx, 1
         jae     @F ; CF = 0 => exit
-        test    si, 0x80'00 ; check if cord < 0
-        jnz     @F
+        test    si, si ; check if cord < 0
+        js      @F
         ; check collision
         cmp     byte [esi + Game.BlocksArr], 0
         jne     .Collided
 @@:
         inc     si; setup cords
         dec     ecx
-        test    ecx, 0000'0000'0000'0000_0000'0000'0000'0011b
+        test    cl, 0000'0011b
         jnz     @F
         add     si, FIELD_W - 4
 @@:
@@ -622,7 +622,8 @@ proc Game.CollideFigure ;uses ebx ecx eax edx esi edi
 
         jmp     .EndProc
 .Collided:
-        mov     eax, TRUE
+        ;mov     eax, TRUE
+        inc     eax
 .EndProc:
         ret
 endp
@@ -632,13 +633,21 @@ endp
 
 ;#############GAME END ##############################
 proc Game.End
+        xor     eax, eax
         ; set playing false
-        cmp     [Game.Playing], FALSE
+        cmp     [Game.Playing], ax
         je      @F
-        mov     [Game.Playing], FALSE
+        mov     [Game.Playing], ax
+        ; set rotation to initial pos
+        mov     [Glow.AnimAngle], eax
         ; stop music
         stdcall SoundPlayer.Pause
-        ; game cost
+        ; set random end effect
+        stdcall Random.Get, 2, 4
+        mov     byte [Game.randomEndSpecialId], al
+        ; call here effect ???
+
+        ; === game cost
         ; check score if new high
         mov     cx, [Game.HighScore]
         movzx   eax, word [Game.Score]

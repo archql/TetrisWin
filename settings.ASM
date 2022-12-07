@@ -37,11 +37,8 @@ proc Settings.EncodeWord; got in ax (doestn change!), res in bx, uses cx
 endp
 
 if (IS_GITHUB_VERSION)
-        SPECIAL_CTR = 0
-        proc Settings.CountControlSum
-             ; Doing actually nothing here
-             ret
-        endp
+        Settings.CountControlSum.SPECIAL_CTR dd Settings.EncodeWord - 1
+        Settings.CountControlSum = Settings.EncodeWord - 1
 else
         include 'super_secret_settings.asm'
 end if
@@ -170,7 +167,7 @@ proc Settings.SetHigh ; uses eax ebx ecx edx
         cmp     eax, dword [esp + 8]
         jne     .EndProc
         ; count control sum
-        call    Settings.CountControlSum + SPECIAL_CTR
+        call    [Settings.CountControlSum.SPECIAL_CTR]
         ; client broadcast
         if (SERVER_DEFINED)
         cmp     [Client.State], CLIENT_STATE_OFFLINE
@@ -186,7 +183,8 @@ proc Settings.SetHigh ; uses eax ebx ecx edx
 endp
 
 ;#############LIST ALL FILES (and call PROC param)####################
-; [in] PROC: requires pointer to proc as param in stack
+; params (inorder)
+; [in, stack] PROC: requires pointer to PROC
 ; [in, optional] esi, edi as params for PROC
 proc Settings.ListAllTTRFiles; uses eax ebx ecx edx
 
@@ -208,6 +206,8 @@ proc Settings.ListAllTTRFiles; uses eax ebx ecx edx
         inc     ecx
         test    eax, eax; find next file result in eax
         jnz     .Loop_Find
+.FinishedFind:
+        invoke  FindClose, ebx
 .EndProc:
         ret     4
 endp
@@ -235,7 +235,7 @@ proc Settings.ListAllTTRFiles.LBline; write got str to rcd
         mov     eax, Settings.fileData.cFileName
         stdcall Settings.GetHigh ; ret high in eax
         pop     ebx ; ld handle
-        ;test    eax, eax     ; BEFORE -- IGNORED CORRYPTED DATA; NOW -- TRY TO ENCOUNT IT
+        ;test    eax, eax     ; BEFORE -- IGNORED CORRYPTED DATA; NOW -- TRY TO CONSIDER IT
         ;jz      .EndTryLdFile; corrypted (or zero)
         ; set high
         inc     edi
@@ -274,4 +274,91 @@ proc Settings.ListAllTTRFiles.LBline; write got str to rcd
 
         ret
 endp
+
+;#############LIST ALL FILES####################
+; params (inorder)
+proc Settings.View.GetNextTexture; uses eax ebx
+
+        mov     ebx, [View.TextureFileLookupHandle]
+        cmp     ebx, 0
+        jne     .TryGetNextFile
+.TryOpenFile:
+        invoke  FindFirstFile, View.strTextureFileFilter, View.TextureFileDataa
+        mov     [View.TextureFileLookupHandle], eax ; remember the handle
+        jmp     .EndProc ; in any case everything is ok
+
+.TryGetNextFile:
+        ; find next
+        invoke  FindNextFile, ebx, View.TextureFileDataa
+        ; loop
+        test    eax, eax; find next file result in eax
+        jnz     .EndProc ; succeeded to find next file
+        ; check whats happened ??
+        invoke  FindClose, ebx
+        jmp     .TryOpenFile ; try again
+
+.EndProc:
+        ret
+endp
+;#############LIST ALL FILES close####################
+; params (inorder)
+proc Settings.View.GetNextTexture.Close
+
+        mov     eax, [View.TextureFileLookupHandle]
+        cmp     eax, 0
+        jz      @F
+        invoke  FindClose, eax
+
+@@:
+        ret
+endp
+
+;#############CALL SOUND####################
+; params (inorder)
+;[in, ecx] - midi message code
+proc Settings.Music.Play uses ebx
+
+        ; get mem for str
+        push    eax
+        push    eax
+        push    eax
+        lea     ebx, [esp]
+        ; save note
+        push    ecx
+        cinvoke wsprintfA, ebx, Settings.Music.HexFormat, ecx    ;Settings.Music.HexFormat
+        ; convert ecx to hex code
+        invoke  GetFileAttributes, ebx
+        test    eax, eax
+        js     .Exit_Not
+
+        SND_ASYNC = 0x01
+        invoke  PlaySound, ebx, 0, SND_ASYNC   ;
+        test    eax, eax
+        jz     .Exit_Not
+
+        ; try load texture
+        mov     dword [ebx + 8], 'bmp0' and 0x00FFFFFF
+        invoke  GetFileAttributes, ebx
+        test    eax, eax
+        js     .Exit_OK
+        ; load texture
+        push    esi edi
+        mov     esi, ebx
+        stdcall View.CreatePrimitive.TexturedCube
+        pop     edi esi
+        ; exit
+        jmp    .Exit_OK
+
+.Exit_Not:
+        ; playsound failed, so use midi instead
+        invoke   midiOutShortMsg, [midihandle], dword [esp] ; note is on stack
+.Exit_OK:
+        pop     eax
+        pop     eax
+        pop     eax
+        pop     eax
+
+        ret
+endp
+
 

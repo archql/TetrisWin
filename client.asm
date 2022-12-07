@@ -19,10 +19,11 @@ SO_REUSEADDR                = 0x0004
 
 ; protected strings
         Wnd.Text                    db    'Launch error :/', 0
-        Wnd.class                   TCHAR 'FASMW32',0
-        Wnd.title                   TCHAR 'TETRIS WIN ASM by Artiom Drankevich',0
+        Wnd.class                   db    'FASMW32',0
+        Wnd.title                   db    'TETRIS WIN ASM by Artiom Drankevich',0
         Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         Client.QuaryKey             db    'MachineGuid', 0
+        WndCreationCheck            db    'ACCEPT', 0
 
 
 ; # send Chat msg
@@ -133,6 +134,9 @@ endp
 proc Client.Send ; requires msgId & msgSz
 
         mov     word [Client.MessageCode], bx
+        mov     ax, MYPORT
+        xchg    ah, al
+        mov     [Client.Sender_addr.sin_port], ax
         invoke  sendto, [Client.psocket], GameMessage, edi, 0, Client.Sender_addr, sizeof.sockaddr_in
 
         ret
@@ -325,6 +329,8 @@ proc Client.ThRecv,\
          je      .MessageRegister
         cmp     ax, MSG_CODE_TTR
          je      .MessageGotTTR
+        cmp     ax, MSG_CODE_PROXY
+         je      .MessageProxy
         ; DEFAULT BEHAVIOUR
         jmp     .EndMessage
    ;### ; ======================
@@ -335,7 +341,7 @@ proc Client.ThRecv,\
         mov     ecx, NICKNAME_LEN
         repe cmpsb
         jne     .Ok_L
-        cmp     [Client.Sender_addr.sin_addr], 0x0100007f
+        cmp     [Client.Sender_addr.sin_addr], 0x0100007f  ; 127.0.0.1
         jne     .EndMessage
      .Ok_L:
         ; chat message arrived -- copy it
@@ -460,6 +466,8 @@ proc Client.ThRecv,\
 .MessageGotTTR:
         ; got ttrs msg
         ; check if in msg score is valid
+        ; TEMP!!!!!!!!!!!!!!!!!!!!!!
+        ;mov     dword [Game.BlocksArr+40], 0x01010101
         ; TEMP COPY
         movzx   eax, word [Client.recvbuff + (GameBuffer.Score       - GameMessage)]
         mov     bx,  word [Client.recvbuff + (GameBuffer.ControlWord - GameMessage)]
@@ -469,6 +477,9 @@ proc Client.ThRecv,\
         test    bx, bx
         jnz     .EndMessageTTR ; failed to decode
         push    eax ; save got highscore
+
+        ; TEMP!!!!!!!!!!!!!!!!!!!!!!
+        ;mov     dword [Game.BlocksArr+40], 0x02020202
         ; get own file data
         mov     eax, Client.recvbuff + (Client.Buffer - GameMessage); nickname ptr in such msg
         push    eax ; save Nick ptr
@@ -486,7 +497,9 @@ proc Client.ThRecv,\
         jmp     .EndMessageTTR
      .DataIsUpToDate:
         ; reset stack
-        add esp, 8
+        ;add esp, 8
+        pop     eax
+        pop     eax
      .EndMessageTTR:
         jmp     .EndMessage
    ;### ; ======================
@@ -507,6 +520,17 @@ proc Client.ThRecv,\
         ; exit
         jmp     .EndMessage
    ;### ; ======================
+.MessageProxy:
+        ; Here if acting as proxy packet arrived
+        ; -- safe copy it; GAME MEM USAGE -- PROPERTY OF MAIN THREAD!!!
+        mov     esi, Client.recvbuff + GameBuffer - GameMessage
+        mov     edi, GameBuffer ; table of rcds   (got msg pos)
+        mov     ecx, FILE_SZ_TO_WRITE
+        rep movsb
+
+        ; exit
+        jmp     .EndMessage
+        ;### ; ======================
 .EndMessage:
 .FailedToRecieve:
 
@@ -520,15 +544,12 @@ endp
 proc Client.ListAllTTRFiles.SendFile ; esi -- ptr to name str, edi -- ptr to send function (TODO -- create sendbuf)
         push    ebx esi edi; required to save it!
 
-        ; get score
-        mov     eax, esi
-        stdcall Settings.GetHigh  ; SETTINGS BUF MEM USAGE -- PROPERTY OF MAIN THREAD!!!
-        push    eax
         ; enter critical section
         invoke  EnterCriticalSection, Client.CritSection
 
-        ; fill in msg
-        pop     eax
+        ; get score
+        mov     eax, esi
+        stdcall Settings.GetHigh  ; SETTINGS BUF MEM USAGE -- PROPERTY OF MAIN THREAD!!!
         ; mov high to buffer
         mov     [GameBuffer.Score], ax
         stdcall Settings.EncodeWord

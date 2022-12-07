@@ -1,9 +1,9 @@
 ;include '%fasminc%/win32a.inc' ;;ax
 ;include '%fasminc%/win32a.inc'
 
-format PE GUI 5.0
+format PE GUI 4.0
+stack 0x100000
 
-include '%fasminc%/macro/proc32.inc'
 include 'win32ax.inc'
 
 entry start
@@ -23,30 +23,35 @@ entry start
         INC_EVERY_FIGS=15 ;2^N-1
 
 ;===========================
-;section '.data' data readable writable
-;===========================
-section '.code' code executable readable ;writable  ; code section
+section '.code' code executable readable  ; code section
 start:
         ; zero
         xor     ebx, ebx
+        ; agree
+        mov     esi, WndCreationCheck
+        invoke  GetFileAttributes, esi
+        test    eax, eax
+        js      aaaa_error
         ; zero allocated memory
         xor     eax, eax
         mov     ecx, UNINI_MEM_LEN
         mov     edi, Unitialized_mem
         rep     stosb
         ; set Client.PCID (unique PC ID)
-        if (SERVER_DEFINED)
-        invoke  RegOpenKeyExA, HKEY_LOCAL_MACHINE, Client.QuaryValue, ebx, KEY_READ or 0x0100, Client.KeyHandle   ;KEY_WOW64_64KEY
+if (SERVER_DEFINED)
+           KEY_WOW64_64KEY = 0x0100
+        invoke  RegOpenKeyExA, HKEY_LOCAL_MACHINE, Client.QuaryValue, ebx, KEY_READ or KEY_WOW64_64KEY, Client.KeyHandle
         test    eax, eax
         jnz     @F
-        invoke  RegGetValueA, [Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen ; Client.QuaryKey - 1 -- NULL STRING
+        ; Client.QuaryKey - 1 = NULL STRING  ;[Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen
+        invoke  RegQueryValueExA, [Client.KeyHandle], Client.QuaryKey, ebx, ebx, Client.PCID, Client.PCIDBufLen
         test    eax, eax
      @@:
         jz      @F
         ; Throw error
         mov     [Client.State], CLIENT_STATE_UUIDERROR ; Error
      @@:
-        end if
+end if
         ; set nickname
         stdcall Settings.GetLastNick
         ; zero
@@ -102,7 +107,7 @@ start:
 
         if (SERVER_DEFINED)
         ; create critical section to protect write-send (for multithreaded app)
-        invoke  InitializeCriticalSectionAndSpinCount, Client.CritSection, 0x400 ; 0x400 tries to capture crit section b4 go to core speed
+        invoke  InitializeCriticalSection, Client.CritSection
         end if
 
         ; call music ini
@@ -125,6 +130,8 @@ start:
         invoke  DispatchMessage, esi
         jmp     msg_loop
 
+aaaa_error:
+        invoke  MessageBox, ebx, esi, esi, ebx
 creation_error:
         invoke  MessageBox, ebx, Wnd.Text, Wnd.title, MB_OK or MB_ICONERROR;
   end_loop:
@@ -138,9 +145,11 @@ endp
 
 ;############# WindowProc ####################
 
-proc WindowProc uses ebx esi edi,\
+proc WindowProc ,\;uses ebx esi edi,\
                 hwnd, wmsg, wparam, lparam
         mov     ebx, [wmsg]
+        cmp     ebx, WM_MOUSEMOVE
+        je      .wmmousemove
         cmp     ebx, WM_CREATE
         je      .wmcreate
         cmp     ebx, WM_SIZE
@@ -155,8 +164,46 @@ proc WindowProc uses ebx esi edi,\
         je      .wmdestroy
         cmp     ebx, WM_CHAR
         je      .wmchar
-  .defwndproc:  ; EBX must be unchanged! = wmsg
-        invoke  DefWindowProc,[hwnd],[wmsg],[wparam],[lparam]
+        cmp     ebx, WM_MOUSEWHEEL
+        je      .wmmousewheel
+        cmp     ebx, WM_LBUTTONDOWN
+        je      .wmmousedown
+        cmp     ebx, WM_RBUTTONDOWN
+        je      .wmrmousedown
+  .defwndproc:
+        pop     ebp
+        jmp     [DefWindowProc]
+  .wmmousemove:
+        cmp     [Game.Pause], 1
+        je      .IgnoreFigMove
+        cmp     [Game.Playing], 1
+        jne     .IgnoreFigMove
+        movzx   eax, word [lparam]
+        push    eax
+        fild    dword [esp]
+        fdiv    [rect_size]
+        fistp   dword [esp]
+
+        pop     eax
+        sub     eax, 2
+        cmp     ax, 0
+        jl      .IgnoreFigMove
+        cmp     ax, FIELD_W - 3
+        jg      .IgnoreFigMove
+
+        ; TEST TEST !!!!!!!!!!!!!!!!!!!!!!!
+        movzx   ebx, [Game.CurFigNumber]
+        shl     bx, 2
+        mov     ecx, ebx
+        mov     esi, eax ; collider X
+        movzx   edi, word [Game.FigY] ; initial Y
+        mov     dx, word [Game.CurFigRotation]
+        ; get figure place at fig array
+        push    .IgnoreFigMove
+        push    eax
+        xor     eax, eax
+        jmp     Game.KeyEvent.NonKeyPositionChange ; pops eax
+   .IgnoreFigMove:
         jmp     .finish
   .wmcreate:
         invoke  GetDC,[hwnd]
@@ -164,20 +211,14 @@ proc WindowProc uses ebx esi edi,\
         mov     ebx, eax  ; hdc
 
         ; initialize OpenGL
-        ;mov     edi,pfd
-        ;mov     ecx,sizeof.PIXELFORMATDESCRIPTOR shr 2
-        ;xor     eax,eax
-        ;rep     stosd
         mov     esi, Wnd.pfd
         mov     [esi + (Wnd.pfd.nSize - Wnd.pfd)], sizeof.PIXELFORMATDESCRIPTOR
         mov     [esi + (Wnd.pfd.nVersion - Wnd.pfd)], 1
-        mov     [esi + (Wnd.pfd.dwFlags - Wnd.pfd)], PFD_SUPPORT_OPENGL+PFD_DOUBLEBUFFER+PFD_DRAW_TO_WINDOW
+        mov     [esi + (Wnd.pfd.dwFlags - Wnd.pfd)], PFD_SUPPORT_OPENGL + PFD_DOUBLEBUFFER + PFD_DRAW_TO_WINDOW
         mov     [esi + (Wnd.pfd.iLayerType - Wnd.pfd)], PFD_MAIN_PLANE
         mov     [esi + (Wnd.pfd.iPixelType - Wnd.pfd)], PFD_TYPE_RGBA
         mov     [esi + (Wnd.pfd.cColorBits - Wnd.pfd)], 16
         mov     [esi + (Wnd.pfd.cDepthBits - Wnd.pfd)], 16
-        ;mov     [Wnd.pfd.cAccumBits], 0 ; ALREADY ZERO
-        ;mov     [Wnd.pfd.cStencilBits], 0
         invoke  ChoosePixelFormat, ebx, esi
         invoke  SetPixelFormat, ebx, eax, esi
 
@@ -188,7 +229,40 @@ proc WindowProc uses ebx esi edi,\
 
         ; set fone color
         xor     eax, eax
-        invoke  glClearColor, eax,eax,eax,1.0;0.07, 0.13, 0.17, 1.0
+        invoke  glClearColor, eax, eax, eax, 1.0;0.07, 0.13, 0.17, 1.0
+
+        ;invoke  glEnable, GL_MULTISAMPLE
+        ;invoke  glHint, GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST
+
+        invoke  glEnable, GL_DEPTH_TEST
+        invoke  glEnable, GL_LIGHTING
+        invoke  glEnable, GL_LIGHT0
+        ;invoke  glEnable, GL_LIGHT1
+
+        push    0.0 0.5 -0.2 0.2
+        push    ebp
+        mov     ebp, esp
+        add     ebp, 4
+        invoke  glLightfv, GL_LIGHT0, GL_POSITION, ebp
+        pop     ebp
+        add     esp, 4 * 4
+
+        mov     eax, 2.0
+        push    1.0 eax eax eax
+        push    ebp
+        mov     ebp, esp
+        add     ebp, 4
+        invoke  glLightfv, GL_LIGHT0, GL_DIFFUSE, ebp
+        pop     ebp
+        add     esp, 4 * 4
+
+        invoke  glColorMaterial, GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE
+        invoke  glEnable, GL_COLOR_MATERIAL
+
+        ; set Gl List
+        xor     esi, esi
+        stdcall View.CreatePrimitive.TexturedCube ; Point;
+
 
         ; set clock
         invoke  GetTickCount
@@ -198,12 +272,20 @@ proc WindowProc uses ebx esi edi,\
         jmp     .finish
   .wmsize:
         xor     ebx, ebx
-        invoke  GetClientRect, [hwnd], Wnd.rc
-        invoke  glViewport, ebx, ebx, [Wnd.rc.right], [Wnd.rc.bottom]
+        mov     esi, Wnd.rc
+        invoke  GetClientRect, [hwnd], esi
+        add     esi, Wnd.font - Wnd.rc
+        invoke  glViewport, ebx, ebx, [esi + (Wnd.rc.right - Wnd.font)], [esi + (Wnd.rc.bottom - Wnd.font)]
 
-        sub     esp, 4; reserve stack for cell width
+         ; get screen ratio
+        fild    dword [esi + (Wnd.rc.right - Wnd.font)]; wdt
+        fidiv   dword [esi + (Wnd.rc.bottom - Wnd.font)] ; hei
+        fchs
+        fstp    [ratio] ; screen ratio
+        ; reserve stack for cell width
+        push    eax
         ; get rect size
-        fild    dword [Wnd.rc.bottom]
+        fild    dword [esi + (Wnd.rc.bottom - Wnd.font)]
         fdiv    [DFIELD_H]
         fst     dword [esp]; save cell width
 
@@ -211,29 +293,44 @@ proc WindowProc uses ebx esi edi,\
         frndint  ; round
         fst     [rect_size]
         fchs
-        fistp   [Wnd.fontSz]
+        fistp   [esi + (Wnd.fontSz - Wnd.font)]
 
         ; get width ratio
-        fild    [Wnd.rc.right]
+        fild    [esi + (Wnd.rc.right - Wnd.font)]
         ; use saved cell width
         fdiv    dword [esp]
         ; move stack back
-        add     esp, 4
+        pop     eax
         ; get result
         fstp    [DFIELD_W]
 
         ; create font DUPLICATED TEST!!!
-        mov     esi, Wnd.font; ptr to font struct
+        ;mov     esi, Wnd.font; ptr to font struct; already in the esi
         stdcall View.CreateFont
 
-        ; set projection
+        ;===============================================================
+    VIEW_3D = FALSE
+        ; 3D TEST TEST TEST
+    if VIEW_3D
+        invoke  glMatrixMode, GL_PROJECTION
+        invoke  glLoadIdentity
+
+        invoke  gluPerspective, double -30.0, double [ratio], double -100.0, double 100.0  ; 2nd is w / h
+
+        invoke  glMatrixMode, GL_MODELVIEW
+        ; 3D TEST TEST TEST
+    else
+        ;===============================================================
+        ; set projection (THIS IS 2D version)
         invoke  glMatrixMode, GL_PROJECTION
         invoke  glLoadIdentity
 
         xor     ebx, ebx ; double 0.0 == double push 0
-        invoke  glOrtho, ebx, ebx, double [DFIELD_W], double [DFIELD_H], ebx, ebx, double -1.0, double 1.0
+        invoke  glOrtho, ebx, ebx, double [DFIELD_W], double [DFIELD_H], ebx, ebx, double -1.0, double 1000.0
 
         invoke  glMatrixMode, GL_MODELVIEW
+    end if
+        ;===============================================================
 
         ; exit with success
         xor     eax,eax
@@ -247,9 +344,10 @@ proc WindowProc uses ebx esi edi,\
         stdcall SoundPlayer.EndEventUpdate; got eax in [esp] as param
 
         ; CHECK IF GAME RUNNING
-        cmp     [Game.Playing], TRUE
-        jne     .animation
-        cmp     [Game.Pause], FALSE
+        xor     ax, ax
+        cmp     [Game.Playing], ax
+        je      .animation
+        cmp     [Game.Pause], ax
         jne     .animation
 
         ; update keypress
@@ -263,8 +361,8 @@ proc WindowProc uses ebx esi edi,\
     ;@@:
 
         ; check on snd
-        test    [Game.MusicOff], 1
-        jnz     @F
+        cmp     [Game.MusicOff], ax
+        jne     @F
         mov     eax, dword [esp]
         stdcall SoundPlayer.Update ; got eax in [esp] as param
 @@:
@@ -293,246 +391,9 @@ proc WindowProc uses ebx esi edi,\
         jb      .finish
         add     [clock], eax; reset timer
 
-      ;.animation_ok:
-        invoke  glClear,GL_COLOR_BUFFER_BIT
-        invoke  glLoadIdentity
+        ; here draw procedure
+        include 'drawproc.asm'
 
-        cmp     [View.MenuChosen], 0
-        je      .ViewMenu_1
-        cmp     [View.MenuChosen], 1
-        je      .ViewMenu_2
-
-        ; #####################
-        ; #     -MENU #3-     #
-        ; # draw chat         #
-        ; #####################
-   .ViewMenu_3:
-        ; if font is not created -- create
-        mov     esi, chat_font; ptr to font struct
-        mov     eax, dword [esi]
-        test    eax, eax
-        jnz     @F
-        mov     dword [esi + 4], 20; TIMED (SCREEN FONT DIV 2)
-        stdcall View.CreateFont
-    @@:
-        invoke  glListBase, dword [esi]
-        ; draw chat
-        call    View.DrawChat
-
-        ; Return text draw
-        invoke  glListBase, [Wnd.nFontBase]
-
-        jmp     .ViewMenu_End
-        ; #####################
-        ; #     -MENU #2-     #
-        ; # draw other fields #
-        ; #####################
-   .ViewMenu_2:
-        ; get scale factor
-        xor     eax, eax ; pow
-        xor     ebx, ebx ; scale f
-        inc     ebx
-        xor     ecx, ecx ; loop ctr
-        mov     esi, Client.ClientsDataArr ;+ CLIENT_CL_RCD_LEN ; 2nd rcd (check if correspond to cur user?)
-  .ClientsDataArrLoop:
-        mov     dx, word [esi + NICKNAME_LEN] ; get ping
-        test    dx, dx
-        jz      .ClientsDataArrLoopEnd
-        js      .ClientsDataArrLoopNext
-        ; get rcd info
-        ; skip if cur user rcd
-        ; inc counter
-        inc     ecx
-        ; if ctr > pow
-        cmp     ecx, eax
-        jle     @F
-        ; yes -- set new pow
-        inc     ebx ; ??
-        mov     eax, ebx
-        mul     eax ; edx is corrypted here
-@@:
-   .ClientsDataArrLoopNext:
-        add     esi, CLIENT_CL_RCD_LEN
-        jmp     .ClientsDataArrLoop
-   .ClientsDataArrLoopEnd:
-        ; SET OFFSET
-        mov     edi, sub_
-        ; now scale factor is in ebx (int)
-        cmp     dword [edi + (sub_scale - sub_)], ebx
-        je      .PrevScaleIsOk
-        mov     dword [edi + (sub_scale - sub_)], ebx  ; its buf (temp)
-        fild    dword [edi + (sub_scale - sub_)]
-        ; get rect sz here
-        fld     dword [rect_size]
-        fdiv    st0, st1
-        fst     dword [edi + (sub_rect_size - sub_)]
-        ; get font sz
-        fchs
-        fistp   dword [edi + (sub_font_sz - sub_)]
-        ; get inverted scale
-        fld1
-        fdiv    st0, st1
-        fstp    dword [edi + (sub_inv_scale_f - sub_)]
-        fstp    dword [edi + (sub_scale_f - sub_)]
-        ;fst     dword [sub_inv_scale_f]
-        ;fstp    dword [sub_scale_f]
-        ;mov     eax, 7F000000H
-        ;sub     eax, dword [sub_inv_scale_f]
-        ;mov     dword [sub_inv_scale_f], eax
-        push    edi ; save sub_ offset
-        ; create font DUPLICATED TEST!!!
-        mov     esi, sub_font; ptr to font struct
-        stdcall View.CreateFont
-
-        ; restore sub_ offset
-        pop     edi ; restore sub_ offset
-
-        ; we're ready!
-.PrevScaleIsOk:
-        ; set font
-        invoke  glListBase, [edi + (sub_font_base - sub_)]
-        ; translate draw point
-        invoke  glTranslatef, 22.0, 0.0, 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
-        ; scale
-        invoke  glScalef, [edi + (sub_inv_scale_f - sub_)], [edi + (sub_inv_scale_f - sub_)], 1.0
-        ; set draw
-        invoke  glPointSize, [edi + (sub_rect_size - sub_)] ; pixels!!!!
-        ; Now loop through ClientsDataArr again!
-        xor     ebx, ebx ; loop ctr
-        mov     esi, Client.ClientsDataArr ;+ CLIENT_CL_RCD_LEN ; 2nd rcd (check if correspond to cur user?)
-  .ClientsDataArrLoop2:
-        mov     dx, word [esi + NICKNAME_LEN] ; get ping
-        test    dx, dx
-        jz      .ClientsDataArrLoopEnd2
-        js      .ClientsDataArrLoopNext2
-        ; get rcd info
-        ; skip if cur user rcd
-        ; draw user
-        stdcall View.DrawGame ; loop ctr in ebx, pos in esi+2 (save it)
-        ; inc counter
-        inc     ebx
-@@:
-   .ClientsDataArrLoopNext2:
-        add     esi, CLIENT_CL_RCD_LEN
-        jmp     .ClientsDataArrLoop2
-   .ClientsDataArrLoopEnd2:
-        ; restore sub_ offset
-        mov     edi, sub_
-        ; Scale Back
-        invoke  glScalef, [edi + (sub_scale_f - sub_)], [edi + (sub_scale_f - sub_)], 1.0
-        ; translate draw point back
-        invoke  glTranslatef, -22.0, 0.0, 0.0  ; DFIELD_W + 3 - 1 + 8 = 23
-        ; set rect sz back
-        invoke  glPointSize, [rect_size] ; pixels!!!!
-        ; Return text draw
-        invoke  glListBase, [Wnd.nFontBase]
-
-        jmp     .ViewMenu_End
-        ; #####################
-        ; #     -MENU #1-     #
-        ; # draw leaderboard  #
-        ; #####################
-  .ViewMenu_1:
-        ; set rect sz
-        invoke  glPointSize, [rect_size] ; pixels!!!!
-        ; text draw set
-        invoke  glListBase, [Wnd.nFontBase]
-        ; DRAW text SCOREBOARD
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 8, 2        , LB_ISTR_RCD_LEN  , eax, Str.Scoreboard
-        ; DRAW Scoreboard
-        stdcall Client.ThSafeCall, View.DrawLeaderboard
-        ; DRAW connections
-        if (SERVER_DEFINED)
-        stdcall View.DrawConnections
-        end if
-   .ViewMenu_End:
-        ;#######################
-        if (SERVER_DEFINED)
-        ; check connection
-        mov     ebx, Client.StrError
-        mov     dx,  CLIENT_STR_LEN
-        movzx   eax, word [Client.State]
-        mul     dx
-        add     ebx, eax
-        ; DRAW text connection
-        stdcall View.DrawText, FIELD_W + 3, FIELD_H, CLIENT_STR_LEN, eax, ebx
-        end if
-
-        ; draw
-        invoke  glBegin, GL_POINTS
-        ; draw field
-        mov     eax, Game.BlocksArr
-        stdcall View.DrawField
-        ; draw figure figure
-        mov     bx,  word [Game.CurFig]; figure
-        movzx   esi, word [Game.FigX]  ; X
-        push    bx esi ; save
-        movzx   edi, word [Game.FigPreviewY]  ; Y
-        stdcall View.DrawFigure, 2
-        ; draw figure
-        pop     esi bx
-        movzx   edi, word [Game.FigY]  ; Y
-        movzx   eax, byte [Game.CurFigColor]; movzx
-        stdcall View.DrawFigure, eax
-        ; draw next figure
-        mov     bx,  word [Game.NextFig]
-        mov     esi, FIELD_W + 3; X
-        mov     edi, 2  ; Y
-        stdcall View.DrawFigure, 3;//????
-        ; draw holded figure
-        mov     bx,  word [Game.HoldedFig]
-        mov     esi, FIELD_W + 3; X
-        mov     edi, 2  +  4  +  2 ; Y
-        stdcall View.DrawFigure, 3;//????
-        ; end draw points
-        invoke  glEnd
-
-        ; draw glow
-        stdcall View.DrawGlow
-
-        ; draw text NEXT FIG
-        stdcall View.DrawText, FIELD_W + 3 - 1, 2            , Str.NextFig.Len  , eax, Str.NextFig
-        ; draw text HOLDED FIG
-        stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 6        , Str.HoldedFig.Len, eax, Str.HoldedFig
-        ; DRAW text SCORE
-        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 2, SCOLE_LEN_CONST  , eax, Str.Score
-        ; DRAW text SCORE HIGH
-        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 3, SCOLE_LEN_CONST  , eax, Str.HighScore
-
-        ; Draw CurNickName
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 1, FIELD_H - 3, 8, eax, Game.NickName
-        ; Draw TmpNickName
-        mov     ebx, Settings.strTempNickNameBlocked
-        ; If setup mode activated
-        test    [Settings.SetupNickNameActive], TRUE
-        jz      @F
-        ; set str
-        mov     ebx, Settings.strTempNickName
-        ; set Special color
-        mov     eax, 1.0
-        invoke  glColor3f, eax, ebx, ebx
-        ; Draw HighLight
-        invoke  glRasterPos2f, 15.0 , 21.7 ;FIELD_W + 3 - 1 , FIELD_H - 1 + 1;
-        invoke  glCallLists, 8, GL_UNSIGNED_BYTE, Settings.strTempNickNameHighlight
-        ; set Special color
-        stdcall View.FastWhiteColor
-@@:
-        ; Draw Main Str
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 1, FIELD_H - 2, 8, eax, ebx
-
-        cmp     [Game.Playing], 1
-        je      @F
-        ; DRAW text GAME OVER
-        stdcall View.DrawText, FIELD_W / 2 - 2, 2, 9, eax, Str.Loose
-        jmp     .end_draw
-@@:
-        cmp     [Game.Pause], 1
-        jne     @F
-        ; DRAW text PAUSE
-        stdcall View.DrawText, FIELD_W / 2 - 1, 2, 6, eax, Str.Pause
-@@:
-        ; end draw;
-.end_draw:
         invoke  SwapBuffers,[Wnd.hdc]
 
         xor     eax,eax
@@ -541,7 +402,6 @@ proc WindowProc uses ebx esi edi,\
         ; got ansi char
         ; save key pressed
         mov     eax, [wparam]
-        ;mov     eax
         ; check if chat activated
         ;if (CHAT_DEFINED)
         cmp     [View.MenuChosen], 2
@@ -557,9 +417,12 @@ proc WindowProc uses ebx esi edi,\
         invoke  GetKeyState, VK_CONTROL
         ; swap registers
         xchg    ebx, eax
+        ; check if chat activated
+        cmp     [View.MenuChosen], 2
+        je      .regularKeyEvent_except_R_P
         ; check if keyboard mode activated
-        test    ebx, 0x00'00'80'00
-        jz      .regularKeyEvent
+        test    bx, bx ; ebx, 0x00'00'80'00
+        jns     .regularKeyEvent
         ; check if game ended
         cmp    [Game.Score], 0
         jnz     .regularKeyEvent
@@ -587,6 +450,7 @@ proc WindowProc uses ebx esi edi,\
         stdcall SoundPlayer.Pause
         xor     [Game.Pause], 1
 @@:
+.regularKeyEvent_except_R_P:
         if (SERVER_DEFINED)
         ; MENU CHANGE VIEW
         cmp     eax, VK_F2
@@ -610,6 +474,17 @@ proc WindowProc uses ebx esi edi,\
         stdcall Client.RequestGame
 @@:
         end if
+        ; JUST STUPID TEST
+        cmp     eax, VK_F5
+        jne     @F
+        ; mk snd
+        push    eax
+        invoke  midiOutShortMsg, [midihandle], 0x006F2B99
+        ; ini client if not ini
+        xor     esi, esi
+        stdcall View.CreatePrimitive.TexturedCube
+        pop     eax
+@@:
         ; MUSIC
         cmp     eax, 'M'
         jne     @F
@@ -680,6 +555,61 @@ proc WindowProc uses ebx esi edi,\
         ;xor     byte [Keyboard.Pressed], dl
 ;@@:
         jmp     .defwndproc
+
+  .wmmousewheel:
+        ; save key pressed + params data
+        mov     ebx, dword [wparam]  ; The high-order word indicates the distance the wheel is rotated
+        mov     esi, View.FieldAngleDraw
+        ; check if ctrl is pressed
+        test    bx, MK_CONTROL
+        jnz     @F
+        ; check if shift is pressed
+        test    bx, MK_SHIFT
+        jz      .RegularWheel
+        add     esi, 4
+@@:
+        ; calculate next angle
+        fld     dword [esi]
+        fld1
+        fld1
+        faddp
+        test    ebx, ebx
+        js      @F
+        fchs
+@@:
+        faddp
+        fstp    dword [esi]
+
+        jmp     .EndWheel
+   .RegularWheel:
+        cmp     [Game.Pause], 1
+        je      .EndWheel
+        cmp     [Game.Playing], 1
+        jne     .EndWheel
+        mov     eax, VK_DOWN
+        test    ebx, ebx
+        js      @F
+        mov     eax, VK_UP
+     @@:
+        stdcall Game.KeyEvent
+   .EndWheel:
+        jmp     .defwndproc
+
+   .wmrmousedown:
+        mov     eax, 'H'
+   .wmmousedown:
+        cmp     [Game.Pause], 1
+        je      .EndWmmousedown
+        cmp     [Game.Playing], 1
+        jne     .EndWmmousedown
+        cmp     al, 'H'
+        je      @F
+        mov     eax, ' '
+      @@:
+        stdcall Game.KeyEvent
+      .EndWmmousedown:
+        jmp     .defwndproc
+
   .wmdestroy:
         ; server conn
         if (SERVER_DEFINED)
@@ -692,12 +622,18 @@ proc WindowProc uses ebx esi edi,\
         stdcall Settings.SetLastNick, Settings.File.Name, Game.NickName, NICKNAME_LEN
         ; music
         stdcall SoundPlayer.Close
+        ; close texture find lookup
+        stdcall Settings.View.GetNextTexture.Close
         ; zero
         xor     ebx, ebx
         ; font lists
         invoke  glDeleteLists, ebx, NUM_OF_CHARACTERS
+        ; gl texture
+        invoke  glDeleteTextures, 1, View.TextureID
+        ; primitive list
+        invoke  glDeleteLists, VIEW_LIST_PRIMITIVE, 1
         ; gl & window
-        invoke  wglMakeCurrent, ebx, ebx
+        invoke  wglMakeCurrent, [Wnd.hdc], ebx
         invoke  wglDeleteContext, [Wnd.hrc]
         invoke  ReleaseDC, [hwnd], [Wnd.hdc]
         invoke  PostQuitMessage, ebx
@@ -705,8 +641,6 @@ proc WindowProc uses ebx esi edi,\
   .finish:
         ret
 endp
-
-
 
         include 'game.asm'
         include 'view.asm'
@@ -728,6 +662,7 @@ section '.idata' import data readable writeable
         user32,'USER32.DLL',\
         winmm,'WINMM.DLL',\
         opengl,'OPENGL32.DLL',\
+        glu,'GLU32.DLL',\
         ws2_32, 'ws2_32.dll',\
         AdvApi32, 'AdvApi32.dll',\
         iphlpapi, 'iphlpapi.dll'
@@ -806,7 +741,33 @@ import opengl,\
          wglUseFontBitmapsA,'wglUseFontBitmapsA',\
          glListBase, 'glListBase',\
          glRasterPos2f, 'glRasterPos2f',\
-         glScalef, 'glScalef'
+         glScalef, 'glScalef',\
+         glVertex3f, 'glVertex3f',\
+         glNormal3f, 'glNormal3f',\
+         glVertex3i, 'glVertex3i',\
+         glNormal3i, 'glNormal3i',\
+         glNewList, 'glNewList',\
+         glEndList, 'glEndList',\
+         glCallList, 'glCallList',\
+         glEnable, 'glEnable',\
+         glLightfv, 'glLightfv',\
+         glLightiv, 'glLightiv',\
+         glColorMaterial, 'glColorMaterial',\
+         glRasterPos3i, 'glRasterPos3i',\
+         glHint, 'glHint',\
+         glBlendFunc, 'glBlendFunc',\
+         glGenTextures, 'glGenTextures',\
+         glBindTexture, 'glBindTexture',\
+         glTexImage2D, 'glTexImage2D',\
+         glTexParameteri, 'glTexParameteri',\
+         glTexCoord2i, 'glTexCoord2i',\
+         glDisable, 'glDisable',\
+         glDeleteTextures, 'glDeleteTextures'
+
+import glu,\
+         gluPerspective, 'gluPerspective',\
+         gluLookAt, 'gluLookAt'
+
 import ws2_32,\
         WSAStartup, 'WSAStartup',\
         socket, 'socket',\

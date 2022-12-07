@@ -1,6 +1,7 @@
 /tetris.EXE
 NEXT
 OLD
+ACCEPT
 RCDS_SAVE
 RCDS_SAVE_1
 *.ttr
@@ -13,10 +14,10 @@ RCDS_SAVE_1
 *.png
 *.fas
 *.bmp
-ConvertTTRtoNewVersion.exe
-tetris-surface.EXE
-tetris-surface-2.EXE
+*.mp3
+*.wav
+*.prt
+*.txt
 super_secret_settings.asm
 Tetris_v_4_10
-ServerTest.exe
 lastnickname

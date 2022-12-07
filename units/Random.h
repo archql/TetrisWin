@@ -10,6 +10,9 @@ Random.Initialize:
 
         ret
 
+; ###################################################
+; [in, stack], min double value - minimum of random value diapason
+; [in, stack], max double value - maximum of random value diapason (included)
 proc Random.Get uses ecx edx,\; not nessesary to save cx dx
         dMin, dMax; dBounds - wMax'wMin
 
@@ -26,7 +29,7 @@ proc Random.Get uses ecx edx,\; not nessesary to save cx dx
         mov     ecx, [dMax]
         mov     edx, [dMin]
         sub     ecx, edx
-        inc     ecx
+        inc     ecx ; to do "included" range
         xor     edx, edx
         div     ecx
 
@@ -36,7 +39,3 @@ proc Random.Get uses ecx edx,\; not nessesary to save cx dx
 
         ret
 endp
-
-
-;============other data=============
-;Random.dPrewNumber      dd      ?
