@@ -23,7 +23,7 @@ entry start
         INC_EVERY_FIGS=15 ;2^N-1
 
         BRIGHTNESS_COEFF_BIG = TRUE
-        VIEW_3D = FALSE
+        VIEW_3D = TRUE
 
 ;===========================
 section '.code' code executable readable  ; code section
@@ -320,7 +320,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         invoke  glMatrixMode, GL_PROJECTION
         invoke  glLoadIdentity
 
-        invoke  gluPerspective, double -30.0, double [ratio], double -100.0, double 100.0  ; 2nd is w / h
+        invoke  gluPerspective, double -30.0, double [ratio], double 0.1, double 100.0  ; 2nd is w / h
 
         invoke  glMatrixMode, GL_MODELVIEW
         ; 3D TEST TEST TEST

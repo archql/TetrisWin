@@ -40,12 +40,12 @@ automatically acknowledge this troll-agreement (additionally to the MIT License)
 		Sell your left kidney and donate all money to an animal shelter
 		Sell yourself into slavery to the author or bring in another female victim
 		Grow potatoes in a village near Baranovichi till the end of time
-	You understand that this agreement will not change anything.
+	You understand that rejection of this agreement will not change anything.
 	You understand that this application IS NOT reffered to The Tetris Company, Inc. and created with purpose of
 		assembly skills improvement and only for this. 
 		The author claims the rights on the assembly code written here ONLY
 
 ============================================
-==== YES I AGREE (ДА, Я ПРИНИМАЮ) [ ] (Для запуска создать файл AGREE (без расширения)) / For use create file AGREE (without extension))
+==== YES I AGREE (ДА, Я ПРИНИМАЮ) [ ] (Для запуска создать файл AGREE (без расширения)) / For use create file ACCEPT (without extension))
 ==== NO I DISAGREE (НЕТ, Я НЕ ПРИНИМАЮ) [ Х ]
 

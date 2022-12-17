@@ -28,6 +28,7 @@
         ;Str.ScoreCorrypted.Format db    '#$&*!', 0
         Str.Pause                 db    'PAUSED'
         Str.Loose                 db    'GAME OVER'
+        Str.Win                   db    'YOU WON'
 
         NICKNAME_LEN                     =     8
         Settings.strTempNickName         db    '________'
@@ -45,8 +46,8 @@
                                 0.271, 0.271, 0.271,\   ;0.7, 0.7, 0.7
                                 0.1, 0.1, 0.1,\  ;0.25, 0.25, 0.25
                                 1.0, 0.5098, 0.0,\
-                                0.0, 0.0, 1.0,\
-                                0.2549, 0.0, 1.0,\
+                                0.0, 0.0, 1.0,\     ; blue
+                                0.2549, 0.0, 1.0,\  ; 5
                                 0.5098, 0.0, 1.0,\
                                 0.745, 0.0, 1.0,\
                                 1.0, 0.0, 0.745,\
@@ -55,7 +56,7 @@
                                 1.0, 0.0, 0.0,\
                                 1.0, 0.2549, 0.0,\
                                 1.0, 0.745, 0.0,\
-                                1.0, 1.0, 0.0,\
+                                1.0, 1.0, 0.0,\     ; yellow
                                 0.745, 1.0, 0.0,\
                                 0.5098, 1.0, 0.0,\
                                 0.2549, 1.0, 0.0,\
@@ -388,7 +389,7 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         GAME_V_TYPE_RELEASE             = 11b
         GAME_V_TYPE_BRANCH              = 1
         ; Set here!
-        GAME_V_TYPE                     = GAME_V_TYPE_DBG
+        GAME_V_TYPE                     = GAME_V_TYPE_RELEASE
         ; -- Random type                (2 bits)
         GAME_V_RND_TYPE_ORIGINAL        = 1
         GAME_V_RND_TYPE_CLASSIC         = 0

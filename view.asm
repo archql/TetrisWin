@@ -588,7 +588,8 @@ proc View.DrawRect uses ebx ;uses ecx, edx
         ; set color
         invoke  glColor3f, dword [Color_Table + eax], dword [Color_Table + eax + 4], dword [Color_Table + eax + 8]
         ; TEST loop for depth
-        ;mov    ebx, 2
+        ;mov    ebx, 60
+        ; TEST
         push   0.9
         fld    dword [esp]
         pop    edx
@@ -619,6 +620,7 @@ proc View.DrawRect uses ebx ;uses ecx, edx
         ;dec     ebx
         ;cmp     ebx, 0 ; temp
         ;jg      .DepthLoop
+        ; TEST
 
         ; clear stack
         finit
@@ -720,7 +722,7 @@ endp
 proc View.CreatePrimitive.TexturedCube  ; uses eax ebx ecx edx esi edi
 
         locals
-                bufsz           dd      ?
+                bufsz           dd      0
                 bufadr          dd      ?
                 bytesProceed    dd      ?
         endl
@@ -746,7 +748,7 @@ proc View.CreatePrimitive.TexturedCube  ; uses eax ebx ecx edx esi edi
         ;Open file
         xor     ebx, ebx
         invoke  CreateFileA, esi, GENERIC_READ, ebx, ebx,\
-                                                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, ebx
+                                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, ebx
         cmp     eax, INVALID_HANDLE_VALUE
         je      .Error
         mov     esi, eax
