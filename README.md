@@ -299,6 +299,10 @@ Now it is part of `.ttr`
   
 ### `.ttr` protection
 
+
+### Errors & fixes
+- if you faced an error which was not describen in the full readme while using this public version, please, contact author immediatly with detailed description of a problem and steps of reproduction
+
 ## Author
 
 *Artiom Drankevich* (**archql**)
