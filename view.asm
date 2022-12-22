@@ -757,10 +757,18 @@ proc View.CreatePrimitive.TexturedCube  ; uses eax ebx ecx edx esi edi
         cmp     eax, -1
         je      .Error
         ; alloc eax bytes on stack
+        lea     edx, [esp] ; save old pos
         mov     [bufsz], eax
+        mov     ecx, eax ; save img sz
         sub     esp, eax
         lea     eax, [esp]
         mov     [bufadr], eax
+        ; run stack and alloc pages
+        shr     ecx, 10 ; % 1024
+.PageRun:
+        test    [edx], edx
+        sub     edx, 0x400 ; 1024
+        loop    .PageRun
         ; read next bytes
 .TryReadNext:
         lea     eax, [bytesProceed]
