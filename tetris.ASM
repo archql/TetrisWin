@@ -122,7 +122,7 @@ end if
         ;stdcall Game.GenNewFig
         stdcall Game.Initialize
         ;
-        stdcall Tcp.Connect
+        stdcall SocketIO.Connect
 
         ; loop
   msg_loop:
@@ -131,6 +131,15 @@ end if
         invoke  GetMessage, esi, ebx, ebx, ebx
         or      eax, eax
         jz      end_loop
+        ; TCP message
+        cmp     [esi + (MSG.message - MSG.hwnd)],WM_PACKET_ARRIVED
+        jne     @F
+        ; Handle TCP message (preserve esi)
+        push    esi
+        stdcall SocketIO.On
+        pop     esi
+@@:
+        ;
         invoke  TranslateMessage, esi
         invoke  DispatchMessage, esi
         jmp     msg_loop
@@ -165,8 +174,6 @@ proc WindowProc ,\;uses ebx esi edi,\
         je      .wmkeydown
         cmp     ebx, WM_KEYUP
         je      .wmkeyup
-        cmp     ebx, WM_PACKET_ARRIVED
-        je      .wmpacket
         cmp     ebx, WM_DESTROY
         je      .wmdestroy
         cmp     ebx, WM_CHAR
@@ -619,14 +626,9 @@ proc WindowProc ,\;uses ebx esi edi,\
       .EndWmmousedown:
         jmp     .defwndproc
 
-  .wmpacket:
-        ; TEMP TEST
-        mov     eax, 'P'
-        stdcall Game.KeyEvent
-        ;
-        jmp     .defwndproc
-
   .wmdestroy:
+        ;
+        stdcall SocketIO.Disconnect
         ; server conn
         if (SERVER_DEFINED)
         stdcall Client.Destroy
@@ -667,8 +669,10 @@ endp
 
         include 'music.asm'
 
-        include 'client.asm'
         include 'tcp.asm'
+        include 'socketio.asm'
+
+        include 'client.asm'
 
 ;===========================
 

@@ -8,7 +8,8 @@ SERVER_IP                   = 0x01'00'00'7F ; 127.0.0.1 in reversed order
 SERVER_PORT                 = 5000
 
 ; Message code which is used to notify main thread about new tcp packet
-WM_PACKET_ARRIVED           = WM_USER + 0x222
+WM_APP                      = 0x8000
+WM_PACKET_ARRIVED           = WM_APP + 1
 
 ; U must set Tcp.DecodePacket ->
 ;Tcp.DecodePacket            = ....
@@ -34,6 +35,9 @@ proc Tcp.DecodePacket ; uses edi ecx
         cmp     edx, 2
         jl      .NoMorePackets ; diff is < 0
         ;
+        mov     esi, ebx ; restore esi
+        xor     eax, eax ; clear eax
+        ;
         lodsb
         ; now al is opcode (ignore)
         lodsb
@@ -53,12 +57,12 @@ proc Tcp.DecodePacket ; uses edi ecx
         mov     ecx, esi
         sub     ecx, ebx
         cmp     ecx, edx ; edx is allowed len
-        js      .NoMorePackets ; diff is < 0
+        jg      .NoMorePackets ; diff is < 0
         ; were assuming that masking key is not present
         ; => ensure payload is here
         add     ecx, eax ; length is valid - so check it
         cmp     ecx, edx ; edx is allowed len
-        jns     .Exit
+        jle     .Exit
 
         ;
  .NoMorePackets:
@@ -81,14 +85,19 @@ proc Tcp.DecodePacket ; uses edi ecx
         mov     edx, esi
         sub     edx, ebx
         cmp     edx, eax
-        js      .NoMoreData
+        jg      .NoMoreData
         ; find sequence
         mov     ecx, Tcp.Websocket.Conn.End.Len
         mov     edi, Tcp.Websocket.Conn.End
         repe cmpsb
         jnz     @B
+        ; check if end of buffer reached (DUPLICATED)
+        mov     edx, esi
+        sub     edx, ebx
+        cmp     edx, eax
+        jle     .HttpReady;.NoMoreData
         ; here were are if payload were founded, esi is place where it is
-        jmp     .HttpReady
+        ;jmp     .HttpReady
 
 .NoMoreData:
         xor     edx, edx ; full extracted len = 0
@@ -117,27 +126,24 @@ endp
 proc Tcp.Init
 
         ; init
-        stdcall InitializeConditionVariable, Tcp.CondVar
-        stdcall InitializeCriticalSection, Tcp.CritSection
+        invoke  InitializeConditionVariable, Tcp.CondVar
+        invoke  InitializeCriticalSection, Tcp.CritSection
 
         ; get main thread ID
-        stdcall GetCurrentThreadId
-        mov     eax, [Tcp.thMain.pThId]
+        invoke  GetCurrentThreadId
+        mov     [Tcp.ThMain.pThId], eax
 
         ; generate 22 random BASE64 symbols
-        mov     esi, Tcp.Websocket.Conn.2
-        mov     edi, Tcp.Base64Symbols
+        mov     edi, Tcp.Websocket.Conn.2
         mov     ecx, 22
 .Base64Loop:
-        push    esi
+        mov     esi, Tcp.Base64Symbols
         ; get random offset
         stdcall Random.Get, 0, 63
         ; move on random ofset
         add     esi, eax
         ; mov char
-        movsb
-        ; restore base offset
-        pop     esi
+        movsb   ; esi -> edi
         loop    .Base64Loop
 
         ; ## copy nickname
@@ -166,13 +172,21 @@ endp
 proc Tcp.Destroy
 
         ; destroy all
-        stdcall WakeAllConditionVariable, Tcp.CondVar
+        invoke  WakeAllConditionVariable, Tcp.CondVar
         ; join threads
         inc     word [Tcp.ThSend.thStop]
-        inc     word [Tcp.ThSend.Running]
+        inc     word [Tcp.ThSend.thStop]
         ;
-        stdcall WaitForSingleObject, [Tcp.ThSend.hThread], INFINITE
-        stdcall WaitForSingleObject, [Tcp.ThRecv.hThread], INFINITE
+        mov     eax, [Tcp.ThSend.hThread]
+        test    eax, eax
+        jz      @F
+        invoke  WaitForSingleObject, eax, INFINITE
+@@:
+        mov     eax, [Tcp.ThRecv.hThread]
+        test    eax, eax
+        jz      @F
+        invoke  WaitForSingleObject, eax, INFINITE
+@@:
         ;
         invoke  DeleteCriticalSection, Client.CritSection
 
@@ -421,13 +435,13 @@ proc Tcp.ThSend.Callback,\
 
 .LoopThread:
         ; Lock critical section
-        stdcall EnterCriticalSection, Tcp.CritSection
+        invoke  EnterCriticalSection, Tcp.CritSection
         ; wait until buffer is not null
         stdcall Tcp.Buffer.HasData
         jne     @F ; has data
         cmp     word [Tcp.ThSend.thStop], 0
         jne     .EndThread ; exit requested
-        stdcall SleepConditionVariableCS, Tcp.CondVar, Tcp.CritSection, INFINITE
+        invoke  SleepConditionVariableCS, Tcp.CondVar, Tcp.CritSection, INFINITE
         ;
 @@:
         ; Fetch message
@@ -455,7 +469,7 @@ proc Tcp.ThSend.Callback,\
         ;
 .EndThread:
         ; Unlock critical section
-        stdcall LeaveCriticalSection, Tcp.CritSection
+        invoke  LeaveCriticalSection, Tcp.CritSection
         ; Set flag to false (if manual exit)
         inc     word [Tcp.ThSend.thStop]
         ;
@@ -470,7 +484,7 @@ proc Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
         ; save eax
         push    eax
         ; Lock critical section
-        stdcall EnterCriticalSection, Tcp.CritSection
+        invoke  EnterCriticalSection, Tcp.CritSection
         ; emplace packet
         ; - [in, edi] ptr to managed buffer (to)
         mov     edi, Tcp.Buffer.send
@@ -480,9 +494,9 @@ proc Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
         stdcall Tcp.Buffer.Enqueue
 
         ; Unlock critical section
-        stdcall LeaveCriticalSection, Tcp.CritSection
+        invoke  LeaveCriticalSection, Tcp.CritSection
         ; Wake the waiting sender
-        stdcall WakeConditionVariable, Tcp.CondVar
+        invoke  WakeConditionVariable, Tcp.CondVar
 
         ret
 endp

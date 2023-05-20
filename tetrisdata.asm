@@ -384,15 +384,15 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         ; -- ASM used?                  (1 bit)
         GAME_V_ASM                      = TRUE
         ; -- Version major (max 255)
-        GAME_V_MAJOR                    = 6
+        GAME_V_MAJOR                    = 7
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 6
+        GAME_V_MINOR                    = 0
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b
         GAME_V_TYPE_BRANCH              = 1
         ; Set here!
-        GAME_V_TYPE                     = GAME_V_TYPE_RELEASE
+        GAME_V_TYPE                     = GAME_V_TYPE_DBG
         ; -- Random type                (2 bits)
         GAME_V_RND_TYPE_ORIGINAL        = 1
         GAME_V_RND_TYPE_CLASSIC         = 0

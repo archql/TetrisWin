@@ -37,8 +37,8 @@
         Tcp.Addr                sockaddr_in     ?
 
         ; # BUFFER TO SCORE WRITE & GAME RESTORE
-        Tcp.CritSection      RTL_CRITICAL_SECTION    ?
-        Tcp.CondVar          RTL_CONDITION_VARIABLE  ?
+        Tcp.CritSection         RTL_CRITICAL_SECTION    ?
+        Tcp.CondVar             RTL_CONDITION_VARIABLE  ?
 
 struct THREAD_INFO
         hThread                 dd      ?
