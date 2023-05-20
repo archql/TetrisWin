@@ -121,6 +121,8 @@ end if
         call    Random.Initialize
         ;stdcall Game.GenNewFig
         stdcall Game.Initialize
+        ;
+        stdcall Tcp.Connect
 
         ; loop
   msg_loop:
@@ -657,6 +659,7 @@ endp
         include 'music.asm'
 
         include 'client.asm'
+        include 'tcp.asm'
 
 ;===========================
 
@@ -781,7 +784,8 @@ import ws2_32,\
         recvfrom, 'recvfrom',\
         setsockopt, 'setsockopt',\
         closesocket, 'closesocket',\
-        WSACleanup, 'WSACleanup'
+        WSACleanup, 'WSACleanup',\
+        connect, 'connect'
 
 ; ####### DATA HERE ###################
         include 'tetrisdata.asm'

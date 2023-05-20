@@ -125,12 +125,15 @@ end if
         Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
         Help.Str.LEN    = $ - Help.Str1
         Help.Str2       db      'For help read README       '
-        Help.Str3       db      '    find more more at:     '
+        Help.Str3       db      '    find out more at:      '
         Help.Str4       db      'github.com/archql/TetrisWin'
         Help.Str5       db      '      archql (c) 2022      '
         Help.LPos:
         Help.LEN        = ($ -  Help.Str1) / Help.Str.LEN
         end if
+
+
+        include 'tcp_data.asm'
 
 ; ################################################
 ; ####### UNINITIALIZED MEMORY HERE!!!!! #########
