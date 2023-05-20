@@ -36,8 +36,19 @@
         Tcp.flag                dd              ?
         Tcp.Addr                sockaddr_in     ?
 
+        ; # BUFFER TO SCORE WRITE & GAME RESTORE
+        Tcp.CritSection      RTL_CRITICAL_SECTION    ?
+        Tcp.CondVar          RTL_CONDITION_VARIABLE  ?
 
+struct THREAD_INFO
+        hThread                 dd      ?
+        pThId                   dd      ?
+        thStop                  dw      ?
+ends
 
+        Tcp.ThSend              THREAD_INFO     ?
+        Tcp.ThRecv              THREAD_INFO     ?
+        Tcp.ThMain.pThId        dd              ?
 
         Tcp.Buffer.recv.begin   dw      ?
         Tcp.Buffer.recv.end     dw      ?
@@ -46,6 +57,9 @@
         Tcp.Buffer.send.begin   db      ?
         Tcp.Buffer.send.end     db      ?
         Tcp.Buffer.send         db      (TCP_BUFFER_SIZE + 2) dup ?
+
+        Tcp.BufferIn.Size       =               1024
+        Tcp.BufferIn            db              Tcp.BufferIn.Size dup ?
 
 ; filled size = Tcp.Buffer.recv.end - Tcp.Buffer.recv.begin
 ; writePastEnd = Tcp.Buffer.recv.begin + write > Tcp.Buffer.recv + TCP_BUFFER_SIZE

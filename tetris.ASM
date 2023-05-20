@@ -683,7 +683,7 @@ section '.idata' import data readable writeable
 
 import iphlpapi,\
         GetIpAddrTable , 'GetIpAddrTable'
-        ; THIS STRUCTURES GOT FROM INTERNET. THEY MAY BE CHANGED!
+        ; THESE STRUCTURES ARE FROM THE WINAPI DOCS
         struct MIB_IPADDRROW
                dwAddr           dd              ?
                dwIndex          dd              ?
@@ -705,6 +705,9 @@ import iphlpapi,\
                 OwningThread    dd      ?;  HANDLE      // from the thread's ClientId->UniqueThread
                 LockSemaphore   dd      ?;  HANDLE
                 SpinCount       dd      ?;  ULONG_PTR   // force size on 64-bit systems when packed
+        ends
+        struct RTL_CONDITION_VARIABLE
+                Ptr             dd      ?;  PVOID
         ends
 
 import AdvApi32,\
@@ -785,7 +788,9 @@ import ws2_32,\
         setsockopt, 'setsockopt',\
         closesocket, 'closesocket',\
         WSACleanup, 'WSACleanup',\
-        connect, 'connect'
+        connect, 'connect',\
+        send, 'send',\
+        recv,'recv'
 
 ; ####### DATA HERE ###################
         include 'tetrisdata.asm'
