@@ -165,6 +165,8 @@ proc WindowProc ,\;uses ebx esi edi,\
         je      .wmkeydown
         cmp     ebx, WM_KEYUP
         je      .wmkeyup
+        cmp     ebx, WM_PACKET_ARRIVED
+        je      .wmpacket
         cmp     ebx, WM_DESTROY
         je      .wmdestroy
         cmp     ebx, WM_CHAR
@@ -615,6 +617,13 @@ proc WindowProc ,\;uses ebx esi edi,\
       @@:
         stdcall Game.KeyEvent
       .EndWmmousedown:
+        jmp     .defwndproc
+
+  .wmpacket:
+        ; TEMP TEST
+        mov     eax, 'P'
+        stdcall Game.KeyEvent
+        ;
         jmp     .defwndproc
 
   .wmdestroy:

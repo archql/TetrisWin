@@ -22,7 +22,12 @@ WM_PACKET_ARRIVED           = WM_USER + 0x222
 ; [out, eflags] - does je if no packet left
 proc Tcp.DecodePacket ; uses edi ecx
         ; save start pos
-        mov     edi, esi
+        mov     ebx, esi
+        ; CHECK ON HTTP header
+        mov     ecx, Tcp.Websocket.Conn.HTTP.Len
+        mov     edi, Tcp.Websocket.Conn.HTTP
+        repe cmpsb
+        jz      .HTTP
         ; save len
         xchg    eax, edx
         ; check if has at least 2 bytes
@@ -38,7 +43,7 @@ proc Tcp.DecodePacket ; uses edi ecx
         je      .case_B
 .case_C:
         lodsd
-        bswap
+        bswap   eax
         jmp     .case_A
 .case_B:
         lodsw
@@ -46,7 +51,7 @@ proc Tcp.DecodePacket ; uses edi ecx
 .case_A:
         ; now eax stores length of packet (of course if it is valid)
         mov     ecx, esi
-        sub     ecx, edi
+        sub     ecx, ebx
         cmp     ecx, edx ; edx is allowed len
         js      .NoMorePackets ; diff is < 0
         ; were assuming that masking key is not present
@@ -58,7 +63,7 @@ proc Tcp.DecodePacket ; uses edi ecx
         ;
  .NoMorePackets:
         ; rollback (now eax is undefined, edx is allowed len, )
-        mov     esi, edi
+        mov     esi, ebx
         xor     eax, eax
         xor     ecx, ecx
 .Exit:
@@ -68,6 +73,33 @@ proc Tcp.DecodePacket ; uses edi ecx
         sub     eax, ecx  ; calc amount of left bytes
         ;
         test    ecx, ecx
+        ret
+.HTTP:
+        ; FIND place with \r\n\r\n (end) (assume there is no content)
+@@:
+        ; check if end of buffer reached
+        mov     edx, esi
+        sub     edx, ebx
+        cmp     edx, eax
+        js      .NoMoreData
+        ; find sequence
+        mov     ecx, Tcp.Websocket.Conn.End.Len
+        mov     edi, Tcp.Websocket.Conn.End
+        repe cmpsb
+        jnz     @B
+        ; here were are if payload were founded, esi is place where it is
+        jmp     .HttpReady
+
+.NoMoreData:
+        xor     edx, edx ; full extracted len = 0
+        ;
+.HttpReady:
+        ; copy full http packet
+        mov     esi, ebx
+        ; amount of bytes in the buffer
+        sub     eax, edx  ; calc amount of left bytes
+        ;
+        test    edx, edx
         ret
 endp
 
@@ -109,7 +141,7 @@ proc Tcp.Init
         loop    .Base64Loop
 
         ; ## copy nickname
-        mov     esi, Tcp.Websocket.Auth.1
+        mov     esi, Tcp.Websocket.Join.1
         mov     edi, Game.NickName
         mov     ecx, NICKNAME_LEN
         rep movsb
@@ -121,7 +153,7 @@ proc Tcp.Init
         ; [out, eax] amount of bytes read
         ; -1 if invalid handle
         mov     esi, 64
-        stdcall Settings.ReadFile, Tcp.Websocket.Auth.File, Tcp.Websocket.Auth.2, esi
+        stdcall Settings.ReadFile, Tcp.Websocket.Auth.File, Tcp.Websocket.Join.2, esi
         cmp     eax, esi
         ;je      .Ok
         ; TODO not ok auth

@@ -6,26 +6,26 @@
 
         Tcp.Base64Symbols       db      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
-        Tcp.Websocket.Auth      db      'POST /auth/login HTTP/1.1', 13, 10,\
-                                        'Content-Type: application/json', 13, 10,\
-                                        '{"nickname":"'
-        Tcp.Websocket.Auth.1    db      NICKNAME_LEN dup ?, '","password_hash":"'
-        Tcp.Websocket.Auth.2    db      SHA_256_LEN  dup ?, '"}', 13, 10, 13, 10
-
-        Tcp.Websocket.Auth.Len  = $ - Tcp.Websocket.Auth
-
         Tcp.Websocket.Auth.File db      'passw.txt', 0'
 
-        Tcp.Websocket.Conn      db      'GET /socket.io/?EIO=4&transport=websocket',\
-                                        ' HTTP/1.1', 13, 10, 'Connection: Upgrade', 13, 10,\
+        Tcp.Websocket.Conn      db      'GET /socket.io/?EIO=4&transport=websocket '
+        Tcp.Websocket.Conn.HTTP db      'HTTP/1.1',\
+                                        13, 10, 'Connection: Upgrade', 13, 10,\
                                         'Upgrade: websocket', 13, 10,\
                                         'Sec-WebSocket-Version: 13', 13, 10,\
                                         'Sec-WebSocket-Key: '
-        Tcp.Websocket.Conn.2    db      22 dup ?, '==', 13, 10, 13, 10
+        Tcp.Websocket.Conn.2    db      22 dup ?, '=='
+        Tcp.Websocket.Conn.End  db      13, 10, 13, 10
         Tcp.Websocket.Conn.Len  = $ - Tcp.Websocket.Conn
+        Tcp.Websocket.Conn.HTTP.Len     = 8
+        Tcp.Websocket.Conn.End.Len      = 4
 
-        Tcp.Websocket.Join      db      '40/game,' ; then, token is inserted
+        Tcp.Websocket.Join      db      '40/game,{"nickname":"'
+        Tcp.Websocket.Join.1    db      NICKNAME_LEN dup ?, '","password_hash":"'
+        Tcp.Websocket.Join.2    db      SHA_256_LEN  dup ?, '"}'
         Tcp.Websocket.Join.Len  = $ - Tcp.Websocket.Join
+        Tcp.Websocket.Join.BaseLen      = 7 ; '40/game'
+
         Tcp.Websocket.Event     db      '451-/game,["input",{"_placeholder":true,"num":0}]'
         Tcp.Websocket.Event.Len = $ - Tcp.Websocket.Event
 
