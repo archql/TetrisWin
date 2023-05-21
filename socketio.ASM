@@ -1,33 +1,117 @@
 proc SocketIO.Connect
-        mov      dword [Game.BlocksArr], 0x01040401
-
         ; init packet headers
         stdcall Tcp.Init
+        ; save auth res
+        setz    al
+        mov     byte [Tcp.Auth.Result], al
+        ;
         stdcall Tcp.Connect
         ;
         test    eax, eax
-        jz      @F
-        ; success
-        mov     dword [Game.BlocksArr], 0x04040404
-        ; send packet
-        ; Thread-safe way to enqueue TCP packet
+        jz      .Exit
+        ; send packet (launch websocket loop)
         ; - [in, esi] ptr to data block (from)
         mov     esi, Tcp.Websocket.Conn
         ; - [in, eax] len of data block
         mov     eax, Tcp.Websocket.Conn.Len
         stdcall Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
-@@:
-
+.Exit:
         ret
 endp
 
 proc SocketIO.On
+        ; 1st - extract packet from the queue
+        ; - [in, esi] ptr to managed buffer (to)
+        mov     esi, Tcp.Buffer.recv
+        stdcall Tcp.Buffer.Dequeue
+        ; - [out, edi] ptr to data block
+        ; - [out, eax] len of data block ; 0 if empty
+        mov     esi, edi
+        mov     ecx, eax
+        ; 2nd - Check if previous dispatched event was binary
+        movzx   edx, byte [SocketIO.NextEventId]
+        test    edx, edx
+        jz      .NotBinary
+        dec     edx
+        jz      .UnknownBinary
+        ; drop event number
+        mov     byte [SocketIO.NextEventId], 0
+        ; event no 2
+        dec     edx
+        jz      SocketIO.On.sync
+        dec     edx
+        jz      SocketIO.On.upd
+        dec     edx
+        jz      SocketIO.On.lb
+        ; assume other are not possible
 
-        ; TEMP TEST
-        mov     eax, 'P'
-        stdcall Game.KeyEvent
+.NotBinary:
+        ; 2nd - Check EngineIO part
+        lodsb
+        cmp     al, 'H' ; HTTP case - for now - just ignore
+        je      .Exit
+        cmp     al, '0' ; CONNECT message arrived
+        jne     @F
+        ; connect to namespace
+        mov     esi, Tcp.Websocket.Join
+        mov     eax, Tcp.Websocket.Join.Len
+        cmp     byte [Tcp.Auth.Result], 0
+        jne     .AuthOk
+        mov     eax, Tcp.Websocket.Join.BaseLen
+.AuthOk:
+        jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
+@@:
+        cmp     al, '2' ; PING message arrived - send PONG
+        jne     @F
+        ; send PONG
+        mov     esi, Tcp.Websocket.Pong
+        xor     eax, eax
+        inc     eax
+        jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
+@@:
+        cmp     al, '4' ; EVENT message arrived - process it
+        jne     .Exit   ; ignore other message types
+
+        ; 3rd - Check SocketIO part
+        ; were processing 5, other events were just ignoring
+        lodsb
+        cmp     al, '5' ; Connected case
+        jne     .Exit
+        ; Binary event -
+        ; get rid of namespace name & block info (assume its always ours)
+        add     esi, 10 ;skip 1-/game,["
+        ; extract event name (were interested in lb, sync, upd events [can be named 2, 3, 4 bytes long])
+        mov     edx, 4      ; max event id
         ;
-        mov     dword [Game.BlocksArr + 16], 0x06070809
+        mov     edi, esi ; ptr
+        mov     ax, 'lb'   ; event with id 4
+        scasw
+        je      @F
+        dec     edx
+        ;
+        mov     edi, esi ; ptr
+        mov     eax, 'upd"'; event with id 3
+        scasd
+        je      @F
+        dec     edx
+        ;
+        mov     edi, esi ; ptr
+        mov     eax, 'sync'; event with id 2
+        scasd
+        je      @F
+        dec     edx
+@@:
+.EndBinary:
+.UnknownBinary:
+        ; save dispatched event id
+        mov     byte [SocketIO.NextEventId], dl
+        ;
+.Exit:
+        ret
+
+SocketIO.On.sync:
+SocketIO.On.upd:
+SocketIO.On.lb:
 
         ret
 endp
@@ -40,14 +124,12 @@ proc SocketIO.Disconnect
         ret
 endp
 
-proc SocketIO.Emit
-
-        ; init packet headers
-        stdcall Tcp.Init
-        ;
-
-        ret
-endp
+; Wrapper of Tcp.EnqueuePacket
+; adds websocket related data to the packet
+; - [in, esi] ptr to data block (from)
+; - [in, eax] len of data block
+SocketIO.Emit:
+        jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
 
 proc SocketIO.Namespace
 

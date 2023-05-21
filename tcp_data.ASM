@@ -20,6 +20,8 @@
         Tcp.Websocket.Conn.HTTP.Len     = 8
         Tcp.Websocket.Conn.End.Len      = 4
 
+        Tcp.Websocket.Pong      db      '3'
+
         Tcp.Websocket.Join      db      '40/game,{"nickname":"'
         Tcp.Websocket.Join.1    db      NICKNAME_LEN dup ?, '","password_hash":"'
         Tcp.Websocket.Join.2    db      SHA_256_LEN  dup ?, '"}'
@@ -28,6 +30,8 @@
 
         Tcp.Websocket.Event     db      '451-/game,["input",{"_placeholder":true,"num":0}]'
         Tcp.Websocket.Event.Len = $ - Tcp.Websocket.Event
+
+        Tcp.Auth.Result         db      ?
 
 
 
@@ -58,9 +62,22 @@ ends
         Tcp.Buffer.send.end     db      ?
         Tcp.Buffer.send         db      (TCP_BUFFER_SIZE + 2) dup ?
 
-        Tcp.BufferIn.Size       =               1024
-        Tcp.BufferIn            db              Tcp.BufferIn.Size dup ?
+        Tcp.BufferIn.Size       =       1024
+        Tcp.BufferIn            db      Tcp.BufferIn.Size dup ?
+
+        SocketIO.BufferOut.Size =       1024
+        SocketIO.BufferOut      db      SocketIO.BufferOut.Size dup ?
 
 ; filled size = Tcp.Buffer.recv.end - Tcp.Buffer.recv.begin
 ; writePastEnd = Tcp.Buffer.recv.begin + write > Tcp.Buffer.recv + TCP_BUFFER_SIZE
+
+        ; 0 is no event (ignore)
+        SocketIO.NextEventId.lb         = 4
+        SocketIO.NextEventId.upd        = 3
+        SocketIO.NextEventId.sync       = 2
+        SocketIO.NextEventId.unknown    = 1 ; unknown binary event happened
+        SocketIO.NextEventId            db      ?
+
+
+
 

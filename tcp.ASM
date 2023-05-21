@@ -123,6 +123,7 @@ endp
 
 ; # Initializes all TCP module related resources
 ; [out, eflags] - if je -> auth read credentials ok
+; [out, eax] - if 0 -> auth read credentials ok
 proc Tcp.Init
 
         ; init
@@ -160,7 +161,7 @@ proc Tcp.Init
         ; -1 if invalid handle
         mov     esi, 64
         stdcall Settings.ReadFile, Tcp.Websocket.Auth.File, Tcp.Websocket.Join.2, esi
-        cmp     eax, esi
+        sub     eax, esi
         ;je      .Ok
         ; TODO not ok auth
 ;.Ok:
@@ -433,9 +434,10 @@ endp
 proc Tcp.ThSend.Callback,\
         lpParameter ; PSOCKET
 
-.LoopThread:
         ; Lock critical section
         invoke  EnterCriticalSection, Tcp.CritSection
+
+.LoopThread:
         ; wait until buffer is not null
         stdcall Tcp.Buffer.HasData
         jne     @F ; has data
