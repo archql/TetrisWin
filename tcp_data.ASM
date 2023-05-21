@@ -62,10 +62,10 @@ ends
         Tcp.Buffer.send.end     db      ?
         Tcp.Buffer.send         db      (TCP_BUFFER_SIZE + 2) dup ?
 
-        Tcp.BufferIn.Size       =       1024
+        Tcp.BufferIn.Size       =       2048
         Tcp.BufferIn            db      Tcp.BufferIn.Size dup ?
 
-        SocketIO.BufferOut.Size =       1024
+        SocketIO.BufferOut.Size =       2048
         SocketIO.BufferOut      db      SocketIO.BufferOut.Size dup ?
 
 ; filled size = Tcp.Buffer.recv.end - Tcp.Buffer.recv.begin

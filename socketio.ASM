@@ -86,19 +86,19 @@ proc SocketIO.On
         mov     edx, 4      ; max event id
         ;
         mov     edi, esi ; ptr
-        mov     ax, 'bl'   ; event with id 4   (inverted name)
-        scasw
-        je      @F
-        dec     edx
-        ;
-        mov     edi, esi ; ptr
-        mov     eax, '"dpu'; event with id 3
+        mov     eax, 'lbXX'  ; event with id 4
         scasd
         je      @F
         dec     edx
         ;
         mov     edi, esi ; ptr
-        mov     eax, 'cnys'; event with id 2
+        mov     eax, 'updX'; event with id 3
+        scasd
+        je      @F
+        dec     edx
+        ;
+        mov     edi, esi ; ptr
+        mov     eax, 'sncX'; event with id 2
         scasd
         je      @F
         dec     edx
@@ -110,10 +110,24 @@ proc SocketIO.On
         ;
 .Exit:
         ret
-
-SocketIO.On.sync:
-SocketIO.On.upd:
 SocketIO.On.lb:
+
+        ;lodsd
+        ;mov     dword [Game.BlocksArr], eax
+        ret
+SocketIO.On.sync:
+        lodsd ; tick
+        lodsd ; evt num
+        lodsd ; time
+        ; Here if acting as proxy packet arrived
+        mov     edi, Game.NickName ; table of rcds   (got msg pos)
+        mov     ecx, FILE_SZ_TO_WRITE - 4
+        rep movsb
+        ;
+        mov     word [Client.State], CLIENT_STATE_ONLINE
+        ;
+        ret
+SocketIO.On.upd:
 
         ret
 endp
