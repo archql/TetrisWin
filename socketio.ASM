@@ -59,7 +59,8 @@ proc SocketIO.On
         jne     .AuthOk
         mov     eax, Tcp.Websocket.Join.BaseLen
 .AuthOk:
-        jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
+        xor     edx, edx ; TEXT type
+        jmp     SocketIO.Emit ; uses eax ecx edx esi edi ebx??
 @@:
         cmp     al, '2' ; PING message arrived - send PONG
         jne     @F
@@ -67,7 +68,8 @@ proc SocketIO.On
         mov     esi, Tcp.Websocket.Pong
         xor     eax, eax
         inc     eax
-        jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
+        xor     edx, edx ; TEXT type
+        jmp     SocketIO.Emit ; uses eax ecx edx esi edi ebx??
 @@:
         cmp     al, '4' ; EVENT message arrived - process it
         jne     .Exit   ; ignore other message types
@@ -84,19 +86,19 @@ proc SocketIO.On
         mov     edx, 4      ; max event id
         ;
         mov     edi, esi ; ptr
-        mov     ax, 'lb'   ; event with id 4
+        mov     ax, 'bl'   ; event with id 4   (inverted name)
         scasw
         je      @F
         dec     edx
         ;
         mov     edi, esi ; ptr
-        mov     eax, 'upd"'; event with id 3
+        mov     eax, '"dpu'; event with id 3
         scasd
         je      @F
         dec     edx
         ;
         mov     edi, esi ; ptr
-        mov     eax, 'sync'; event with id 2
+        mov     eax, 'cnys'; event with id 2
         scasd
         je      @F
         dec     edx
@@ -126,9 +128,62 @@ endp
 
 ; Wrapper of Tcp.EnqueuePacket
 ; adds websocket related data to the packet
+; - [in, dx] websocket packet type (ignore CONTINUE TYPE, so TEXT is 0, BINARY is 2)
 ; - [in, esi] ptr to data block (from)
 ; - [in, eax] len of data block
 SocketIO.Emit:
+        ; ignore CONTINUE TYPE
+        inc     edx
+        ; get temp buffer start
+        mov     edi, SocketIO.BufferOut
+        push    edi
+        ;
+        xchg    edx, eax ; save len
+        ; determine websocket frame
+        or      ax, 1000'0000_1000'0000b ; al is opcode, ah is length
+        ; next determine length
+        cmp     edx, 126
+        jg      @F
+        ; case A
+        or      ah, dl
+        stosw
+        jmp     .end_case
+@@:
+        cmp     edx, 0xFFFF
+        jg      @F
+        ; case B
+        or      ah, 126
+        stosw
+        mov     eax, edx
+        xchg    ah, al
+        stosw
+        jmp     .end_case
+@@:
+        or      ah, 127
+        stosw
+        mov     eax, edx
+        bswap   eax
+        stosd
+.end_case:
+        ; len is in edx
+        ; get mask (ecx edx is preserved)
+        stdcall Random.GetMax
+        ; now mask is in eax
+        stosd
+        mov     ecx, eax
+        ; move payload
+        xchg    ecx, edx
+        ; loop (mask in edx, len in ecx)
+.MaskingLoop:
+        lodsb
+        xor     al, dl
+        ror     edx, 8
+        stosb
+        loop    .MaskingLoop
+
+        pop     esi
+        mov     eax, edi
+        sub     eax, esi ; end block - start block
         jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
 
 proc SocketIO.Namespace
