@@ -79,5 +79,17 @@ ends
         SocketIO.NextEventId            db      ?
 
 
+        Reconciliator.Event             dd      ?
+        Reconciliator.LastProcessed     dd      ?
+        Reconciliator.ZeroTime          dd      ?  ; point from which sync with server happened
+        Reconciliator.GlobalTick        dd      ?  ; must be as fresh as possible
+        Reconciliator.GameTick          dd      ?  ; for game ticks
+        Reconciliator.TicksPlayed       dd      ?  ; ????
+
+        RECONCILIATOR_BUFFER_SIZE       = 1024
+        Reconciliator.InputBuffer       GameInput       RECONCILIATOR_BUFFER_SIZE dup ?
+        Reconciliator.StateBuffer       GameState       RECONCILIATOR_BUFFER_SIZE dup ?
+
+
 
 

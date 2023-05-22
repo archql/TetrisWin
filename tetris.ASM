@@ -359,46 +359,8 @@ proc WindowProc ,\;uses ebx esi edi,\
         mov     eax, dword [esp]
         stdcall SoundPlayer.EndEventUpdate; got eax in [esp] as param
 
-        ; CHECK IF GAME RUNNING
-        xor     ax, ax
-        cmp     [Game.Playing], ax
-        je      .animation
-        cmp     [Game.Pause], ax
-        jne     .animation
-
-        ; update keypress
-        ;mov     eax, dword [esp]
-        ;sub     ax, [Keyboard.Clock]
-        ;cmp     ax, KEY_EVENT_UPDATE;300; temp
-        ;jb      @F
-        ;add     [Keyboard.Clock], ax
-        ;xor     ax, ax
-        ;stdcall Game.KeyEvent
-    ;@@:
-
-        ; check on snd
-        cmp     [Game.MusicOff], ax
-        jne     @F
-        mov     eax, dword [esp]
-        stdcall SoundPlayer.Update ; got eax in [esp] as param
-@@:
-
         ; define game tick update
-        mov     eax, dword [esp]
-        sub     eax, [Game.CurTick]
-        movzx   edx, [Game.TickSpeed]
-        and     [Game.SoftDrop], 1
-        jz      @F
-        shr     edx, 2
-@@:
-        cmp     eax, edx;300; temp
-        jb      @F
-        add     [Game.CurTick], eax
-        add     [Game.TicksPlayed], eax
-        ; call game update
-        mov     eax, 7; key with ID 7 is undefined
-        stdcall Game.KeyEvent ; Safe call?
-@@:
+        stcall  Reconciliator.OnTimer
 .animation:
         ; define animation
         pop     eax
@@ -672,7 +634,7 @@ endp
         include 'tcp.asm'
         include 'socketio.asm'
 
-        include 'client.asm'
+        ;include 'client.asm'
 
 ;===========================
 

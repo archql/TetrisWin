@@ -176,6 +176,8 @@ proc Game.GenNewFig
         ret
 endp
 
+; TODO every call here must be intercepted
+; All direct writes to Game must be done through this method
 ;############### KEY EVENT ############
 ; - processes a key code, stored in eax
 ; - Special control codes:

@@ -38,7 +38,7 @@ proc SocketIO.On
         mov     byte [SocketIO.NextEventId], 0
         ; event no 2
         dec     edx
-        jz      SocketIO.On.sync
+        jz      Reconciliator.Sync
         dec     edx
         jz      SocketIO.On.upd
         dec     edx
@@ -128,6 +128,18 @@ SocketIO.On.sync:
         ;
         ret
 SocketIO.On.upd:
+        ;
+        this.lastServerProcessedState = serverState;
+        //
+        console.log(`server is running ${this.currentEvent - serverState.event} events behind`);
+        console.log(this.stateBuffer[this.lastServerProcessedState.event % BUFFER_SIZE]);
+        console.log(this.lastServerProcessedState);
+        // check if server & client are synced
+        if (!isDeepEqual(this.stateBuffer[this.lastServerProcessedState.event % BUFFER_SIZE],
+            this.lastServerProcessedState)) // TODO deep comparison
+        {
+            this.#reconcile();
+        }
 
         ret
 endp
@@ -200,20 +212,27 @@ SocketIO.Emit:
         sub     eax, esi ; end block - start block
         jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
 
-proc SocketIO.Namespace
 
-        ; init packet headers
-        stdcall Tcp.Init
-        ;
+;=================
+proc SocketIO.Reconcile
+        console.log("RECONCILIATION");
+        //
+        this.lastProcessedState = this.lastServerProcessedState;
+        const serverBufferIndex = this.lastServerProcessedState.event % BUFFER_SIZE;
+        // reset problematic point
+        this.stateBuffer[serverBufferIndex] = this.lastServerProcessedState;
+        this.game.constructFromPrototype(this.lastServerProcessedState.state);
+        // simulate all ticks up to the current
+        let eventToProcess = this.lastServerProcessedState.event + 1;
+        while (eventToProcess < this.currentEvent) {
+            const bufIndex = eventToProcess % BUFFER_SIZE;
+            const input = this.inputBuffer[bufIndex];
+            // reprocess input
+            this.game.processEventSilent(input.input.id);
+            this.stateBuffer[bufIndex] = new GameState(input.tick, input.event, input.time, this.game.deepCopy());
+            //
+            eventToProcess++;
+        }
 
-        ret
-endp
 
-proc SocketIO.Auth
-
-        ; init packet headers
-        stdcall Tcp.Init
-        ;
-
-        ret
 endp
