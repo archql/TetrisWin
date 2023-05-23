@@ -182,16 +182,16 @@
         end if
    .ViewMenu_End:
         ;#######################
-        if (SERVER_DEFINED)
+        ;if (SERVER_DEFINED)
         ; check connection
-        mov     ebx, Client.StrError
-        mov     dx,  CLIENT_STR_LEN
-        movzx   eax, word [Client.State]
+        mov     ebx, Reconciliator.StrError
+        mov     dx,  RECONCILIATOR_STR_LEN
+        movzx   eax, word [Reconciliator.State]
         mul     dx
         add     ebx, eax
         ; DRAW text connection
-        stdcall View.DrawText, FIELD_W + 3, FIELD_H, CLIENT_STR_LEN, eax, ebx
-        end if
+        stdcall View.DrawText, FIELD_W + 3, FIELD_H, RECONCILIATOR_STR_LEN, eax, ebx
+        ;end if
 
         ; draw background texture
         ;mov     ax, [Game.Pause]

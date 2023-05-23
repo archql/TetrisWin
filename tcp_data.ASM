@@ -3,6 +3,24 @@
         TCP_SIZES_BUFFER_SIZE_MASK      = 0xFF ; mask for TCP_SIZES_BUFFER_SIZE
         SHA_256_LEN                     = 64
 
+         mov     ebx, Reconciliator.StrError
+        mov     dx,  RECONCILIATOR_STR_LEN
+        movzx   eax, word [Reconciliator.State]
+
+        Reconciliator.StrError             db    '@OFFLINE'
+        RECONCILIATOR_STR_LEN              = $ - Reconciliator.StrError
+        Reconciliator.StrConnected         db    '@ON-LINE'
+        Reconciliator.StrRegistered        db    '@REGSTRD'
+        Reconciliator.StrRgRejected        db    '@REJCTED'
+        Reconciliator.StrConLost           db    '@CONLOST'
+        Reconciliator.StrConError          db    '@CONERRR'
+
+        RECONCILIATOR_STATE_OFFLINE    = 0
+        RECONCILIATOR_STATE_ONLINE     = 1
+        RECONCILIATOR_STATE_REGISTERED = 2
+        RECONCILIATOR_STATE_REJECTED   = 3
+        RECONCILIATOR_STATE_CONLOST    = 4
+        RECONCILIATOR_STATE_CONERROR   = 5
 
         Tcp.Base64Symbols       db      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 

@@ -417,19 +417,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         mov     [Settings.SetupNickNameActive], TRUE
 
         include 'nickname_setup.asm'
-
 .regularKeyEvent:
-        ; check regular key events
-        cmp     eax, 'R' ; restart
-        jne     @F
-        stdcall Game.End
-        stdcall Game.Initialize
-@@:
-        cmp     eax, 'P'
-        jne     @F
-        stdcall SoundPlayer.Pause
-        xor     [Game.Pause], 1
-@@:
 .regularKeyEvent_except_R_P:
         if (SERVER_DEFINED)
         ; MENU CHANGE VIEW
@@ -483,57 +471,27 @@ proc WindowProc ,\;uses ebx esi edi,\
         jae     @F
         add     [SoundPlayer.Volume], 0x0F
 @@:
-        cmp     eax, VK_SHIFT
-        jne     @F
-        mov     [Game.SoftDrop], TRUE
-@@:
-        ; TEMP
-        cmp     [Game.Playing], TRUE
-        jne     @F
-        cmp     [Game.Pause], FALSE
-        jne     @F
-        stdcall Reconciliator.ProcessEvent
-@@:
-        ;cmp     eax, VK_LEFT
-        ;jb      @F
-        ;cmp     eax, VK_RIGHT
-        ;ja      @F
-        ; check press of key
-        ;mov     ecx, eax
-        ;sub     ecx, VK_LEFT
-        ;mov     dl, 1
-        ;shl     dl, cl
-        ;or      byte [Keyboard.Pressed], dl
-;@@:
-        cmp     eax, VK_ESCAPE
-        jne     .defwndproc
+        ; check if exit required
         cmp     [Game.Playing], FALSE
+        jne     @F
+        cmp     eax, VK_ESCAPE
         je      .wmdestroy
-        ; stop game
-        stdcall Game.End
+@@:
+        ; send key event
+        stdcall Reconciliator.ProcessEvent
         jmp     .defwndproc
   .wmkeyup:
         mov     eax, [wparam]
         cmp     eax, VK_SHIFT
         jne     @F
-        mov     [Game.SoftDrop], FALSE
+        mov     eax, 15
+        stdcall Reconciliator.ProcessEvent
 @@:
         cmp     eax, VK_CONTROL
         jne     @F
         ; deactivate edit mode
         mov     [Settings.SetupNickNameActive], FALSE
 @@:
-        ;cmp     eax, VK_LEFT
-        ;jb      @F
-        ;cmp     eax, VK_RIGHT
-        ;ja      @F
-        ; check press of key
-        ;mov     ecx, eax
-        ;sub     ecx, VK_LEFT
-        ;mov     dl, 1
-        ;shl     dl, cl
-        ;xor     byte [Keyboard.Pressed], dl
-;@@:
         jmp     .defwndproc
 
   .wmmousewheel:
@@ -571,7 +529,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         js      @F
         mov     eax, VK_UP
      @@:
-        stdcall Game.KeyEvent
+        stdcall Reconciliator.ProcessEvent
    .EndWheel:
         jmp     .defwndproc
 
@@ -586,7 +544,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         je      @F
         mov     eax, ' '
       @@:
-        stdcall Game.KeyEvent
+        stdcall Reconciliator.ProcessEvent
       .EndWmmousedown:
         jmp     .defwndproc
 
@@ -767,7 +725,8 @@ import ws2_32,\
         WSACleanup, 'WSACleanup',\
         connect, 'connect',\
         send, 'send',\
-        recv,'recv'
+        recv,'recv',\
+        WSAGetLastError, 'WSAGetLastError'
 
 ; ####### DATA HERE ###################
         include 'tetrisdata.asm'

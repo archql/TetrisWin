@@ -182,10 +182,50 @@ endp
 ; - processes a key code, stored in eax
 ; - Special control codes:
 ;   - Game update               - 7
+;   - Shift key up              - 15 (undefined in VK table)
 ;   - Ignore downward collision - 0 (only for actual figure, not preview)
 ; uses ebx, ecx, edx, esi, edi
 proc Game.KeyEvent uses eax
+        ;
+        cmp     eax, VK_ESCAPE
+        jne     @F
+        ; stop game
+        pop     eax
+        jmp     Game.End
+@@:
+        ; check regular key events
+        cmp     eax, 'R' ; restart
+        jne     @F
+        stdcall Game.End
+        pop     eax
+        jmp     Game.Initialize
+@@:
+        ;
+        cmp     [Game.Playing], FALSE
+        je      .EndKeyEvent
+        ; pause
+        cmp     eax, 'P'
+        jne     @F
+        stdcall SoundPlayer.Pause
+        xor     [Game.Pause], 1
+        jmp     .EndKeyEvent
+@@:
+        ; soft drop disable
+        cmp     eax, 15 ; shift key up
+        jne     @F
+        mov     [Game.SoftDrop], FALSE
+        jmp     .EndKeyEvent
+@@:
+        ; if pause - do not continue processing
+        cmp     [Game.Pause], FALSE
+        jne     .EndKeyEvent
 
+        ; soft drop enable
+        cmp     eax, VK_SHIFT
+        jne     @F
+        mov     [Game.SoftDrop], TRUE
+        jmp     .EndKeyEvent
+@@:
         ; playsound
         cmp     eax, 7
         je      @F
@@ -301,7 +341,7 @@ proc Game.KeyEvent uses eax
 @@:
         and     dx, 0000'0000'0000'0011b ; masked rotation
 
-Game.KeyEvent.NonKeyPositionChange: ; bx is fig, esi edi - cords
+.NonKeyPositionChange: ; bx is fig, esi edi - cords
         ; get figure (duplicated!)
         add     bx, dx ; apply rotation
         shl     bx, 1  ; each fig is 2 bytes long
@@ -368,7 +408,7 @@ Game.KeyEvent.NonKeyPositionChange: ; bx is fig, esi edi - cords
         mov     [Game.FigX], si
         mov     [Game.CurFig], bx
         mov     [Game.CurFigRotation], dx
-        jmp     .End_key_event
+        jmp     .EndKeyEvent
 
 .Collided:
         ; 1st place figure
@@ -417,7 +457,7 @@ Game.KeyEvent.NonKeyPositionChange: ; bx is fig, esi edi - cords
         ; gen new fig (temp)
         stdcall Game.GenNewFig
 
-.End_key_event:
+.EndKeyEvent:
         ret
 endp
 

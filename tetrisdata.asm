@@ -250,11 +250,13 @@ TetrisFrame:
         Game.HoldedFig                  dw      ?
         Game.MusicOff                   dw      ?
         Game.SoftDrop                   dw      ?
+
+        Reconciliator.State             dw      ?
 sizeof.TetrisFrame = $ - TetrisFrame
 
         Game.VersionInfo                dd      ?
         Game.VersionCode                dd      ?
-        Game.Reserved                   dw      16 dup ?
+        Game.Reserved                   dw      15 dup ?
 
 FILE_SZ_TO_WRITE = ($ - GameBuffer)
 

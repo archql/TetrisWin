@@ -1,6 +1,9 @@
 INVALID_SOCKET              = 0xFF'FF'FF'FF
 SOCKET_ERROR                = 0xFF'FF'FF'FF
 INFINITE                    = 0xFF'FF'FF'FF ; Infinite timeout
+SOL_SOCKET                  = 0xFFFF
+SO_RCVTIMEO                 = 0x1006
+WSAETIMEDOUT                = 10060
 
 IPPROTO_TCP                 = 6
 
@@ -171,12 +174,11 @@ endp
 
 ; # Destroys all TCP module related resources
 proc Tcp.Destroy
-
-        ; destroy all
-        invoke  WakeAllConditionVariable, Tcp.CondVar
         ; join threads
         inc     word [Tcp.ThSend.thStop]
         inc     word [Tcp.ThSend.thStop]
+        ; destroy all
+        invoke  WakeAllConditionVariable, Tcp.CondVar
         ;
         mov     eax, [Tcp.ThSend.hThread]
         test    eax, eax
@@ -190,6 +192,14 @@ proc Tcp.Destroy
 @@:
         ;
         invoke  DeleteCriticalSection, Tcp.CritSection
+        ; destroy socket
+        ; invalidate socket
+        mov     ebx, [Tcp.hsocket]
+        test    ebx, ebx
+        jz      @F
+        invoke  closesocket, ebx
+        invoke  WSACleanup
+@@:
 
         ret
 endp
@@ -224,6 +234,13 @@ proc Tcp.Connect
         invoke  connect, ebx, Tcp.Addr, sizeof.sockaddr_in
         cmp     eax, SOCKET_ERROR
         je      .ErrorConnect
+        ; set timeout
+        ;push    500 ; 500 ms timeout
+        ;mov     eax, esp
+        ;invoke  setsockopt, ebx, SOL_SOCKET, SO_RCVTIMEO, eax, 4; = sizeof.Client.flag
+        ;test    eax, eax
+        ;pop     eax
+        ;js      .ErrorConnect ;( < 0)
         ; If connections are opened -> launch threads
         ; start || thread (Recv)
         xor     eax, eax
@@ -231,6 +248,7 @@ proc Tcp.Connect
         test    eax, eax
         jz      .ErrorConnect
         mov     [Tcp.ThRecv.thStop], 0
+        mov     [Tcp.ThRecv.hThread], eax
 
         ; start || thread (Send)
         xor     eax, eax
@@ -238,6 +256,7 @@ proc Tcp.Connect
         test    eax, eax
         jz      .ErrorConnect
         mov     [Tcp.ThSend.thStop], 0
+        mov     [Tcp.ThSend.hThread], eax
 
         ; set result
         mov     eax, TRUE
@@ -245,11 +264,13 @@ proc Tcp.Connect
 
 .ErrorConnect:
         ; invalidate socket
-        mov     dword [Tcp.hsocket], INVALID_SOCKET
+        mov     dword [Tcp.hsocket], 0 ; TODO ERROR???
         invoke  closesocket, ebx
         invoke  WSACleanup
         ;
 .ErrorStart:
+        ; set state (TODO)
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONERROR
         ; set result
         xor     eax, eax
 .Exit:
@@ -371,8 +392,17 @@ proc Tcp.ThRecv.Callback,\
         xchg    edi, eax
         add     eax, edi ; get new buf len
         test    edi, edi ; if read corresponds to socket error
-        js      .EndThread; if -1
         jz      .EndLoop
+        jg      @F
+        ; test on timeout
+        xchg    edi, eax ; save eax in edi
+        invoke  WSAGetLastError
+        cmp     eax, WSAETIMEDOUT
+        je      .EndLoop
+        jne     .EndThread
+@@:
+        ; back
+        xchg    edi, eax
         ; back to start pos to decode packets from the start
         mov     esi, Tcp.BufferIn
 .CheckForNextPacket:
@@ -429,6 +459,8 @@ proc Tcp.ThRecv.Callback,\
         ;
 .EndThread:
         inc     word [Tcp.ThRecv.thStop]
+        ; set state (TODO)
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONLOST
 
         ret
 endp
@@ -478,7 +510,8 @@ proc Tcp.ThSend.Callback,\
         invoke  LeaveCriticalSection, Tcp.CritSection
         ; Set flag to false (if manual exit)
         inc     word [Tcp.ThSend.thStop]
-        ;
+        ; set state (TODO)
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONLOST
 
         ret
 endp
