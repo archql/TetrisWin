@@ -222,8 +222,8 @@ proc Reconciliator.Reconcile
         inc     edx ; last processed state no + 1
         mov     eax, dword [Reconciliator.EventNo]
         ; get loop ctr
-        mov     ecx, edx
-        sub     ecx, eax
+        mov     ecx, eax
+        sub     ecx, edx
         jz      .NothingToReconcile
         ; get input pos (DUPLICATED)
         mov     esi, Reconciliator.InputBuffer
