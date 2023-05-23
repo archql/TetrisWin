@@ -151,8 +151,8 @@ proc Tcp.Init
         loop    .Base64Loop
 
         ; ## copy nickname
-        mov     esi, Tcp.Websocket.Join.1
-        mov     edi, Game.NickName
+        mov     edi, Tcp.Websocket.Join.1
+        mov     esi, Game.NickName
         mov     ecx, NICKNAME_LEN
         rep movsb
 

@@ -123,7 +123,7 @@ end if
         stdcall Game.Initialize
         ;
         stdcall Reconciliator.Init
-        stdcall SocketIO.Connect
+        stdcall SocketIO.Init  ; (without it were using critical section without init)
 
         ; loop
   msg_loop:
@@ -407,12 +407,12 @@ proc WindowProc ,\;uses ebx esi edi,\
         cmp    [Game.Score], 0
         jnz     .regularKeyEvent
         ; check if connected to network with fixed nickname
-        if (SERVER_DEFINED)
-        cmp     [Client.State], CLIENT_STATE_REGISTERED
+        ;if (SERVER_DEFINED)
+        cmp     [Reconciliator.State], RECONCILIATOR_STATE_REGISTERED
         je      .regularKeyEvent
-        cmp     [Client.State], CLIENT_STATE_ONLINE
+        cmp     [Reconciliator.State], RECONCILIATOR_STATE_ONLINE
         je      .regularKeyEvent
-        end if
+        ;end if
         ; activate edit mode
         mov     [Settings.SetupNickNameActive], TRUE
 
@@ -431,6 +431,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         cmp     eax, VK_F3
         jne     @F
         ; ini client if not ini
+        stdcall SocketIO.Connect
         ;stdcall Client.Init TODO replace with socket
 @@:
         ; CLIENT REQUEST GAME (SAME SEED)
@@ -442,6 +443,11 @@ proc WindowProc ,\;uses ebx esi edi,\
         ;stdcall Client.RequestGame
 @@:
         end if
+        ; SOCKETIO START
+        cmp     eax, VK_F3
+        jne     @F
+        stdcall SocketIO.Connect
+@@:
         ; JUST STUPID TEST
         cmp     eax, VK_F5
         jne     @F
@@ -558,8 +564,12 @@ proc WindowProc ,\;uses ebx esi edi,\
         invoke  DeleteCriticalSection, Client.CritSection
         ; end if
         end if
-        ; save last logged nickname?
+        ; save last logged nickname?   (only if not default)
+        mov     eax, Game.NickName
+        cmp     byte [eax], STR_BASE_NICKNAME_FIRST_SYMBOL
+        je      @F
         stdcall Settings.SetLastNick, Settings.File.Name, Game.NickName, NICKNAME_LEN
+@@:
         ; music
         stdcall SoundPlayer.Close
         ; close texture find lookup
