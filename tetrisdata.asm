@@ -210,23 +210,13 @@ Unitialized_mem:
 
         MSG_CODE_BASE_CHAT              = $B000
 
-
-        ; # BUFFER TO SCORE WRITE & GAME RESTORE
-        Client.CritSection              RTL_CRITICAL_SECTION    ?
-GameMessage:
-        ; # Client
-        Client.MessageCode              dw      ?
-        CLIENT_PCID_LEN                 = 36
-        Client.PCID                     db      CLIENT_PCID_LEN dup ?, ? ; zero term
-        CLIENT_BUF_LEN                  = 32; 16 (increased due to send chat msg buf needed)
-        Client.Buffer                   db      CLIENT_BUF_LEN dup ? ; Buffer for client message addl parameters
 GameBuffer:
         ; Its defines base .ttr file data
         GameBuffer.Score                dw      ?
         GameBuffer.ControlWord          dw      ?
+TetrisFrame:
         ; # Game
         Game.NickName                   db      NICKNAME_LEN dup ?
-MESSAGE_BASE_LEN = ($ - GameMessage)
 ; There can be overlapped data!
         ; # Str
         Str.HighScore                   db      SCOLE_LEN_CONST dup ?
@@ -234,7 +224,6 @@ MESSAGE_BASE_LEN = ($ - GameMessage)
         ; # Random
         Random.dSeed                    dd      ?
         Random.dPrewNumber              dd      ?
-MESSAGE_START_GAME_LEN =  ($ - GameMessage)
         ; # Game
         Game.BlocksArr:                 db      FIELD_W*FIELD_H dup ? ; initialization!
         Game.CurFig                     dw      ?
@@ -261,16 +250,13 @@ MESSAGE_START_GAME_LEN =  ($ - GameMessage)
         Game.HoldedFig                  dw      ?
         Game.MusicOff                   dw      ?
         Game.SoftDrop                   dw      ?
-
-        ; NICKNAME
+sizeof.TetrisFrame = $ - TetrisFrame
 
         Game.VersionInfo                dd      ?
         Game.VersionCode                dd      ?
         Game.Reserved                   dw      16 dup ?
-FILE_SZ_TO_WRITE = ($ - GameBuffer)
-FILE_SZ_TO_RCV   = ($ - GameMessage)
 
-        Game.CurTick                    dd      ?
+FILE_SZ_TO_WRITE = ($ - GameBuffer)
 
         View.MenuChosen                 dw      ?
 
@@ -303,26 +289,6 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         CLIENT_STATE_REJECTED   = 3
         CLIENT_STATE_UUIDERROR  = 4
 
-        ; IP list table
-        ;Client.dIPAddrTableSz   dd              ?
-        ;Client.pIPAddrTable     dd              ?
-        ; for get UUID
-        Client.KeyHandle        dd              ?
-
-        ; Thread reciever
-        Client.ThRecv.hThread   dd              ?
-        Client.ThRecv.pThId     dd              ?
-        Client.ThRecv.thStop    dw              ?
-
-        ; Thread Ping | send
-        Client.ThSend.hThread   dd              ?
-        Client.ThSend.pThId     dd              ?
-        Client.ThSend.thStop    dw              ?
-
-        CLIENT_RECV_BUF_LEN     =               FILE_SZ_TO_RCV
-        Client.recvbuff         db              CLIENT_RECV_BUF_LEN dup ?
-        Client.StructLen        dd              ?
-
 
         ; # Settings
         Settings.SetupNickNameActive            dw      ?
@@ -349,11 +315,6 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 + FILE_SZ_TO_WRITE ; NICK + "word" ping
         Client.ClientsDataArr           db     (CLIENT_MAX_CONN) * (CLIENT_CL_RCD_LEN) dup ? ; temp nick name usage
 
-
-
-        ; Buffer for adapters info table
-        CLIENT_ADAPTERS_BUF_MAX         = 1024
-        Client.IPAddrTableBuf           db     (CLIENT_ADAPTERS_BUF_MAX) dup ?
         ; LB LINE STRUCT = [17 bytes Info = {place str - 3}{nick - 8}{score - 6}][ empty (11) ][is cur usr? (0)][4 bytes - prio prd {score - 2}{place - 2}]
         Settings.LeaderBoardArr         db     (LB_MAX_RCDS_AMOUNT)*(1 shl LB_ISTR_RCD_LEN_POW) dup ?
 

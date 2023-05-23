@@ -175,7 +175,7 @@
         ; DRAW text SCOREBOARD
         stdcall View.DrawText, FIELD_W + 3 - 1 + 8, 2        , LB_ISTR_RCD_LEN  , eax, Str.Scoreboard
         ; DRAW Scoreboard
-        stdcall Client.ThSafeCall, View.DrawLeaderboard
+        stdcall View.DrawLeaderboard
         ; DRAW connections
         if (SERVER_DEFINED)
         stdcall View.DrawConnections

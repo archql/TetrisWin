@@ -28,7 +28,7 @@
         Tcp.Websocket.Join.Len  = $ - Tcp.Websocket.Join
         Tcp.Websocket.Join.BaseLen      = 7 ; '40/game'
 
-        Tcp.Websocket.Event     db      '451-/game,["input",{"_placeholder":true,"num":0}]'
+        Tcp.Websocket.Event     db      '451-/game,["inpX",{"_placeholder":true,"num":0}]'
         Tcp.Websocket.Event.Len = $ - Tcp.Websocket.Event
 
         Tcp.Auth.Result         db      ?
@@ -58,8 +58,8 @@ ends
         Tcp.Buffer.recv.end     dw      ?
         Tcp.Buffer.recv         db      (TCP_BUFFER_SIZE + 2) dup ? ; + 2 is for overflow len mark @see Tcp.Buffer.Enqueue
 
-        Tcp.Buffer.send.begin   db      ?
-        Tcp.Buffer.send.end     db      ?
+        Tcp.Buffer.send.begin   dw      ?
+        Tcp.Buffer.send.end     dw      ?
         Tcp.Buffer.send         db      (TCP_BUFFER_SIZE + 2) dup ?
 
         Tcp.BufferIn.Size       =       2048
@@ -79,17 +79,31 @@ ends
         SocketIO.NextEventId            db      ?
 
 
-        Reconciliator.Event             dd      ?
+        Reconciliator.EventNo           dd      ?
         Reconciliator.LastProcessed     dd      ?
-        Reconciliator.ZeroTime          dd      ?  ; point from which sync with server happened
+
+        Reconciliator.ZeroTick          dd      ?  ; point from which sync with server happened
         Reconciliator.GlobalTick        dd      ?  ; must be as fresh as possible
         Reconciliator.GameTick          dd      ?  ; for game ticks
         Reconciliator.TicksPlayed       dd      ?  ; ????
 
-        RECONCILIATOR_BUFFER_SIZE       = 1024
-        Reconciliator.InputBuffer       GameInput       RECONCILIATOR_BUFFER_SIZE dup ?
-        Reconciliator.StateBuffer       GameState       RECONCILIATOR_BUFFER_SIZE dup ?
+struct GameInput
+        tick            dd      ?  ; ignore
+        eventNo         dd      ?
+        time            dd      ?
+        eventId         dd      ?
+ends ; has size of power of 2: 2^5
 
+struct GameState
+        tick            dd      ?  ; ignore
+        eventNo         dd      ?
+        time            dd      ?
+        state           db      sizeof.TetrisFrame dup  ?
+ends
+
+        RECONCILIATOR_BUFFER_SIZE       = 1024 ; must be power of 2
+        Reconciliator.InputBuffer       db      sizeof.GameInput*RECONCILIATOR_BUFFER_SIZE dup ?
+        Reconciliator.StateBuffer       db      sizeof.GameState*RECONCILIATOR_BUFFER_SIZE dup ?
 
 
 

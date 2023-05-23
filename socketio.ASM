@@ -39,8 +39,9 @@ proc SocketIO.On
         ; event no 2
         dec     edx
         jz      Reconciliator.Sync
+        ; event no 3
         dec     edx
-        jz      SocketIO.On.upd
+        jz      Reconciliator.Update
         dec     edx
         jz      SocketIO.On.lb
         ; assume other are not possible
@@ -115,33 +116,6 @@ SocketIO.On.lb:
         ;lodsd
         ;mov     dword [Game.BlocksArr], eax
         ret
-SocketIO.On.sync:
-        lodsd ; tick
-        lodsd ; evt num
-        lodsd ; time
-        ; Here if acting as proxy packet arrived
-        mov     edi, Game.NickName ; table of rcds   (got msg pos)
-        mov     ecx, FILE_SZ_TO_WRITE - 4
-        rep movsb
-        ;
-        mov     word [Client.State], CLIENT_STATE_ONLINE
-        ;
-        ret
-SocketIO.On.upd:
-        ;
-        this.lastServerProcessedState = serverState;
-        //
-        console.log(`server is running ${this.currentEvent - serverState.event} events behind`);
-        console.log(this.stateBuffer[this.lastServerProcessedState.event % BUFFER_SIZE]);
-        console.log(this.lastServerProcessedState);
-        // check if server & client are synced
-        if (!isDeepEqual(this.stateBuffer[this.lastServerProcessedState.event % BUFFER_SIZE],
-            this.lastServerProcessedState)) // TODO deep comparison
-        {
-            this.#reconcile();
-        }
-
-        ret
 endp
 
 proc SocketIO.Disconnect
@@ -154,7 +128,7 @@ endp
 
 ; Wrapper of Tcp.EnqueuePacket
 ; adds websocket related data to the packet
-; - [in, dx] websocket packet type (ignore CONTINUE TYPE, so TEXT is 0, BINARY is 2)
+; - [in, dx] websocket packet type (ignore CONTINUE TYPE, so TEXT is 0, BINARY is 1)
 ; - [in, esi] ptr to data block (from)
 ; - [in, eax] len of data block
 SocketIO.Emit:
@@ -211,28 +185,3 @@ SocketIO.Emit:
         mov     eax, edi
         sub     eax, esi ; end block - start block
         jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
-
-
-;=================
-proc SocketIO.Reconcile
-        console.log("RECONCILIATION");
-        //
-        this.lastProcessedState = this.lastServerProcessedState;
-        const serverBufferIndex = this.lastServerProcessedState.event % BUFFER_SIZE;
-        // reset problematic point
-        this.stateBuffer[serverBufferIndex] = this.lastServerProcessedState;
-        this.game.constructFromPrototype(this.lastServerProcessedState.state);
-        // simulate all ticks up to the current
-        let eventToProcess = this.lastServerProcessedState.event + 1;
-        while (eventToProcess < this.currentEvent) {
-            const bufIndex = eventToProcess % BUFFER_SIZE;
-            const input = this.inputBuffer[bufIndex];
-            // reprocess input
-            this.game.processEventSilent(input.input.id);
-            this.stateBuffer[bufIndex] = new GameState(input.tick, input.event, input.time, this.game.deepCopy());
-            //
-            eventToProcess++;
-        }
-
-
-endp

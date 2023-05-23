@@ -10,7 +10,7 @@ entry start
 
 ;===========================
 ; consts
-        SERVER_DEFINED              = TRUE
+        SERVER_DEFINED              = FALSE
 
         TRUE    = 1
         FALSE   = 0
@@ -122,6 +122,7 @@ end if
         ;stdcall Game.GenNewFig
         stdcall Game.Initialize
         ;
+        stdcall Reconciliator.Init
         stdcall SocketIO.Connect
 
         ; loop
@@ -188,6 +189,8 @@ proc WindowProc ,\;uses ebx esi edi,\
         pop     ebp
         jmp     [DefWindowProc]
   .wmmousemove:
+        ; TEST DISABLE
+        jmp     .finish
         cmp     [Game.Pause], 1
         je      .IgnoreFigMove
         cmp     [Game.Playing], 1
@@ -284,7 +287,6 @@ proc WindowProc ,\;uses ebx esi edi,\
         ; set clock
         invoke  GetTickCount
         mov     [clock], eax
-        mov     [Game.CurTick], eax
         xor     eax, eax
         jmp     .finish
   .wmsize:
@@ -360,7 +362,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         stdcall SoundPlayer.EndEventUpdate; got eax in [esp] as param
 
         ; define game tick update
-        stcall  Reconciliator.OnTimer
+        stdcall  Reconciliator.OnTimer
 .animation:
         ; define animation
         pop     eax
@@ -384,7 +386,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         ;if (CHAT_DEFINED)
         cmp     [View.MenuChosen], 2
         jne     .ignoreChatInput
-        include 'chat.asm'
+        ;include 'chat.asm' TEMP DISABLE
     .ignoreChatInput:
         ; exit
         jmp     .defwndproc
@@ -441,7 +443,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         cmp     eax, VK_F3
         jne     @F
         ; ini client if not ini
-        stdcall Client.Init
+        ;stdcall Client.Init TODO replace with socket
 @@:
         ; CLIENT REQUEST GAME (SAME SEED)
         cmp     eax, VK_F4
@@ -449,7 +451,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         cmp     [Game.Playing], TRUE
         je      @F
         ; send msg
-        stdcall Client.RequestGame
+        ;stdcall Client.RequestGame
 @@:
         end if
         ; JUST STUPID TEST
@@ -490,7 +492,7 @@ proc WindowProc ,\;uses ebx esi edi,\
         jne     @F
         cmp     [Game.Pause], FALSE
         jne     @F
-        stdcall Game.KeyEvent
+        stdcall Reconciliator.ProcessEvent
 @@:
         ;cmp     eax, VK_LEFT
         ;jb      @F
@@ -633,7 +635,7 @@ endp
 
         include 'tcp.asm'
         include 'socketio.asm'
-
+        include 'reconciliator.asm'
         ;include 'client.asm'
 
 ;===========================

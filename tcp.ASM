@@ -189,7 +189,7 @@ proc Tcp.Destroy
         invoke  WaitForSingleObject, eax, INFINITE
 @@:
         ;
-        invoke  DeleteCriticalSection, Client.CritSection
+        invoke  DeleteCriticalSection, Tcp.CritSection
 
         ret
 endp
@@ -361,7 +361,6 @@ proc Tcp.ThRecv.Callback,\
 
         xor     eax, eax
         mov     esi, Tcp.BufferIn
-
 .LoopThread:
         ;  count new buf sz
         mov     edx, Tcp.BufferIn.Size
@@ -374,6 +373,8 @@ proc Tcp.ThRecv.Callback,\
         test    edi, edi ; if read corresponds to socket error
         js      .EndThread; if -1
         jz      .EndLoop
+        ; back to start pos to decode packets from the start
+        mov     esi, Tcp.BufferIn
 .CheckForNextPacket:
         ; Lets Parse data
         ; [in, esi] - pos to buffer
@@ -407,14 +408,17 @@ proc Tcp.ThRecv.Callback,\
         pop     eax
         ;
         jmp     .CheckForNextPacket
-        ;
 .AllPacketsParsed:
+        ; save esi pos
+        mov     edi, esi
+        ; return esi to start pos
+        mov     esi, Tcp.BufferIn
         ; Check if still has data
         test    eax, eax
         jz      .EndLoop
         ; Mov data back
-        mov     edi, Tcp.BufferIn
-        push    edi
+        xchg    esi, edi ; now edi is start pos, esi is data pos
+        push    esi
         mov     ecx, eax
         rep movsb; esi -> edi
         pop     esi

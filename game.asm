@@ -183,6 +183,7 @@ endp
 ; - Special control codes:
 ;   - Game update               - 7
 ;   - Ignore downward collision - 0 (only for actual figure, not preview)
+; uses ebx, ecx, edx, esi, edi
 proc Game.KeyEvent uses eax
 
         ; playsound
