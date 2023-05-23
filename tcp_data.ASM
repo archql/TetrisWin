@@ -3,9 +3,9 @@
         TCP_SIZES_BUFFER_SIZE_MASK      = 0xFF ; mask for TCP_SIZES_BUFFER_SIZE
         SHA_256_LEN                     = 64
 
-         mov     ebx, Reconciliator.StrError
-        mov     dx,  RECONCILIATOR_STR_LEN
-        movzx   eax, word [Reconciliator.State]
+        ;Tcp.SocketTimeout               dd      500 ; ms
+        ;Tcp.SocketTimeout.Size          = 4
+
 
         Reconciliator.StrError             db    '@OFFLINE'
         RECONCILIATOR_STR_LEN              = $ - Reconciliator.StrError

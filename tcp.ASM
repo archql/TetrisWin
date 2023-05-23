@@ -174,6 +174,14 @@ endp
 
 ; # Destroys all TCP module related resources
 proc Tcp.Destroy
+        ; kill socket (WARNING DANGER TODO)
+        ; invalidate socket
+        mov     ebx, [Tcp.hsocket]
+        test    ebx, ebx
+        jz      @F
+        invoke  closesocket, ebx
+        invoke  WSACleanup
+@@:
         ; join threads
         inc     word [Tcp.ThSend.thStop]
         inc     word [Tcp.ThSend.thStop]
@@ -192,14 +200,6 @@ proc Tcp.Destroy
 @@:
         ;
         invoke  DeleteCriticalSection, Tcp.CritSection
-        ; destroy socket
-        ; invalidate socket
-        mov     ebx, [Tcp.hsocket]
-        test    ebx, ebx
-        jz      @F
-        invoke  closesocket, ebx
-        invoke  WSACleanup
-@@:
 
         ret
 endp
@@ -235,11 +235,8 @@ proc Tcp.Connect
         cmp     eax, SOCKET_ERROR
         je      .ErrorConnect
         ; set timeout
-        ;push    500 ; 500 ms timeout
-        ;mov     eax, esp
-        ;invoke  setsockopt, ebx, SOL_SOCKET, SO_RCVTIMEO, eax, 4; = sizeof.Client.flag
+        ;invoke  setsockopt, ebx, SOL_SOCKET, SO_RCVTIMEO, Tcp.SocketTimeout, Tcp.SocketTimeout.Size; = sizeof.Client.flag
         ;test    eax, eax
-        ;pop     eax
         ;js      .ErrorConnect ;( < 0)
         ; If connections are opened -> launch threads
         ; start || thread (Recv)
@@ -392,15 +389,15 @@ proc Tcp.ThRecv.Callback,\
         xchg    edi, eax
         add     eax, edi ; get new buf len
         test    edi, edi ; if read corresponds to socket error
-        jz      .EndLoop
-        jg      @F
+        jng     .EndThread
+        ;jg      @F
         ; test on timeout
-        xchg    edi, eax ; save eax in edi
-        invoke  WSAGetLastError
-        cmp     eax, WSAETIMEDOUT
-        je      .EndLoop
-        jne     .EndThread
-@@:
+        ;xchg    edi, eax ; save eax in edi
+        ;invoke  WSAGetLastError
+        ;cmp     eax, WSAETIMEDOUT
+        ;je      .EndLoop
+        ;jne     .EndThread
+;@@:
         ; back
         xchg    edi, eax
         ; back to start pos to decode packets from the start
