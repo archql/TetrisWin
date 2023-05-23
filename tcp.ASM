@@ -125,13 +125,18 @@ endp
 ;       [in, eax] len of data block
 
 ; # Initializes all TCP module related resources
-; [out, eflags] - if je -> auth read credentials ok
-; [out, eax] - if 0 -> auth read credentials ok
 proc Tcp.Init
 
         ; init
         invoke  InitializeConditionVariable, Tcp.CondVar
         invoke  InitializeCriticalSection, Tcp.CritSection
+
+        ret
+endp
+
+; [out, eflags] - if je -> auth read credentials ok
+; [out, eax] - if 0 -> auth read credentials ok
+proc Tcp.PrepareHeaders
 
         ; get main thread ID
         invoke  GetCurrentThreadId
@@ -165,6 +170,9 @@ proc Tcp.Init
         mov     esi, 64
         stdcall Settings.ReadFile, Tcp.Websocket.Auth.File, Tcp.Websocket.Join.2, esi
         sub     eax, esi
+        ; save auth res
+        setz    al
+        mov     byte [Tcp.Auth.Result], al
         ;je      .Ok
         ; TODO not ok auth
 ;.Ok:

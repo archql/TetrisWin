@@ -1,13 +1,13 @@
 proc SocketIO.Init
         ; init packet headers
         stdcall Tcp.Init
-        ; save auth res
-        setz    al
-        mov     byte [Tcp.Auth.Result], al
+        ;
         ret
 endp
 
 proc SocketIO.Connect
+        ;
+        stdcall Tcp.PrepareHeaders
         ;
         stdcall Tcp.Connect
         ;
