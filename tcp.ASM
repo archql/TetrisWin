@@ -12,7 +12,8 @@ SERVER_PORT                 = 5555
 
 ; Message code which is used to notify main thread about new tcp packet
 WM_APP                      = 0x8000
-WM_PACKET_ARRIVED           = WM_APP + 1
+WM_TCP_CONNECTED            = WM_APP + 1
+WM_TCP_PACKET_ARRIVED       = WM_APP + 2
 
 ; U must set Tcp.DecodePacket ->
 ;Tcp.DecodePacket            = ....
@@ -116,67 +117,68 @@ proc Tcp.DecodePacket ; uses edi ecx
 endp
 
 ; Interface
-; - Tcp.Init    (MUST be called from window thread)
-; - Tcp.Destroy (MUST be called from window thread)
-; - Tcp.Connect (Start connection and threads)
+; - Tcp.Init    (MUST be called from main thread, ONCE)
+; - Tcp.Destroy (MUST be called from main thread, ONCE)
+; - Tcp.Connect (Start connection and threads, MUST be called from main thread)
 ;       [out, eax] - if success
-; - Tcp.EnqueuePacket
+; - Tcp.EnqueuePacket (Can be called from any thread)
 ;       [in, esi] ptr to data block
 ;       [in, eax] len of data block
 
 ; # Initializes all TCP module related resources
+; # opens a socket
+; [out, eax] - is connection suceeded (true/false)
 proc Tcp.Init
 
         ; init
         invoke  InitializeConditionVariable, Tcp.CondVar
         invoke  InitializeCriticalSection, Tcp.CritSection
+        ; init WSA
+        invoke  WSAStartup, 0x0202, Client.wsaData ; init winsock
+        test    eax, eax
+        jnz     .ErrorStart
 
-        ret
-endp
-
-; [out, eflags] - if je -> auth read credentials ok
-; [out, eax] - if 0 -> auth read credentials ok
-proc Tcp.PrepareHeaders
-
-        ; get main thread ID
+        ; save main thread ID
         invoke  GetCurrentThreadId
         mov     [Tcp.ThMain.pThId], eax
 
-        ; generate 22 random BASE64 symbols
-        mov     edi, Tcp.Websocket.Conn.2
-        mov     ecx, 22
-.Base64Loop:
-        mov     esi, Tcp.Base64Symbols
-        ; get random offset
-        stdcall Random.Get, 0, 63
-        ; move on random ofset
-        add     esi, eax
-        ; mov char
-        movsb   ; esi -> edi
-        loop    .Base64Loop
+        ; params
+        invoke  socket, AF_INET, SOCK_STREAM, IPPROTO_TCP  ;create socket;
+        xor     ecx, ecx ; get invalid socket value
+        not     ecx
+        cmp     eax, ecx
+        mov     [Tcp.hsocket], eax ;save socket handle
+        je      .ErrorStart
 
-        ; ## copy nickname
-        mov     edi, Tcp.Websocket.Join.1
-        mov     esi, Game.NickName
-        mov     ecx, NICKNAME_LEN
-        rep movsb
+        ; Setup sockaddr_in's
+        ; set port
+        mov     ax, SERVER_PORT
+        xchg    ah, al
+        ; #Recv_addr
+        ; memset zero (dont need, already zero!)
+        mov     [Tcp.Addr.sin_family], AF_INET
+        mov     [Tcp.Addr.sin_port], ax
+        mov     [Tcp.Addr.sin_addr], SERVER_IP ; already zero!
 
-        ; Load password hash
-        ; [in, stack] ptr to filename
-        ; [in, stack] ptr to buf
-        ; [in, stack] file sz to read
-        ; [out, eax] amount of bytes read
-        ; -1 if invalid handle
-        mov     esi, 64
-        stdcall Settings.ReadFile, Tcp.Websocket.Auth.File, Tcp.Websocket.Join.2, esi
-        sub     eax, esi
-        ; save auth res
-        setz    al
-        mov     byte [Tcp.Auth.Result], al
-        ;je      .Ok
-        ; TODO not ok auth
-;.Ok:
+        ; set result
+        xor     eax, eax
+        inc     eax
+        jmp     .Exit
 
+.ErrorConnect:
+        ; invalidate socket
+        ;xor     eax, eax
+        ;neg     eax ; get invalid socket
+        ;mov     dword [Tcp.hsocket], eax ; TODO ERROR???
+        invoke  closesocket, ebx
+        invoke  WSACleanup
+        ;
+.ErrorStart:
+        ; set state (TODO IT IS NOT TCP RELATED FEATURE)
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_INITERROR
+        ; set result
+        xor     eax, eax
+.Exit:
         ret
 endp
 
@@ -184,12 +186,12 @@ endp
 proc Tcp.Destroy
         ; kill socket (WARNING DANGER TODO)
         ; invalidate socket
-        mov     ebx, [Tcp.hsocket]
-        test    ebx, ebx
-        jz      @F
-        invoke  closesocket, ebx
+        mov     eax, [Tcp.hsocket]
+        ;test    ebx, ebx  (ignore invalid sockets)
+        ;jz      @F
+        invoke  closesocket, eax
         invoke  WSACleanup
-@@:
+;@@:
         ; join threads
         inc     word [Tcp.ThSend.thStop]
         inc     word [Tcp.ThSend.thStop]
@@ -213,75 +215,220 @@ proc Tcp.Destroy
 endp
 
 ; # connect to the tcp server
+; must be called once
 ; - [out, eax] - is connection succeed
 proc Tcp.Connect
-
-        ; init WSA
-        invoke  WSAStartup, 0x0202, Client.wsaData ; init winsock
-        test    eax, eax
-        jnz     .ErrorStart
-
-        ; params
-        invoke  socket, AF_INET, SOCK_STREAM, IPPROTO_TCP  ;create socket;
-        cmp     eax, INVALID_SOCKET
+        ;
+        cmp     [Tcp.Connected], 0
+        jne     .Exit
+        ; set state (TODO IT IS NOT TCP RELATED FEATURE)
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONNECTING
+        ;
+        mov     ebx, [Tcp.hsocket]
+        ; Check if socket opened
+        xor     ecx, ecx
+        not     ecx ; set to invalid socket
+        cmp     ebx, ecx
         je      .ErrorStart
-
-        ; Socket opened!
-        mov     [Tcp.hsocket], eax ;save socket handle in ebx
-        xchg    eax, ebx ; save handle in ebx
-        ; Setup sockaddr_in's
-        ; set port
-        mov     ax, SERVER_PORT
-        xchg    ah, al
-        ; #Recv_addr
-        ; memset zero (dont need, already zero!)
-        mov     [Tcp.Addr.sin_family], AF_INET
-        mov     [Tcp.Addr.sin_port], ax
-        mov     [Tcp.Addr.sin_addr], SERVER_IP ; already zero!
-        ; Open tcp connection
-        invoke  connect, ebx, Tcp.Addr, sizeof.sockaddr_in
-        cmp     eax, SOCKET_ERROR
-        je      .ErrorConnect
-        ; set timeout
-        ;invoke  setsockopt, ebx, SOL_SOCKET, SO_RCVTIMEO, Tcp.SocketTimeout, Tcp.SocketTimeout.Size; = sizeof.Client.flag
-        ;test    eax, eax
-        ;js      .ErrorConnect ;( < 0)
-        ; If connections are opened -> launch threads
         ; start || thread (Recv)
         xor     eax, eax
-        invoke  CreateThread, eax, eax, Tcp.ThRecv.Callback, ebx, eax, Tcp.ThRecv.pThId; last is ptr to thread id
-        test    eax, eax
-        jz      .ErrorConnect
-        mov     [Tcp.ThRecv.thStop], 0
-        mov     [Tcp.ThRecv.hThread], eax
-
+        mov     esi, Tcp.ThSend
+        mov     edi, Tcp.ThSend.Callback
+        stdcall Tcp.CreateThread
+        jz      .ErrorStart
         ; start || thread (Send)
         xor     eax, eax
-        invoke  CreateThread, eax, eax, Tcp.ThSend.Callback, ebx, eax, Tcp.ThSend.pThId; last is ptr to thread id
-        test    eax, eax
-        jz      .ErrorConnect
-        mov     [Tcp.ThSend.thStop], 0
-        mov     [Tcp.ThSend.hThread], eax
-
-        ; set result
-        mov     eax, TRUE
-        jmp     .Exit
-
-.ErrorConnect:
-        ; invalidate socket
-        mov     dword [Tcp.hsocket], 0 ; TODO ERROR???
-        invoke  closesocket, ebx
-        invoke  WSACleanup
+        mov     esi, Tcp.ThRecv
+        mov     edi, Tcp.ThRecv.Callback
+        stdcall Tcp.CreateThread
+        setz    al ; we know that eax is tested on zero - so set it to 1
+        movzx   eax, al
+        jnz     .Exit ; exit on sucess
         ;
 .ErrorStart:
         ; set state (TODO)
-        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONERROR
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_INITERROR
         ; set result
         xor     eax, eax
 .Exit:
-        ;mov     [Tcp.State], ax
         ret
 endp
+
+; [in, eax] - 0
+; [in, esi] - ptr to thread struct
+; [in, edi] - ptr to callback
+; [out, eflags] - ZF = 0 if error
+proc Tcp.CreateThread ; uses edi
+        ; get th handle
+        mov     ecx, [esi + THREAD_INFO.hThread]
+        test    ecx, ecx
+        jz      @F ; thread has been never initialized
+        ; check if thread is running
+        cmp     dword [esi + THREAD_INFO.thStop], 0
+        je      .Exit
+        ; check if thread is dead
+        xor     eax, eax
+        invoke  WaitForSingleObject, ecx, eax
+        jnz     .Exit ; thread is alive
+@@:
+        ; Launch thread
+        xor     eax, eax
+        invoke  CreateThread, eax, eax, edi, ebx, eax, esi; last is ptr to thread id (omitted)
+        test    eax, eax
+        jz      .Exit
+        mov     [esi + THREAD_INFO.thStop], 0
+        mov     [esi + THREAD_INFO.hThread], eax
+.Exit:
+        ret
+endp
+
+; ### THERAD RECIEVER PROC
+proc Tcp.ThRecv.Callback,\
+        lpParameter ; PSOCKET
+
+        ; Open tcp connection first (USES Tcp.Addr - so it must be readonly)
+        invoke  connect, [lpParameter], Tcp.Addr, sizeof.sockaddr_in
+        cmp     eax, SOCKET_ERROR
+        je      .EndThread
+        ; Set state that were ready to send data
+        lock    inc [Tcp.Connected]
+        ; TEMP
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_ONLINE
+        ; Notify send thread
+        invoke  WakeConditionVariable, Tcp.CondVar
+        ; Notify main thread that init were done successfully (TODO what about unsuccess?)
+        invoke  PostThreadMessageA, [Tcp.ThMain.pThId], WM_TCP_CONNECTED, eax, eax
+        ;
+        xor     eax, eax
+        mov     esi, Tcp.BufferIn
+.LoopThread:
+        ;  count new buf sz
+        mov     edx, Tcp.BufferIn.Size
+        sub     edx, eax
+        ;
+        mov     edi, eax ; save old pos
+        invoke  recv, [lpParameter], esi, edx, 0
+        xchg    edi, eax
+        add     eax, edi ; get new buf len
+        test    edi, edi ; if read corresponds to socket error
+        jng     .EndThread
+        ; back
+        xchg    edi, eax
+        ; back to start pos to decode packets from the start
+        mov     esi, Tcp.BufferIn
+.CheckForNextPacket:
+        ; Lets Parse data
+        ; [in, esi] - pos to buffer
+        ; [in, eax] - allowed len of buffer
+        ; [out, eax] - new allowed len of buffer (= old if no packet)
+        ; [out, esi] - packet pos (= start if no packet)
+        ; [out, edx] - extracted packet len
+        ; [out, ecx] - extracted full len  (unimportant)
+        ; [out, eflags] - does je if no packet left
+        stdcall Tcp.DecodePacket ; uses ecx edi
+        je      .AllPacketsParsed
+        ; check if zero packet -> IGNORE IT
+        test    edx, edx
+        jz      .CheckForNextPacket
+        ; save results
+        push    eax ; new allowed len ??
+
+        ; if valid data arrived
+        ; 1) lock queue ???
+        ; 2) -> copy data into queue
+        ; - [in, edi] ptr to managed buffer (to)
+        mov     edi, Tcp.Buffer.recv
+        ; - [in, esi] ptr to data block (from)
+        ; - [in, eax] len of data block
+        xchg    edx, eax
+        ; changes edi esi eax ecx edx (return esi = esi + eax)
+        stdcall Tcp.Buffer.Enqueue ; IM the only one equeuing something here -> safe
+        ; 3) notify ??
+        invoke  PostThreadMessageA, [Tcp.ThMain.pThId], WM_TCP_PACKET_ARRIVED, eax, esi
+        ; now esi is new buffer pos & eax is allowed len (on stack)
+        pop     eax
+        ;
+        jmp     .CheckForNextPacket
+.AllPacketsParsed:
+        ; save esi pos
+        mov     edi, esi
+        ; return esi to start pos
+        mov     esi, Tcp.BufferIn
+        ; Check if still has data
+        test    eax, eax
+        jz      .EndLoop
+        ; Mov data back
+        xchg    esi, edi ; now edi is start pos, esi is data pos
+        push    esi
+        mov     ecx, eax
+        rep movsb; esi -> edi
+        pop     esi
+        ; Check end condition
+.EndLoop:
+        cmp     word [Tcp.ThRecv.thStop], 0
+        je      .LoopThread
+        ;
+.EndThread:
+        inc     word [Tcp.ThRecv.thStop]
+        mov     [Tcp.Connected], 0
+        ; set state (TODO it is not tcp related)
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONLOST
+
+        ret
+endp
+
+
+; ### THERAD SENDER PROC
+proc Tcp.ThSend.Callback,\
+        lpParameter ; PSOCKET
+
+        ; Lock critical section
+        invoke  EnterCriticalSection, Tcp.CritSection
+
+.LoopThread:
+        cmp     word [Tcp.ThSend.thStop], 0
+        jne     .EndThread ; exit requested
+        ; wait until buffer is not null
+        ; - [in, esi] ptr to managed buffer (to)
+        mov     esi, Tcp.Buffer.send
+        stdcall Tcp.Buffer.HasData
+        jne     @F ; has data
+        invoke  SleepConditionVariableCS, Tcp.CondVar, Tcp.CritSection, INFINITE
+        jmp     .LoopThread ; extract data
+@@:
+        ; Fetch message
+        ; - [out, edi] ptr to data block
+        ; - [out, eax] len of data block ; 0 if empty
+        stdcall Tcp.Buffer.Dequeue
+        ; save full length
+        mov     ebx, eax
+.RepeatSend:
+        ; send packet over tcp
+        invoke  send, [lpParameter], edi, ebx, 0
+        ;
+        test    eax, eax
+        js      .EndThread; if -1
+        ;
+        add     edi, eax
+        sub     ebx, eax
+        jnz     .RepeatSend ; (if not fully sended)
+        ; Check end condition
+.EndLoop:
+        cmp     word [Tcp.ThSend.thStop], 0
+        je      .LoopThread
+        ;
+.EndThread:
+        ; Unlock critical section
+        invoke  LeaveCriticalSection, Tcp.CritSection
+        ; Set flag to false (if manual exit)
+        inc     word [Tcp.ThSend.thStop]
+        mov     [Tcp.Connected], 0
+        ; set state (TODO)
+        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONLOST
+
+        ret
+endp
+
 
 ; # Writes data from block with addr esi and sz eax to managed buffer (start of which is edi)
 ; THREAD UNSAFE
@@ -381,150 +528,14 @@ proc Tcp.Buffer.Dequeue
         ret
 endp
 
-; ### THERAD RECIEVER PROC
-proc Tcp.ThRecv.Callback,\
-        lpParameter ; PSOCKET
-
-        xor     eax, eax
-        mov     esi, Tcp.BufferIn
-.LoopThread:
-        ;  count new buf sz
-        mov     edx, Tcp.BufferIn.Size
-        sub     edx, eax
-        ;
-        mov     edi, eax ; save old pos
-        invoke  recv, [lpParameter], esi, edx, 0
-        xchg    edi, eax
-        add     eax, edi ; get new buf len
-        test    edi, edi ; if read corresponds to socket error
-        jng     .EndThread
-        ;jg      @F
-        ; test on timeout
-        ;xchg    edi, eax ; save eax in edi
-        ;invoke  WSAGetLastError
-        ;cmp     eax, WSAETIMEDOUT
-        ;je      .EndLoop
-        ;jne     .EndThread
-;@@:
-        ; back
-        xchg    edi, eax
-        ; back to start pos to decode packets from the start
-        mov     esi, Tcp.BufferIn
-.CheckForNextPacket:
-        ; Lets Parse data
-        ; [in, esi] - pos to buffer
-        ; [in, eax] - allowed len of buffer
-        ; [out, eax] - new allowed len of buffer (= old if no packet)
-        ; [out, esi] - packet pos (= start if no packet)
-        ; [out, edx] - extracted packet len
-        ; [out, ecx] - extracted full len  (unimportant)
-        ; [out, eflags] - does je if no packet left
-        stdcall Tcp.DecodePacket ; uses ecx edi
-        je      .AllPacketsParsed
-        ; check if zero packet -> IGNORE IT
-        test    edx, edx
-        jz      .CheckForNextPacket
-        ; save results
-        push    eax ; new allowed len ??
-
-        ; if valid data arrived
-        ; 1) lock queue ???
-        ; 2) -> copy data into queue
-        ; - [in, edi] ptr to managed buffer (to)
-        mov     edi, Tcp.Buffer.recv
-        ; - [in, esi] ptr to data block (from)
-        ; - [in, eax] len of data block
-        xchg    edx, eax
-        ; changes edi esi eax ecx edx (return esi = esi + eax)
-        stdcall Tcp.Buffer.Enqueue ; IM the only one equeuing something here -> safe
-        ; 3) notify ??
-        invoke  PostThreadMessageA, [Tcp.ThMain.pThId], WM_PACKET_ARRIVED, eax, esi
-        ; now esi is new buffer pos & eax is allowed len (on stack)
-        pop     eax
-        ;
-        jmp     .CheckForNextPacket
-.AllPacketsParsed:
-        ; save esi pos
-        mov     edi, esi
-        ; return esi to start pos
-        mov     esi, Tcp.BufferIn
-        ; Check if still has data
-        test    eax, eax
-        jz      .EndLoop
-        ; Mov data back
-        xchg    esi, edi ; now edi is start pos, esi is data pos
-        push    esi
-        mov     ecx, eax
-        rep movsb; esi -> edi
-        pop     esi
-        ; Check end condition
-.EndLoop:
-        cmp     word [Tcp.ThRecv.thStop], 0
-        je      .LoopThread
-        ;
-.EndThread:
-        inc     word [Tcp.ThRecv.thStop]
-        ; set state (TODO)
-        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONLOST
-
-        ret
-endp
-
-
-; ### THERAD SENDER PROC
-proc Tcp.ThSend.Callback,\
-        lpParameter ; PSOCKET
-
-        ; Lock critical section
-        invoke  EnterCriticalSection, Tcp.CritSection
-
-.LoopThread:
-        ; wait until buffer is not null
-        stdcall Tcp.Buffer.HasData
-        jne     @F ; has data
-        cmp     word [Tcp.ThSend.thStop], 0
-        jne     .EndThread ; exit requested
-        invoke  SleepConditionVariableCS, Tcp.CondVar, Tcp.CritSection, INFINITE
-        ;
-@@:
-        ; Fetch message
-        ; - [in, esi] ptr to managed buffer (to)
-        mov     esi, Tcp.Buffer.send
-        ; - [out, edi] ptr to data block
-        ; - [out, eax] len of data block ; 0 if empty
-        stdcall Tcp.Buffer.Dequeue
-        ; save full length
-        mov     ebx, eax
-.RepeatSend:
-        ; send packet over tcp
-        invoke  send, [lpParameter], edi, ebx, 0
-        ;
-        test    eax, eax
-        js      .EndThread; if -1
-        ;
-        add     edi, eax
-        sub     ebx, eax
-        jnz     .RepeatSend ; (if not fully sended)
-        ; Check end condition
-.EndLoop:
-        cmp     word [Tcp.ThSend.thStop], 0
-        je      .LoopThread
-        ;
-.EndThread:
-        ; Unlock critical section
-        invoke  LeaveCriticalSection, Tcp.CritSection
-        ; Set flag to false (if manual exit)
-        inc     word [Tcp.ThSend.thStop]
-        ; set state (TODO)
-        mov     word [Reconciliator.State], RECONCILIATOR_STATE_CONLOST
-
-        ret
-endp
-
 ; Thread-safe way to enqueue TCP packet
+; drops the packet if TCP module is not ready to send
 ; - [in, esi] ptr to data block (from)
 ; - [in, eax] len of data block
 proc Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
+        ; check if connected and ready to send
+        cmp     [Tcp.Connected], 0
+        je      .Exit
         ; save eax
         push    eax
         ; Lock critical section
@@ -541,22 +552,7 @@ proc Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
         invoke  LeaveCriticalSection, Tcp.CritSection
         ; Wake the waiting sender
         invoke  WakeConditionVariable, Tcp.CondVar
-
-        ret
-endp
-
-
-
-
-
-
-; #
-; - []
-proc Tcp.Recv
-        invoke  recv, [Tcp.hsocket], buffer, sizeof(buffer), 0
-        ;test    eax, eax
-        ;j
-
+.Exit:
         ret
 endp
 

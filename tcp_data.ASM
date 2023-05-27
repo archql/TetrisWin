@@ -7,20 +7,22 @@
         ;Tcp.SocketTimeout.Size          = 4
 
 
-        Reconciliator.StrError             db    '@OFFLINE'
-        RECONCILIATOR_STR_LEN              = $ - Reconciliator.StrError
-        Reconciliator.StrConnected         db    '@ON-LINE'
-        Reconciliator.StrRegistered        db    '@REGSTRD'
-        Reconciliator.StrRgRejected        db    '@REJCTED'
-        Reconciliator.StrConLost           db    '@CONLOST'
-        Reconciliator.StrConError          db    '@CONERRR'
+        Reconciliator.StrError          db    '@OFFLINE'
+        RECONCILIATOR_STR_LEN           = $ - Reconciliator.StrError
+        Reconciliator.StrConnected      db    '@ON-LINE' ; valid net state
+        Reconciliator.StrRegistered     db    '@REGSTRD' ; valid net state
+        Reconciliator.StrRgRejected     db    '@REJCTED' ; valid net state
+        Reconciliator.StrConLost        db    '@CONLOST'
+        Reconciliator.StrInitError      db    '@INITERR'
+        Reconciliator.StrConnecting     db    '@JOINING'
 
-        RECONCILIATOR_STATE_OFFLINE    = 0
-        RECONCILIATOR_STATE_ONLINE     = 1
-        RECONCILIATOR_STATE_REGISTERED = 2
-        RECONCILIATOR_STATE_REJECTED   = 3
-        RECONCILIATOR_STATE_CONLOST    = 4
-        RECONCILIATOR_STATE_CONERROR   = 5
+        RECONCILIATOR_STATE_OFFLINE     = 0
+        RECONCILIATOR_STATE_ONLINE      = 1
+        RECONCILIATOR_STATE_REGISTERED  = 2
+        RECONCILIATOR_STATE_REJECTED    = 3
+        RECONCILIATOR_STATE_CONLOST     = 4
+        RECONCILIATOR_STATE_INITERROR   = 5
+        RECONCILIATOR_STATE_CONNECTING  = 6
 
         Tcp.Base64Symbols       db      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
@@ -49,11 +51,15 @@
         Tcp.Websocket.Event     db      '451-/game,["inpX",{"_placeholder":true,"num":0}]'
         Tcp.Websocket.Event.Len = $ - Tcp.Websocket.Event
 
+        Tcp.hsocket             dd              not (0)
 
+        ; UNITIALIZED DATA
+
+        ; This is private data of TCP module
         Tcp.wsaData             WSADATA         ?
-        Tcp.hsocket             dd              ?
-        Tcp.flag                dd              ?
         Tcp.Addr                sockaddr_in     ?
+
+        Tcp.Connected           dd              ?
 
         ; # BUFFER TO SCORE WRITE & GAME RESTORE
         Tcp.CritSection         RTL_CRITICAL_SECTION    ?

@@ -41,20 +41,20 @@ start:
         mov     edi, Unitialized_mem
         rep     stosb
         ; set Client.PCID (unique PC ID)
-if (SERVER_DEFINED)
-           KEY_WOW64_64KEY = 0x0100
-        invoke  RegOpenKeyExA, HKEY_LOCAL_MACHINE, Client.QuaryValue, ebx, KEY_READ or KEY_WOW64_64KEY, Client.KeyHandle
-        test    eax, eax
-        jnz     @F
-        ; Client.QuaryKey - 1 = NULL STRING  ;[Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen
-        invoke  RegQueryValueExA, [Client.KeyHandle], Client.QuaryKey, ebx, ebx, Client.PCID, Client.PCIDBufLen
-        test    eax, eax
-     @@:
-        jz      @F
-        ; Throw error
-        mov     [Client.State], CLIENT_STATE_UUIDERROR ; Error
-     @@:
-end if
+;if (SERVER_DEFINED)
+;           KEY_WOW64_64KEY = 0x0100
+;        invoke  RegOpenKeyExA, HKEY_LOCAL_MACHINE, Client.QuaryValue, ebx, KEY_READ or KEY_WOW64_64KEY, Client.KeyHandle
+;        test    eax, eax
+;        jnz     @F
+;        ; Client.QuaryKey - 1 = NULL STRING  ;[Client.KeyHandle], Client.QuaryKey - 1, Client.QuaryKey, 0x0000ffff, ebx, Client.PCID, Client.PCIDBufLen
+;        invoke  RegQueryValueExA, [Client.KeyHandle], Client.QuaryKey, ebx, ebx, Client.PCID, Client.PCIDBufLen
+;        test    eax, eax
+;     @@:
+;        jz      @F
+;        ; Throw error
+;        mov     [Client.State], CLIENT_STATE_UUIDERROR ; Error
+;     @@:
+;end if
         ; set nickname
         stdcall Settings.GetLastNick
         ; zero
@@ -108,11 +108,6 @@ end if
         jz      creation_error; err_reg_class
         mov     [Wnd.hwnd], eax
 
-        if (SERVER_DEFINED)
-        ; create critical section to protect write-send (for multithreaded app)
-        invoke  InitializeCriticalSection, Client.CritSection
-        end if
-
         ; call music ini
         stdcall SoundPlayer.Ini
         ; call game initialization
@@ -132,14 +127,24 @@ end if
         invoke  GetMessage, esi, ebx, ebx, ebx
         or      eax, eax
         jz      end_loop
+        ; preserve esi - Wnd.msg
+        push    esi
         ; TCP message
-        cmp     [esi + (MSG.message - MSG.hwnd)],WM_PACKET_ARRIVED
+        mov     eax, [esi + (MSG.message - MSG.hwnd)]
+        cmp     eax ,WM_TCP_PACKET_ARRIVED
+        ; Handle TCP message
+        jne     @F
+        stdcall SocketIO.On
+        jmp     msg_loop
+@@:
+        cmp     eax ,WM_TCP_CONNECTED
         jne     @F
         ; Handle TCP message (preserve esi)
-        push    esi
-        stdcall SocketIO.On
-        pop     esi
+        stdcall SocketIO.TcpHandshakeDone
+        jmp     msg_loop
 @@:
+        ; restore esi
+        pop     esi
         ;
         invoke  TranslateMessage, esi
         invoke  DispatchMessage, esi

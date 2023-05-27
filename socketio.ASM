@@ -1,26 +1,25 @@
 proc SocketIO.Init
         ; init packet headers
-        stdcall Tcp.Init
-        ;
-        ret
+        jmp    Tcp.Init
 endp
 
 proc SocketIO.Connect
         ;
-        stdcall Tcp.PrepareHeaders
+        stdcall SocketIO.PrepareHeaders
         ;
         stdcall Tcp.Connect
         ;
-        test    eax, eax
-        jz      .Exit
+        ret
+endp
+
+proc SocketIO.TcpHandshakeDone
+
         ; send packet (launch websocket loop)
         ; - [in, esi] ptr to data block (from)
         mov     esi, Tcp.Websocket.Conn
         ; - [in, eax] len of data block
         mov     eax, Tcp.Websocket.Conn.Len
-        stdcall Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
-.Exit:
-        ret
+        jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
 endp
 
 proc SocketIO.On
@@ -132,6 +131,50 @@ proc SocketIO.Disconnect
 
         ; destroy tcp related things
         stdcall Tcp.Destroy
+
+        ret
+endp
+
+
+;
+; [out, eflags] - if je -> auth read credentials ok
+; [out, eax] - if 0 -> auth read credentials ok
+proc SocketIO.PrepareHeaders
+
+        ; generate 22 random BASE64 symbols
+        mov     edi, Tcp.Websocket.Conn.2
+        mov     ecx, 22
+.Base64Loop:
+        mov     esi, Tcp.Base64Symbols
+        ; get random offset
+        stdcall Random.Get, 0, 63
+        ; move on random ofset
+        add     esi, eax
+        ; mov char
+        movsb   ; esi -> edi
+        loop    .Base64Loop
+
+        ; ## copy nickname
+        mov     edi, Tcp.Websocket.Join.1
+        mov     esi, Game.NickName
+        mov     ecx, NICKNAME_LEN
+        rep movsb
+
+        ; Load password hash
+        ; [in, stack] ptr to filename
+        ; [in, stack] ptr to buf
+        ; [in, stack] file sz to read
+        ; [out, eax] amount of bytes read
+        ; -1 if invalid handle
+        mov     esi, 64
+        stdcall Settings.ReadFile, Tcp.Websocket.Auth.File, Tcp.Websocket.Join.2, esi
+        sub     eax, esi
+        ; save auth res
+        setz    al
+        mov     byte [Tcp.Auth.Result], al
+        ;je      .Ok
+        ; TODO not ok auth
+;.Ok:
 
         ret
 endp
