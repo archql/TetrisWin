@@ -139,6 +139,9 @@ end if
 ; ####### UNINITIALIZED MEMORY HERE!!!!! #########
 ; ################################################
 Unitialized_mem:
+        ;
+        Tcp.Auth.Result                 db      ?
+        SocketIO.EnteredNamespace       dd      ?
         ; # Windows
         Wnd.msg                         MSG                     ?
         Wnd.paintstruct                 PAINTSTRUCT             ?

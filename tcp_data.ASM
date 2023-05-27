@@ -49,9 +49,6 @@
         Tcp.Websocket.Event     db      '451-/game,["inpX",{"_placeholder":true,"num":0}]'
         Tcp.Websocket.Event.Len = $ - Tcp.Websocket.Event
 
-        Tcp.Auth.Result         db      ?
-
-
 
         Tcp.wsaData             WSADATA         ?
         Tcp.hsocket             dd              ?

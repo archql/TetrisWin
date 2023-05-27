@@ -8,7 +8,7 @@ WSAETIMEDOUT                = 10060
 IPPROTO_TCP                 = 6
 
 SERVER_IP                   = 0x01'00'00'7F ; 127.0.0.1 in reversed order
-SERVER_PORT                 = 5000
+SERVER_PORT                 = 5555
 
 ; Message code which is used to notify main thread about new tcp packet
 WM_APP                      = 0x8000

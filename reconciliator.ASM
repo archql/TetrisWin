@@ -140,6 +140,13 @@ proc Reconciliator.ProcessEvent
         rep movsb
         ; inc num of processed events
         inc     dword [Reconciliator.EventNo]
+
+        ; check
+        cmp     [SocketIO.EnteredNamespace], 0
+        jne     @F
+        pop     eax
+        ret
+@@:
         ;
         ; NEXT send input to the server
         ; Send preambule

@@ -82,6 +82,12 @@ proc SocketIO.On
         ; 3rd - Check SocketIO part
         ; were processing 5, other events were just ignoring
         lodsb
+        cmp     al, '0'
+        jne     @F
+        ;
+        inc     [SocketIO.EnteredNamespace]
+        jmp     .Exit
+@@:
         cmp     al, '5' ; Connected case
         jne     .Exit
         ; Binary event -
