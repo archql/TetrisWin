@@ -75,6 +75,18 @@ proc Reconciliator.Update
         ret
 endp
 
+
+; [in, edx] - 0
+; [in, eax, ecx] - len of data block
+; [in, esi, edi] - ptr to data block
+proc Reconciliator.Leaderboard
+
+        mov     edi, Settings.LeaderBoardArr
+        rep movsb
+
+        ret
+endp
+
 ; All direct writes to Game must be done through this method
 ;############### KEY EVENT ############
 ; - processes a key code, stored in eax

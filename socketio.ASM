@@ -46,7 +46,7 @@ proc SocketIO.On
         dec     edx
         jz      Reconciliator.Update
         dec     edx
-        jz      SocketIO.On.lb
+        jz      Reconciliator.Leaderboard
         ; assume other are not possible
 
 .NotBinary:
@@ -119,11 +119,6 @@ proc SocketIO.On
         mov     byte [SocketIO.NextEventId], dl
         ;
 .Exit:
-        ret
-SocketIO.On.lb:
-
-        ;lodsd
-        ;mov     dword [Game.BlocksArr], eax
         ret
 endp
 

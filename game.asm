@@ -69,10 +69,13 @@ proc Game.Initialize
         movzx   eax, word [Game.Score]
         cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
 
-        ; TESTTESTTEST!!!!
-        ;stdcall Settings.LdScoreboard
+        ; (TODO) it is not game-related thing
+        cmp     [Tcp.Connected], 0  ; if not connected to server - todo special flag?
+        jne     @F
+        ; draw leaderboard
         push    Settings.ListAllTTRFiles.LBline
         stdcall Settings.ListAllTTRFiles
+@@:
         ; ========================
 
         ; gen new fig
