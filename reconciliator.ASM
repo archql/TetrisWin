@@ -58,6 +58,7 @@ proc Reconciliator.Update
         ; time (ignore, assume its 0)
         lodsd
         ; compare states
+        ; TODO filter out not ours packets
         ; 1) get state pos (TODO move to reconcile??)
         mov     edi, Reconciliator.StateBuffer
         mov     eax, sizeof.GameState ; can be filled up to the power of 2??
@@ -83,6 +84,67 @@ proc Reconciliator.Leaderboard
 
         mov     edi, Settings.LeaderBoardArr
         rep movsb
+
+        ret
+endp
+
+; [in, edx] - 0
+; [in, eax, ecx] - len of data block
+; [in, esi, edi] - ptr to data block
+proc Reconciliator.OGVUpdate
+
+        ; TODO dupticate of Client.MessagePing
+        ; TODO fix logics
+        ; first find rcd corresponding to got nickname
+        add     esi, 12
+        push    esi  ; save msg pos
+        mov     edi, Client.ClientsDataArr
+        mov     ecx, NICKNAME_LEN;CLIENT_CL_RCD_LEN ; TEMP -- RCD LEN!
+        xor     ebx, ebx ; first free place
+
+   .PingRcdLoopSet:
+        ; ckeck if found
+        push    esi edi ecx
+        repe cmpsb
+        pop     ecx edi esi
+        mov     ax, word [edi + NICKNAME_LEN]; get PING
+        je      .StrFounded ;(corresponding rcd founded -- inc ping)
+        ; if str not equal (from repe cmpsb)
+   .StrNotEqual:
+        test    ax, ax
+        ; ckeck if ping = zero -- if yes -- founded
+        jz      .FoundedFree
+        ; ckeck if ping < zero -- if yes -- mark as first free place
+        jns     @F ; if greater than zero -- not free
+        ; below zero -- freed place
+        test    ebx, ebx ; if its first?
+        jnz     @F
+        ; yes
+        mov     ebx, edi ; save first free place
+   @@:
+        ; go next rcd
+        add     edi, CLIENT_CL_RCD_LEN
+        jmp     .PingRcdLoopSet ; WARN IF OVERFLOW (MAX RCD 64)
+
+   .FoundedFree:
+        test    ebx, ebx ; if first found
+        jz      @F
+        ; yes
+        mov     edi, ebx ; get first free place
+   @@:
+  .StrFounded:
+        ; copy nick str
+        rep movsb
+        ; set base (MAX) ping
+        mov     word [edi], 10
+        ; copy message (game frame)
+        pop     esi
+        inc     edi
+        inc     edi
+        mov     ecx, sizeof.TetrisFrame
+        rep movsb
+        ;
+   .EndPingMsg:
 
         ret
 endp
@@ -240,10 +302,9 @@ proc Reconciliator.Reconcile
         ; restore buffer pos
         mov     edx, dword [Reconciliator.LastProcessed]
         inc     edx ; last processed state no + 1
-        mov     eax, dword [Reconciliator.EventNo]
+        mov     ecx, dword [Reconciliator.EventNo]
         ; get loop ctr
-        mov     ecx, eax
-        sub     ecx, edx
+        sub     ecx, edx ; we got here < 0 loop ctr
         jz      .NothingToReconcile
         ; get input pos (DUPLICATED)
         mov     esi, Reconciliator.InputBuffer

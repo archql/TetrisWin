@@ -365,7 +365,7 @@ proc View.DrawGame uses ebx ;
 
         ; num in ebx, so
         xor     edx, edx
-        mov     eax, dword [sub_scale] ; get scale f
+        mov     eax, dword [sub_scale] ; get scale factor
         xchg    eax, ebx
         div     ebx
         ; now edx is X pos, eax is Y pos
@@ -395,7 +395,7 @@ proc View.DrawGame uses ebx ;
         ;invoke  glBegin, GL_POINTS
         ; set base pos
         mov     eax, esi ; base pos
-        add     eax, NICKNAME_LEN + 2 + (Game.BlocksArr - GameBuffer)
+        add     eax, NICKNAME_LEN + 2 + (Game.BlocksArr - TetrisFrame)  ; GameBuffer EVERYWHERE replaced with TetrisFrame
         ; draw
         stdcall View.DrawField
 
@@ -403,10 +403,10 @@ proc View.DrawGame uses ebx ;
         push    esi
         mov     ecx, esi
         ; draw figure figure
-        mov     bx,  word [ecx + NICKNAME_LEN + 2 + (Game.CurFig      - GameBuffer)]  ; figure
-        movzx   esi, word [ecx + NICKNAME_LEN + 2 + (Game.FigX        - GameBuffer)]  ; X
-        movzx   edi, word [ecx + NICKNAME_LEN + 2 + (Game.FigY        - GameBuffer)]  ; Y
-        movzx   eax, byte [ecx + NICKNAME_LEN + 2 + (Game.CurFigColor - GameBuffer)]  ; movzx
+        mov     bx,  word [ecx + NICKNAME_LEN + 2 + (Game.CurFig      - TetrisFrame)]  ; figure
+        movzx   esi, word [ecx + NICKNAME_LEN + 2 + (Game.FigX        - TetrisFrame)]  ; X
+        movzx   edi, word [ecx + NICKNAME_LEN + 2 + (Game.FigY        - TetrisFrame)]  ; Y
+        movzx   eax, byte [ecx + NICKNAME_LEN + 2 + (Game.CurFigColor - TetrisFrame)]  ; movzx
         stdcall View.DrawFigure, eax
         ; restore
         pop     esi
@@ -419,11 +419,11 @@ proc View.DrawGame uses ebx ;
 
         ; DRAW text
         mov     eax, esi ; base pos
-        add     eax, NICKNAME_LEN + 2 + (Game.NickName - GameBuffer)
+        add     eax, NICKNAME_LEN + 2 + (Game.NickName - TetrisFrame)
         stdcall View.DrawText, (FIELD_W - NICKNAME_LEN) / 2 + 2, 1, NICKNAME_LEN , eax, eax;Str.Score
         ; DRAW text
         mov     eax, esi ; base pos
-        add     eax, NICKNAME_LEN + 2 + (Str.Score - GameBuffer)
+        add     eax, NICKNAME_LEN + 2 + (Str.Score - TetrisFrame)
         stdcall View.DrawText, (FIELD_W - SCOLE_LEN_CONST) / 2 + 1, 2, SCOLE_LEN_CONST , eax, eax;Str.Score
         ; DRAW text
         ;mov     eax, esi ; base pos

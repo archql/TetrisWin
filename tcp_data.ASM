@@ -28,7 +28,7 @@
 
         Tcp.Websocket.Auth.File db      'passw.txt', 0'
 
-        Tcp.Websocket.Conn      db      'GET /socket.io/?EIO=4&transport=websocket '
+        Tcp.Websocket.Conn      db      'GET /socket-io/?EIO=4&transport=websocket '
         Tcp.Websocket.Conn.HTTP db      'HTTP/1.1',\
                                         13, 10, 'Connection: Upgrade', 13, 10,\
                                         'Upgrade: websocket', 13, 10,\
@@ -98,6 +98,11 @@ ends
         SocketIO.NextEventId.sync       = 2
         SocketIO.NextEventId.unknown    = 1 ; unknown binary event happened
         SocketIO.NextEventId            db      ?
+
+        ; # Random
+SocketIO.Random:
+        SocketIO.Random.dSeed           dd      ?
+        SocketIO.Random.dPrevNumber     dd      ?
 
 
         Reconciliator.EventNo           dd      ?

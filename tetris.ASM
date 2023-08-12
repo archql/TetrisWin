@@ -182,8 +182,8 @@ proc WindowProc ,\;uses ebx esi edi,\
         je      .wmkeyup
         cmp     ebx, WM_DESTROY
         je      .wmdestroy
-        cmp     ebx, WM_CHAR
-        je      .wmchar
+        ;cmp     ebx, WM_CHAR
+        ;je      .wmchar
         cmp     ebx, WM_MOUSEWHEEL
         je      .wmmousewheel
         cmp     ebx, WM_LBUTTONDOWN
@@ -386,15 +386,15 @@ proc WindowProc ,\;uses ebx esi edi,\
   .wmchar:
         ; got ansi char
         ; save key pressed
-        mov     eax, [wparam]
+        ;mov     eax, [wparam]
         ; check if chat activated
         ;if (CHAT_DEFINED)
-        cmp     [View.MenuChosen], 2
-        jne     .ignoreChatInput
+        ;cmp     [View.MenuChosen], 2
+        ;jne     .ignoreChatInput
         ;include 'chat.asm' TEMP DISABLE
     .ignoreChatInput:
         ; exit
-        jmp     .defwndproc
+        ;jmp     .defwndproc
   .wmkeydown:
         ; save key pressed
         mov     ebx, [wparam]
@@ -424,14 +424,14 @@ proc WindowProc ,\;uses ebx esi edi,\
         include 'nickname_setup.asm'
 .regularKeyEvent:
 .regularKeyEvent_except_R_P:
-        if (SERVER_DEFINED)
         ; MENU CHANGE VIEW
         cmp     eax, VK_F2
         jne     @F
-        ;mov     ax, [View.MenuChosen]
+        ; mov     ax, [View.MenuChosen]
         inc     word [View.MenuChosen]
         and     word [View.MenuChosen], 11b; Menus amount
 @@:
+        if (SERVER_DEFINED)
         ; CLIENT START
         cmp     eax, VK_F3
         jne     @F

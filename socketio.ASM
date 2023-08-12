@@ -4,6 +4,9 @@ proc SocketIO.Init
 endp
 
 proc SocketIO.Connect
+        ; init socket io random
+        mov     edi, SocketIO.Random
+        stdcall Random.Initialize.Custom
         ;
         stdcall SocketIO.PrepareHeaders
         ;
@@ -45,6 +48,10 @@ proc SocketIO.On
         ; event no 3
         dec     edx
         jz      Reconciliator.Update
+        ; event no 4
+        dec     edx
+        jz      Reconciliator.OGVUpdate
+        ; event no 5
         dec     edx
         jz      Reconciliator.Leaderboard
         ; assume other are not possible
@@ -93,10 +100,16 @@ proc SocketIO.On
         ; get rid of namespace name & block info (assume its always ours)
         add     esi, 10 ;skip 1-/game,["
         ; extract event name (were interested in lb, sync, upd events [can be named 2, 3, 4 bytes long])
-        mov     edx, 4      ; max event id
+        mov     edx, 5      ; max event id DO NOT FORGET TO CHANGE
         ;
         mov     edi, esi ; ptr
-        mov     eax, 'lbXX'  ; event with id 4
+        mov     eax, 'lbXX'  ; event with id 5
+        scasd
+        je      @F
+        dec     edx
+        ;
+        mov     edi, esi ; ptr
+        mov     eax, 'updo'  ; event with id 4
         scasd
         je      @F
         dec     edx
@@ -141,7 +154,7 @@ proc SocketIO.PrepareHeaders
         mov     ecx, 22
 .Base64Loop:
         mov     esi, Tcp.Base64Symbols
-        ; get random offset
+        ; get random offset (use regular random)
         stdcall Random.Get, 0, 63
         ; move on random ofset
         add     esi, eax
@@ -215,7 +228,10 @@ SocketIO.Emit:
 .end_case:
         ; len is in edx
         ; get mask (ecx edx is preserved)
-        stdcall Random.GetMax
+        push    edi
+        mov     edi, SocketIO.Random.dPrevNumber
+        stdcall Random.GetMax.Custom
+        pop     edi
         ; now mask is in eax
         stosd
         mov     ecx, eax

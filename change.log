@@ -189,6 +189,8 @@
 	- chat is nonscrollable
 	// For devs
 	- fixed defwindowproc error
+  * VERSION -VII- *
+	* 7.3 * Socket IO client update
 	
   <PLANNED>
   * VERSION -V- *

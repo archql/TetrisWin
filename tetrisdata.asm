@@ -226,7 +226,7 @@ TetrisFrame:
         Str.Score                       db      SCOLE_LEN_CONST dup ?
         ; # Random
         Random.dSeed                    dd      ?
-        Random.dPrewNumber              dd      ?
+        Random.dPrevNumber              dd      ?
         ; # Game
         Game.BlocksArr:                 db      FIELD_W*FIELD_H dup ? ; initialization!
         Game.CurFig                     dw      ?
@@ -317,7 +317,7 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
 UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when started (so its protected from page allocation error & from unini mem errorrs)
         ; Filled up with zeros!
         CLIENT_MAX_CONN                 = 64 ; NEVER CHECKED!!
-        CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 + FILE_SZ_TO_WRITE ; NICK + "word" ping
+        CLIENT_CL_RCD_LEN               = NICKNAME_LEN + 2 + sizeof.TetrisFrame; FILE_SZ_TO_WRITE ; NICK + "word" ping
         Client.ClientsDataArr           db     (CLIENT_MAX_CONN) * (CLIENT_CL_RCD_LEN) dup ? ; temp nick name usage
 
         ; LB LINE STRUCT = [17 bytes Info = {place str - 3}{nick - 8}{score - 6}][ empty (11) ][is cur usr? (0)][4 bytes - prio prd {score - 2}{place - 2}]
@@ -352,7 +352,7 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 7
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 0
+        GAME_V_MINOR                    = 4
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

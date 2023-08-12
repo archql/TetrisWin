@@ -8,9 +8,9 @@ WSAETIMEDOUT                = 10060
 IPPROTO_TCP                 = 6
 
 SERVER_IP                   = 0x01'00'00'7F ; 127.0.0.1 in reversed order
-SERVER_PORT                 = 5555
+SERVER_PORT                 = 5555 ; 0x153B
 
-; Message code which is used to notify main thread about new tcp packet
+; Message codes which are used to notify main thread about new tcp packet
 WM_APP                      = 0x8000
 WM_TCP_CONNECTED            = WM_APP + 1
 WM_TCP_PACKET_ARRIVED       = WM_APP + 2
@@ -158,7 +158,8 @@ proc Tcp.Init
         ; memset zero (dont need, already zero!)
         mov     [Tcp.Addr.sin_family], AF_INET
         mov     [Tcp.Addr.sin_port], ax
-        mov     [Tcp.Addr.sin_addr], SERVER_IP ; already zero!
+        mov     [Tcp.Addr.sin_addr], SERVER_IP
+        ; other fields are already zero!
 
         ; set result
         xor     eax, eax
