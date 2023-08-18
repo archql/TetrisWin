@@ -54,6 +54,9 @@ proc SocketIO.On
         ; event no 5
         dec     edx
         jz      Reconciliator.Leaderboard
+        ; event no 5
+        dec     edx
+        jz      Reconciliator.RoomLeave
         ; assume other are not possible
 
 .NotBinary:
@@ -100,7 +103,13 @@ proc SocketIO.On
         ; get rid of namespace name & block info (assume its always ours)
         add     esi, 10 ;skip 1-/game,["
         ; extract event name (were interested in lb, sync, upd events [can be named 2, 3, 4 bytes long])
-        mov     edx, 5      ; max event id DO NOT FORGET TO CHANGE
+        mov     edx, 6      ; max event id DO NOT FORGET TO CHANGE
+        ;
+        mov     edi, esi ; ptr
+        mov     eax, 'r lv'  ; event with id 6
+        scasd
+        je      @F
+        dec     edx
         ;
         mov     edi, esi ; ptr
         mov     eax, 'lbXX'  ; event with id 5

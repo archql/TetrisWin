@@ -177,9 +177,9 @@
         ; DRAW Scoreboard
         stdcall View.DrawLeaderboard
         ; DRAW connections
-        if (SERVER_DEFINED)
+        ;if (SERVER_DEFINED)
         stdcall View.DrawConnections
-        end if
+        ;end if
    .ViewMenu_End:
         ;#######################
         ;if (SERVER_DEFINED)

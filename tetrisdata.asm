@@ -352,7 +352,7 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 7
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 4
+        GAME_V_MINOR                    = 5
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b

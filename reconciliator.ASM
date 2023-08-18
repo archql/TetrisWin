@@ -112,9 +112,9 @@ proc Reconciliator.OGVUpdate
         ; if str not equal (from repe cmpsb)
    .StrNotEqual:
         test    ax, ax
-        ; ckeck if ping = zero -- if yes -- founded
+        ; check if ping = zero -- if yes -- founded
         jz      .FoundedFree
-        ; ckeck if ping < zero -- if yes -- mark as first free place
+        ; check if ping < zero -- if yes -- mark as first free place
         jns     @F ; if greater than zero -- not free
         ; below zero -- freed place
         test    ebx, ebx ; if its first?
@@ -146,6 +146,37 @@ proc Reconciliator.OGVUpdate
         ;
    .EndPingMsg:
 
+        ret
+endp
+
+; [in, edx] - 0
+; [in, eax, ecx] - len of data block
+; [in, esi, edi] - ptr to data block
+proc Reconciliator.RoomLeave
+
+        ; TODO dupticate of Client.MessagePing
+        ; TODO fix logics
+        ; first find rcd corresponding to got nickname
+        mov     edi, Client.ClientsDataArr - CLIENT_CL_RCD_LEN
+        mov     ecx, NICKNAME_LEN;CLIENT_CL_RCD_LEN ; TEMP -- RCD LEN!
+        xor     ebx, ebx ; first free place
+
+   .PingRcdLoopSet:
+        ;
+        add     edi, CLIENT_CL_RCD_LEN ; look up
+        ; check if ping = 0
+        mov     ax, word [edi + NICKNAME_LEN]; get PING
+        test    ax, ax
+        jz      .Exit
+        ; ckeck if found
+        push    esi ecx
+        repe cmpsb
+        pop     ecx esi
+        jne     .PingRcdLoopSet
+        ; founded - set ping to -1
+        mov     word [edi], -1
+.Exit:
+        ;
         ret
 endp
 
