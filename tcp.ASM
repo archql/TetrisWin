@@ -83,7 +83,7 @@ proc Tcp.DecodePacket ; uses edi ecx
         test    ecx, ecx
         ret
 .HTTP:
-        ; FIND place with \r\n\r\n (end) (assume there is no content)
+        ; FIND place with \r\n\r\n !!!! (end) (assume there is no content)
 @@:
         ; check if end of buffer reached
         mov     edx, esi

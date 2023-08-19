@@ -51,6 +51,9 @@
         Tcp.Websocket.Event     db      '451-/game,["inpX",{"_placeholder":true,"num":0}]'
         Tcp.Websocket.Event.Len = $ - Tcp.Websocket.Event
 
+        Tcp.Websocket.Ready     db      '42/game,["r rd"]'
+        Tcp.Websocket.Ready.Len = $ - Tcp.Websocket.Ready
+
         Tcp.hsocket             dd              not (0)
 
         ; UNITIALIZED DATA

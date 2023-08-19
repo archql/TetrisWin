@@ -157,15 +157,15 @@ proc Reconciliator.RoomLeave
         ; TODO dupticate of Client.MessagePing
         ; TODO fix logics
         ; first find rcd corresponding to got nickname
-        mov     edi, Client.ClientsDataArr - CLIENT_CL_RCD_LEN
+        mov     edi, Client.ClientsDataArr - (CLIENT_CL_RCD_LEN - NICKNAME_LEN)
         mov     ecx, NICKNAME_LEN;CLIENT_CL_RCD_LEN ; TEMP -- RCD LEN!
         xor     ebx, ebx ; first free place
 
    .PingRcdLoopSet:
         ;
-        add     edi, CLIENT_CL_RCD_LEN ; look up
+        add     edi, (CLIENT_CL_RCD_LEN - NICKNAME_LEN) ; look up
         ; check if ping = 0
-        mov     ax, word [edi + NICKNAME_LEN]; get PING
+        mov     ax, word [edi + ecx]; get PING
         test    ax, ax
         jz      .Exit
         ; ckeck if found
@@ -336,7 +336,7 @@ proc Reconciliator.Reconcile
         mov     ecx, dword [Reconciliator.EventNo]
         ; get loop ctr
         sub     ecx, edx ; we got here < 0 loop ctr
-        jz      .NothingToReconcile
+        jz      .NothingToReconcile ; AAAA BUG ALERT!!!
         ; get input pos (DUPLICATED)
         mov     esi, Reconciliator.InputBuffer
         and     edx, RECONCILIATOR_BUFFER_SIZE - 1

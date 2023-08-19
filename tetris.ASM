@@ -452,7 +452,14 @@ proc WindowProc ,\;uses ebx esi edi,\
         cmp     eax, VK_F3
         jne     @F
         stdcall SocketIO.Connect
+        jmp     .defwndproc
 @@:
+        cmp     eax, VK_F4
+        jne     @F
+        stdcall SocketIO.Ready
+        jmp     .defwndproc ; protection from send of 0 evt (IDK WHY!)
+@@:
+
         ; JUST STUPID TEST
         cmp     eax, VK_F5
         jne     @F

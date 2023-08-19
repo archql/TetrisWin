@@ -196,6 +196,16 @@ proc SocketIO.PrepareHeaders
         ret
 endp
 
+proc SocketIO.Ready
+        ; Send preambule
+        ; - [in, dx] websocket packet type (ignore CONTINUE TYPE, so TEXT is 0, BINARY is 1)
+        xor     edx, edx
+        ; - [in, esi] ptr to data block (from)
+        mov     esi, Tcp.Websocket.Ready
+        ; - [in, eax] len of data block
+        mov     eax, Tcp.Websocket.Ready.Len
+        jmp     SocketIO.Emit
+endp
 ; Wrapper of Tcp.EnqueuePacket
 ; adds websocket related data to the packet
 ; - [in, dx] websocket packet type (ignore CONTINUE TYPE, so TEXT is 0, BINARY is 1)
