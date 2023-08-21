@@ -334,6 +334,11 @@ proc Tcp.ThRecv.Callback,\
         ; save results
         push    eax ; new allowed len ??
 
+        ;push    eax ecx edx ebx esi edi ebp
+        ;stdcall Settings.WriteFile.Log, Wnd.font_name, esi, edx
+        ;pop     ebp edi esi ebx edx ecx eax
+        ;stdcall Settings.WriteFile.Log, Wnd.font_name, Reconciliator.StrError, 8
+
         ; if valid data arrived
         ; 1) lock queue ???
         ; 2) -> copy data into queue
@@ -342,7 +347,7 @@ proc Tcp.ThRecv.Callback,\
         ; - [in, esi] ptr to data block (from)
         ; - [in, eax] len of data block
         xchg    edx, eax
-        ; changes edi esi eax ecx edx (return esi = esi + eax)
+        ; changes edi esi ecx edx (return esi = esi + eax)
         stdcall Tcp.Buffer.Enqueue ; IM the only one equeuing something here -> safe
         ; 3) notify ??
         invoke  PostThreadMessageA, [Tcp.ThMain.pThId], WM_TCP_PACKET_ARRIVED, eax, esi
@@ -533,7 +538,7 @@ endp
 ; drops the packet if TCP module is not ready to send
 ; - [in, esi] ptr to data block (from)
 ; - [in, eax] len of data block
-proc Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
+proc Tcp.EnqueuePacket ; uses eax ecx edx esi edi
         ; check if connected and ready to send
         cmp     [Tcp.Connected], 0
         je      .Exit

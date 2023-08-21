@@ -180,6 +180,29 @@ proc Reconciliator.RoomLeave
         ret
 endp
 
+; [in, edx] - 0
+; [in, eax, ecx] - len of data block
+; [in, esi, edi] - ptr to data block
+proc Reconciliator.ChatMessage
+
+        ; chat message arrived -- copy it
+        movzx   edi, [Chat.Length]; cur rcd
+        push    edi
+        shl     edi, CHAT_MSG_RCD
+        add     edi, Chat.Table ; table of rcds   (got msg pos)
+        mov     ecx, CHAT_MSG_LEN
+        rep movsb
+        ; update len
+        inc     [Chat.Length]
+        ; update pos (MsgPos == Length)
+        pop     edi
+        cmp     di, [Chat.MsgPos]
+        jne     @F
+        inc     [Chat.MsgPos]
+        ;
+        ret
+endp
+
 ; All direct writes to Game must be done through this method
 ;############### KEY EVENT ############
 ; - processes a key code, stored in eax

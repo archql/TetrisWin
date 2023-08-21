@@ -50,13 +50,17 @@ proc SocketIO.On
         jz      Reconciliator.Update
         ; event no 4
         dec     edx
-        jz      Reconciliator.OGVUpdate
+        ;jz      Reconciliator.OGVUpdate
+        jz      .Exit ; ignore ogv
         ; event no 5
         dec     edx
         jz      Reconciliator.Leaderboard
-        ; event no 5
+        ; event no 6
         dec     edx
         jz      Reconciliator.RoomLeave
+        ; event no 7
+        dec     edx
+        jz      Reconciliator.ChatMessage
         ; assume other are not possible
 
 .NotBinary:
@@ -103,7 +107,13 @@ proc SocketIO.On
         ; get rid of namespace name & block info (assume its always ours)
         add     esi, 10 ;skip 1-/game,["
         ; extract event name (were interested in lb, sync, upd events [can be named 2, 3, 4 bytes long])
-        mov     edx, 6      ; max event id DO NOT FORGET TO CHANGE
+        mov     edx, 7      ; max event id DO NOT FORGET TO CHANGE
+        ;
+        mov     edi, esi ; ptr
+        mov     eax, 'r ms'  ; event with id 7
+        scasd
+        je      @F
+        dec     edx
         ;
         mov     edi, esi ; ptr
         mov     eax, 'r lv'  ; event with id 6
@@ -206,11 +216,51 @@ proc SocketIO.Ready
         mov     eax, Tcp.Websocket.Ready.Len
         jmp     SocketIO.Emit
 endp
+
+proc SocketIO.SendChatMsg
+
+        ; send message to the server
+        ; Send preambule
+        ; 1) set msg id
+        mov     ebx, 'r ms' ;room message
+        xchg    ebx, dword [Tcp.Websocket.Event.ID]
+        ; - [in, dx] websocket packet type (ignore CONTINUE TYPE, so TEXT is 0, BINARY is 1)
+        xor     edx, edx
+        ; - [in, esi] ptr to data block (from)
+        mov     esi, Tcp.Websocket.Event
+        ; - [in, eax] len of data block
+        mov     eax, Tcp.Websocket.Event.Len
+        stdcall SocketIO.Emit
+        ;
+        mov     dword [Tcp.Websocket.Event.ID], ebx
+        ;
+        ; Send data
+        ; - [in, dx] websocket packet type (ignore CONTINUE TYPE, so TEXT is 0, BINARY is 1)
+        xor     edx, edx
+        inc     edx
+        ; - [in, esi] ptr to data block (from)
+        mov     esi, Chat.Buf + CHAT_MSG_OFF
+        ; - [in, eax] len of data block
+        mov     eax, CHAT_MSG_MAX
+        stdcall SocketIO.Emit
+        ;
+        ; clear buf
+        mov     edi, Chat.Buf
+        mov     al,  ' '
+        mov     ecx, CHAT_MSG_LEN ; 32 == buf.len
+        rep stosb
+        ; set ptr to zero
+        mov     [Chat.InpPos], 0
+        ;
+        ret
+endp
+
 ; Wrapper of Tcp.EnqueuePacket
 ; adds websocket related data to the packet
 ; - [in, dx] websocket packet type (ignore CONTINUE TYPE, so TEXT is 0, BINARY is 1)
 ; - [in, esi] ptr to data block (from)
 ; - [in, eax] len of data block
+; USES eax ecx edx edi esi
 SocketIO.Emit:
         ; ignore CONTINUE TYPE
         inc     edx
@@ -267,4 +317,4 @@ SocketIO.Emit:
         pop     esi
         mov     eax, edi
         sub     eax, esi ; end block - start block
-        jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi ebx??
+        jmp     Tcp.EnqueuePacket ; uses eax ecx edx esi edi

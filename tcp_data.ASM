@@ -1,4 +1,4 @@
-        TCP_BUFFER_SIZE                 = 8192 ; 8kbytes
+        TCP_BUFFER_SIZE                 = 16384 ; 16kbytes ; 8192 ; 8kbytes
         TCP_SIZES_BUFFER_SIZE           = 256 ; max stored at once
         TCP_SIZES_BUFFER_SIZE_MASK      = 0xFF ; mask for TCP_SIZES_BUFFER_SIZE
         SHA_256_LEN                     = 64
@@ -48,7 +48,9 @@
         Tcp.Websocket.Join.Len  = $ - Tcp.Websocket.Join
         Tcp.Websocket.Join.BaseLen      = 7 ; '40/game'
 
-        Tcp.Websocket.Event     db      '451-/game,["inpX",{"_placeholder":true,"num":0}]'
+        Tcp.Websocket.Event     db      '451-/game,["'
+        Tcp.Websocket.Event.ID  db      'inpX'
+        Tcp.Websocket.Event.1   db      '",{"_placeholder":true,"num":0}]'
         Tcp.Websocket.Event.Len = $ - Tcp.Websocket.Event
 
         Tcp.Websocket.Ready     db      '42/game,["r rd"]'

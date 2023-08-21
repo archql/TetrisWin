@@ -13,7 +13,8 @@
         cmp     eax, VK_RETURN
         jne     @F
         ; send
-        call    Client.SendChatMsg
+        ;call    Client.SendChatMsg
+        call    SocketIO.SendChatMsg
 @@:
 
         ; continue event work

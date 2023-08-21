@@ -182,8 +182,8 @@ proc WindowProc ,\;uses ebx esi edi,\
         je      .wmkeyup
         cmp     ebx, WM_DESTROY
         je      .wmdestroy
-        ;cmp     ebx, WM_CHAR
-        ;je      .wmchar
+        cmp     ebx, WM_CHAR
+        je      .wmchar
         cmp     ebx, WM_MOUSEWHEEL
         je      .wmmousewheel
         cmp     ebx, WM_LBUTTONDOWN
@@ -386,15 +386,15 @@ proc WindowProc ,\;uses ebx esi edi,\
   .wmchar:
         ; got ansi char
         ; save key pressed
-        ;mov     eax, [wparam]
+        mov     eax, [wparam]
         ; check if chat activated
         ;if (CHAT_DEFINED)
-        ;cmp     [View.MenuChosen], 2
-        ;jne     .ignoreChatInput
-        ;include 'chat.asm' TEMP DISABLE
+        cmp     [View.MenuChosen], 2
+        jne     .ignoreChatInput
+        include 'chat.asm' ;TEMP DISABLE
     .ignoreChatInput:
         ; exit
-        ;jmp     .defwndproc
+        jmp     .defwndproc
   .wmkeydown:
         ; save key pressed
         mov     ebx, [wparam]

@@ -90,6 +90,7 @@ proc Settings.WriteFile ; uses eax ecx edx ebx
 .Exit:
         ret 12
 endp
+
 ;#############GET LAST NICKNAME#################
 ; no params
 proc Settings.GetLastNick
