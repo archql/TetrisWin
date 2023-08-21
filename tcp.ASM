@@ -333,12 +333,6 @@ proc Tcp.ThRecv.Callback,\
         jz      .CheckForNextPacket
         ; save results
         push    eax ; new allowed len ??
-
-        ;push    eax ecx edx ebx esi edi ebp
-        ;stdcall Settings.WriteFile.Log, Wnd.font_name, esi, edx
-        ;pop     ebp edi esi ebx edx ecx eax
-        ;stdcall Settings.WriteFile.Log, Wnd.font_name, Reconciliator.StrError, 8
-
         ; if valid data arrived
         ; 1) lock queue ???
         ; 2) -> copy data into queue

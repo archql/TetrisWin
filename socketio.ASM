@@ -50,8 +50,7 @@ proc SocketIO.On
         jz      Reconciliator.Update
         ; event no 4
         dec     edx
-        ;jz      Reconciliator.OGVUpdate
-        jz      .Exit ; ignore ogv
+        jz      Reconciliator.OGVUpdate
         ; event no 5
         dec     edx
         jz      Reconciliator.Leaderboard
