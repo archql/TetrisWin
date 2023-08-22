@@ -32,6 +32,7 @@
         Tcp.Websocket.Conn.HTTP db      'HTTP/1.1',\
                                         13, 10, 'Connection: Upgrade', 13, 10,\
                                         'Upgrade: websocket', 13, 10,\
+                                        'Host: localhost', 13, 10,\
                                         'Sec-WebSocket-Version: 13', 13, 10,\
                                         'Sec-WebSocket-Key: '
         Tcp.Websocket.Conn.2    db      22 dup ?, '=='
