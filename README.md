@@ -5,6 +5,15 @@ Logics is fully based on my previous tetris variant, see [this](https://github.c
 
 ## For users
 
+### LATEST VERSION 
+- latest version as of August 23 is v7.7
+
+### ⚠️IMPORTANT⚠️
+- **v7** update brought major changes to the client/server logics!
+- Now this client is able to connect to my [new tetris service]()! (see [this](https://github.com/archql/NodeJS-React-Tetris-Service) repo for updates)
+- To work (save your records, join the leaderboard, claim the nickname, etc.) with the server, first you will need to register on it
+- client/server of other versions are no longer compatible with v7+ clients!
+
 ### 💻SUPPORTED VERSIONS🖥️
 
 - All rectangular screen resolutions supported (at least for gameplay).
@@ -18,19 +27,19 @@ Logics is fully based on my previous tetris variant, see [this](https://github.c
 #### INSTALLATION:
 - `[if required]` change extension **.notexe** to **.exe** (*.notzip* to *.zip* and unpack)
 - place **.exe** in any folder (empty and not system-protected folder preffered)
-- read **agreement.txt** before use
+- `[important]` read **agreement.txt** before use (you'll not be able to launch app without reading the agreement)
 - its all!
 
 #### ⚠️WARNING⚠️
  - Antiviruses might block this app because of the way of a virus detection used
- - Firewall might block network features of this app even in `ON-LINE` state!
+ - Firewall might block network features of this app even in the `ON-LINE` state!
 
 ### ⌨️CONTROLS⌨️
 | **Ingame action**    | **Key to trigger it**|
 | -------------------- |:------------------:| 
 | move left            |  <                 |
 | move right           |  >                 | 
-| rotate clockwise     |  ^	            |
+| rotate clockwise     |  ^	                |
 | rotate anticlockwise |  v                 |
 | end game/quit        |  ESC               |
 | hard drop            |  SPACE             |
@@ -61,6 +70,9 @@ Logics is fully based on my previous tetris variant, see [this](https://github.c
 | increase volume      |  ]                 |
 | decrease volume      |  \[                |
 
+*v7.+ temoraly disables music mute by `M` key in `ON-LINE` state*
+*However you still can use `\[` `]` volme control keys*
+
 More information [here](#-music-)
 
 #### 🎨VIEW CONTROLS🎨
@@ -74,13 +86,29 @@ More information [here](#-music-)
 
 More information [here](#graphics)
 
-#### 📶NETWORK CONTROLS (v5.+)📶
+#### 📶NETWORK CONTROLS (v5.+; v.7.+)📶
 | **Ingame action**    | **Key to trigger it**|
 | -------------------- |:------------------:| 
 | connect              |  F3               |
 | competition mode     |  F4	           |
 
-More information [here](#network-mode-v5)
+More information (v7.+) [here](#network-mode-v7)
+More information (v5.+) [here](#network-mode-v5)
+
+#### 🔐SERVER AUTHENTICATION PROCESS (v.7.+)🔐
+- You still can play in `OFFLINE` or `ON-LINE` mode 
+- Or you can register on [this site]() and to be allowed to save your data on the server 
+- and participate in online competitions and global leaderboard
+- The way it works:
+  - Create a file named `passw.txt` in the same folder `tetris.exe` resides.
+  - Paste SHA256 hash of your password inside
+  - Enter your nickname ingame. It must match one you used on the webservice.
+  - Use **F3** key to join the server!
+  - `REGSTRD` state means the authentication process went successfully
+  - However, `REJCTED` state means the authentication process failed
+- *TIP*
+  - to get SHA256 hash you 7zip. Please, do not use online services except your password is not very important to you.
+
 
 #### 🏷️NICKNAME CONTROLS:🏷️
 to activate edit mode &mdash; hold **CTRL** key
@@ -95,12 +123,14 @@ with all keys pressed
  | accept changes| ENTER                |
  
 - nickname is **unchangable** when
-  - client is in `REGSTRD` state
+  - client is connected to the server
   - game is started and score is not zero
+ 
+- (v7.+) client in `ON-LINE` state automatically gets *DEFAULT* nickname 
  
 - *in theory* nicknames can use first 128 ANSI symbols, 
 	but support of such nicknames is *not guaranteed*! 
-- there is nickname `@DEFAULT` which does not save your score nor displays on Leaderboard 
+- nickname which starts with `@` symbol is considered as system. It does not save your score nor displays on Leaderboard 
 - your last used nickname is auto saved by the app
 
 #### 🥇LEADERBOARD INFORMATION:🥇
@@ -110,8 +140,49 @@ with all keys pressed
 - Leaderboard record *place displayed as hex number* prefixed with '#'
 - All records displayed with ⬜white color⬜
 - Record which belongs to current user is 🟨*highligted in yellow* color🟨
-- *##* place for current user means the place number is greater than **0x0F** (16)
-- Based on gameplay saved files. More information [here](#gameplay-save)
+- *##* place for current user means the place number is greater than **0x0F** (15)
+- In `OFFLINE` mode is based on gameplay saved files. More information [here](#gameplay-save)
+- When connected to the server (v7.+), leaderboard is obtained from it automatically
+
+### 📶NETWORK MODE (v7.+)📶
+
+ - All network info from v.5+ versions is invalid for these versions.
+ - Client in that mode is connected to remote server using *SocketIO* protocol based on TCP connection.
+ - While connected to the server, all your actions are supervised by it
+ 
+#### Client has 6 states:
+ - `OFFLINE` &mdash; client isn't connected to the server.
+ - `ON-LINE` &mdash; client is connected to the server.
+ - `REGSTRD` &mdash; client is connected to the server and now can acces features of registered user
+ - `REJCTED` &mdash; client tried to connect to the server using wrong credentials.
+ - `CONLOST` &mdash; client lost connection to the server. Equals `OFFLINE` mode except you can not use online features.
+ - `INITERR` &mdash; client failed to initialize connection. Equals `OFFLINE` mode except you can not use online features.
+ - `JOINING` &mdash; client is trying to connect to the server. The try is not finished yet.
+ 
+#### Connection algorithm:
+ - Follow the **SERVER AUTHENTICATION PROCESS** which is described above. You can ignore it and play with *DEFAULT* nickname
+ - **Use *F3* key to make try to connect to the server** (your current state is `OFFLINE` or `CONLOST`). 
+ - From version **5.9** Online Game View (**OGV**) is added. Every client in the **same room** sends its game frame with ping message. 
+ - Chat is also working only for players in the **same room**
+ - Competitional mode is also working only for players in the **same room**
+ 
+#### Rooms
+ - Rooms are only available for registered players on the webservice!
+ - You can not join the room from asm client yet!
+ - To join the room you need:
+   - Register on the webservice
+   - Join one of the rooms in **rooms** website section
+   - Launch asm client and press **F3** key (You need to add your credentials beforehand)
+   - Check the chat menu tab. If you can see *SERVER \*nickname\* join* &mdash; everything went OK
+   - If it is no the case &mdash; check your client state to be `REGSTRD` and room state joined on the webservice
+- Room can be left within the webservice or just by closing asm client.
+- In the room you can see states of all connected players to the room
+- Also you can use chat and request *competitional mode*.
+- To start the competitional mode you need:
+   - press **F4** key *once* notifying everybody in the room that you're ready.
+   - after all players are ready, competition will be started automatically.
+- Warning. While in the competitional mode, using key `ESC` or `P` is considered as game rule violation!
+- Competitional gameplay is logged to the chat by the *SERVER*
  
 ### 📶NETWORK MODE (v5.+)📶
 
@@ -209,6 +280,7 @@ with all keys pressed
 
 - all gameplay is saved in `.ttr` files. 
 - ⚠️**WARN**⚠️ *Full `.ttr`* file is the only valid proof for your score! You must not edit it or provide it to anybody except officials in order to protect your score! You can store this file separatly from other game files for additional protection.
+- ⚠️**WARN**⚠️ Starting from v7 update, the .ttr files are not important more, all records now are stored on the webservice. 
 - additional info is [here](#what-is-ttr-files)
  
  
@@ -234,7 +306,7 @@ There is minimal release with `8kBytes` size.
 + midi
 + opengl 2D & 3D
 + simple cryptography & obfuscation
-+ networking (udp)
++ networking (udp, tcp, websocket, socketio)
 + assembly 
 + git
 + static dll usage
