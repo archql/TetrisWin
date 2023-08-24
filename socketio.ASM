@@ -42,24 +42,19 @@ proc SocketIO.On
         jz      .UnknownBinary
         ; drop event number
         mov     byte [SocketIO.NextEventId], 0
-        ; event no 2
+        ; DANGER
         dec     edx
-        jz      Reconciliator.Sync
-        ; event no 3
-        dec     edx
-        jz      Reconciliator.Update
-        ; event no 4
-        dec     edx
-        jz      Reconciliator.OGVUpdate
-        ; event no 5
-        dec     edx
-        jz      Reconciliator.Leaderboard
-        ; event no 6
-        dec     edx
-        jz      Reconciliator.RoomLeave
-        ; event no 7
-        dec     edx
-        jz      Reconciliator.ChatMessage
+        shl     edx, 2
+        jmp     dword [edx + .Table]
+.Table:
+        dd      Reconciliator.Sync       ; event no 2
+        dd      Reconciliator.Update     ; event no 3
+        dd      Reconciliator.OGVUpdate  ; event no 4
+        dd      Reconciliator.Leaderboard; event no 5
+        dd      Reconciliator.RoomLeave  ; event no 6
+        dd      Reconciliator.ChatMessage; event no 7
+.EventsNamesTable:
+        db      'r ms', 'r lv', 'lbXX', 'updo', 'updX', 'sncX'
         ; assume other are not possible
 
 .NotBinary:
@@ -106,44 +101,17 @@ proc SocketIO.On
         ; get rid of namespace name & block info (assume its always ours)
         add     esi, 10 ;skip 1-/game,["
         ; extract event name (were interested in lb, sync, upd events [can be named 2, 3, 4 bytes long])
-        mov     edx, 7      ; max event id DO NOT FORGET TO CHANGE
-        ;
-        mov     edi, esi ; ptr
-        mov     eax, 'r ms'  ; event with id 7
-        scasd
+        mov     ecx, 6 ; DO NOT FORGET TO CHANGE! AMOUNT OF EVENTS - 1
+        mov     edi, .EventsNamesTable
+        mov     edx, esi
+.ExtractEventNameLoop:
+        mov     esi, edx
+        cmpsd
         je      @F
-        dec     edx
-        ;
-        mov     edi, esi ; ptr
-        mov     eax, 'r lv'  ; event with id 6
-        scasd
-        je      @F
-        dec     edx
-        ;
-        mov     edi, esi ; ptr
-        mov     eax, 'lbXX'  ; event with id 5
-        scasd
-        je      @F
-        dec     edx
-        ;
-        mov     edi, esi ; ptr
-        mov     eax, 'updo'  ; event with id 4
-        scasd
-        je      @F
-        dec     edx
-        ;
-        mov     edi, esi ; ptr
-        mov     eax, 'updX'; event with id 3
-        scasd
-        je      @F
-        dec     edx
-        ;
-        mov     edi, esi ; ptr
-        mov     eax, 'sncX'; event with id 2
-        scasd
-        je      @F
-        dec     edx
+        loop    .ExtractEventNameLoop
 @@:
+        inc     ecx ; + 1
+        mov     edx, ecx
 .EndBinary:
 .UnknownBinary:
         ; save dispatched event id
@@ -161,7 +129,7 @@ proc SocketIO.Disconnect
         ret
 endp
 
-
+Tcp.Base64Symbols       db      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 ;
 ; [out, eflags] - if je -> auth read credentials ok
 ; [out, eax] - if 0 -> auth read credentials ok
@@ -173,7 +141,9 @@ proc SocketIO.PrepareHeaders
 .Base64Loop:
         mov     esi, Tcp.Base64Symbols
         ; get random offset (use regular random)
-        stdcall Random.Get, 0, 63
+        ;stdcall Random.Get, 0, 63
+        stdcall Random.GetMax
+        shr     eax, 26 ; 6 bytes left
         ; move on random ofset
         add     esi, eax
         ; mov char

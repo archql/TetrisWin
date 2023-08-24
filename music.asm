@@ -13,14 +13,16 @@ proc SoundPlayer.Ini
         xor     ebx, ebx
         invoke  midiOutOpen, midihandle, ebx, ebx, ebx, ebx; last CALLBACK_NULL
 
-        mov      esi, [midihandle]
-        mov      edi, SoundPlayer.Instruments
-        invoke   midiOutShortMsg, esi, dword [edi]
-        invoke   midiOutShortMsg, esi, dword [edi + 4]
-        invoke   midiOutShortMsg, esi, dword [edi + 8]
-        invoke   midiOutShortMsg, esi, dword [edi + 12]
-        ; gunshot
-        invoke   midiOutShortMsg, esi, dword [edi + 16]
+        mov      edi, [midihandle]
+        mov      esi, SoundPlayer.Instruments
+        ; inefficient but compact
+        mov      ebx, 5
+.loadInstruments:
+        ;xor      eax, eax ; TODO danger??
+        lodsw
+        invoke   midiOutShortMsg, edi, eax
+        dec      ebx
+        jnz     .loadInstruments
 
         ;/* Close the MIDI device */
         ;invoke  midiOutClose, [midihandle];
@@ -103,10 +105,11 @@ endp
 proc SoundPlayer.Pause
 
         mov     edi, [midihandle]
-        invoke  midiOutShortMsg, edi, 0x00007BB0
-        invoke  midiOutShortMsg, edi, 0x00007BB1
-        invoke  midiOutShortMsg, edi, 0x00007BB2
-        invoke  midiOutShortMsg, edi, 0x00007BB9
+        mov     esi, dword [midiOutShortMsg]
+        stdcall esi, edi, 0x00007BB0
+        stdcall esi, edi, 0x00007BB1
+        stdcall esi, edi, 0x00007BB2
+        stdcall esi, edi, 0x00007BB9
 
         ret
 endp

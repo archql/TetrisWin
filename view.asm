@@ -424,7 +424,7 @@ proc View.DrawGame uses ebx ;
         ; DRAW text
         mov     eax, esi ; base pos
         add     eax, NICKNAME_LEN + 2 + (Str.Score - TetrisFrame)
-        stdcall View.DrawText, (FIELD_W - SCOLE_LEN_CONST) / 2 + 1, 2, SCOLE_LEN_CONST , eax, eax;Str.Score
+        stdcall View.DrawText, (FIELD_W - SCORE_LEN_CONST) / 2 + 1, 2, SCORE_LEN_CONST , eax, eax;Str.Score
         ; DRAW text
         ;mov     eax, esi ; base pos
         ;add     eax, NICKNAME_LEN + 2 + (Str.Score - GameBuffer)

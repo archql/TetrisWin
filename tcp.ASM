@@ -129,7 +129,10 @@ endp
 ; # opens a socket
 ; [out, eax] - is connection suceeded (true/false)
 proc Tcp.Init
-
+        ; set socket to socketerr
+        xor     eax, eax
+        not     eax
+        mov     dword [Tcp.hsocket], eax
         ; init
         invoke  InitializeConditionVariable, Tcp.CondVar
         invoke  InitializeCriticalSection, Tcp.CritSection
@@ -187,10 +190,10 @@ endp
 proc Tcp.Destroy
         ; kill socket (WARNING DANGER TODO)
         ; invalidate socket
-        mov     eax, [Tcp.hsocket]
+        ;mov     eax, [Tcp.hsocket]
         ;test    ebx, ebx  (ignore invalid sockets)
         ;jz      @F
-        invoke  closesocket, eax
+        invoke  closesocket, [Tcp.hsocket]
         invoke  WSACleanup
 ;@@:
         ; join threads

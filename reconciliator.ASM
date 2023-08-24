@@ -1,7 +1,7 @@
         ; Protected strings
         Wnd.Text                    db    'Launch error :/', 0
         Wnd.class                   db    'FASMW32',0
-        Wnd.title                   db    'TETRIS WIN ASM by Artiom Drankevich',0
+        Wnd.title                   db    'TETRISWIN by Artiom Drankevich @archql',0
         ; we dont need registry anymore
         ;Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         ;Client.QuaryKey             db    'MachineGuid', 0
@@ -10,11 +10,15 @@
 
 proc Reconciliator.Init
 
+        ; DO NOT USE TCP MODULE HERE B4 TCP.INIT!
+
         ; set current time
         invoke  GetTickCount
-        mov     [Reconciliator.ZeroTick], eax
-        mov     [Reconciliator.GlobalTick], eax
-        mov     [Reconciliator.GameTick], eax
+        mov     edi, Reconciliator.ZeroTick
+        ; Taking advantage of these variables are placed one after another
+        stosd   ;mov     [Reconciliator.ZeroTick], eax
+        stosd   ;mov     [Reconciliator.GlobalTick], eax
+        stosd   ;mov     [Reconciliator.GameTick], eax
         ; other values are 0, so its ok
 
         ret
@@ -96,7 +100,7 @@ proc Reconciliator.OGVUpdate
         ; TODO dupticate of Client.MessagePing
         ; TODO fix logics
         ; first find rcd corresponding to got nickname
-        add     esi, 12
+        add     esi, 12 ; skip first 3 vars
         push    esi  ; save msg pos
         mov     edi, Client.ClientsDataArr
         mov     ecx, NICKNAME_LEN;CLIENT_CL_RCD_LEN ; TEMP -- RCD LEN!

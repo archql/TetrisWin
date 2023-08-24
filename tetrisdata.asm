@@ -18,17 +18,17 @@
         ;rect_size       dd      ?
 
         ; =======TEXT==============================
-        SCOLE_LEN_CONST           = 6
+        SCORE_LEN_CONST           = 6
         Str.NextFig               db    'NEXT FIGURE'
         Str.NextFig.Len           =     $ - Str.NextFig
-        Str.HoldedFig             db    'HOLDED FIGURE'
+        Str.HoldedFig             db    'HELD FIGURE'
         Str.HoldedFig.Len         =     $ - Str.HoldedFig
         Str.Scoreboard            db    '--<LEADERBOARD>--'
         Str.Score.Format          db    '%5d', 0
         ;Str.ScoreCorrypted.Format db    '#$&*!', 0
         Str.Pause                 db    'PAUSED'
         Str.Loose                 db    'GAME OVER'
-        Str.Win                   db    'YOU WON'
+        ;Str.Win                   db    'YOU WON'
 
         NICKNAME_LEN                     =     8
         Settings.strTempNickName         db    '________'
@@ -90,7 +90,6 @@
         Settings.strFileFilter      db    '*.ttr', 0
         Settings.PlaceFormat        db    '#%X', 0
         Settings.Music.HexFormat    db    '#%X.wav', 0
-        Settings.Format.File.Temp   db    '%.8s.ttr.tmp', 0   ;NICKNAME_LEN
         Settings.Format.File        db    '%.8s.ttr', 0       ;NICKNAME_LEN
         Settings.File.Name          db    'lastnickname', 0
 
@@ -115,11 +114,11 @@ end if
         ;# SoundPlayer
         SoundPlayer.Notes         file    'tetris_ex.amid' ; ex
         SoundPlayer.NotesNum:     ; this pos - 2 bytes
-        SoundPlayer.Instruments   db    1100'0000b or 0, 32 , 0, 0,\ ; 32 25 25 10
-                                        1100'0000b or 1, 25 , 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
-                                        1100'0000b or 2, 25 , 0, 0,\
-                                        1100'0000b or 3, 10 , 0, 0,\
-                                        1100'0000b or 4, 127, 0, 0; gunshot
+        SoundPlayer.Instruments   db    1100'0000b or 0, 32 ,\; 0, 0,\ ; 32 25 25 10
+                                        1100'0000b or 1, 25 ,\; 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
+                                        1100'0000b or 2, 25 ,\; 0, 0,\
+                                        1100'0000b or 3, 10 ,\; 0, 0,\
+                                        1100'0000b or 4, 127;, 0, 0; gunshot
 
         if (HELP_DEFINED)
         Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
@@ -222,8 +221,8 @@ TetrisFrame:
         Game.NickName                   db      NICKNAME_LEN dup ?
 ; There can be overlapped data!
         ; # Str
-        Str.HighScore                   db      SCOLE_LEN_CONST dup ?
-        Str.Score                       db      SCOLE_LEN_CONST dup ?
+        Str.HighScore                   db      SCORE_LEN_CONST dup ?
+        Str.Score                       db      SCORE_LEN_CONST dup ?
         ; # Random
         Random.dSeed                    dd      ?
         Random.dPrevNumber              dd      ?

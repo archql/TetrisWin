@@ -24,7 +24,7 @@
         RECONCILIATOR_STATE_INITERROR   = 5
         RECONCILIATOR_STATE_CONNECTING  = 6
 
-        Tcp.Base64Symbols       db      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
 
         Tcp.Websocket.Auth.File db      'passw.txt', 0'
 
@@ -32,7 +32,7 @@
         Tcp.Websocket.Conn.HTTP db      'HTTP/1.1',\
                                         13, 10, 'Connection: Upgrade', 13, 10,\
                                         'Upgrade: websocket', 13, 10,\
-                                        'Host: localhost', 13, 10,\
+                                        'Host: by', 13, 10,\
                                         'Sec-WebSocket-Version: 13', 13, 10,\
                                         'Sec-WebSocket-Key: '
         Tcp.Websocket.Conn.2    db      22 dup ?, '=='
@@ -57,9 +57,9 @@
         Tcp.Websocket.Ready     db      '42/game,["r rd"]'
         Tcp.Websocket.Ready.Len = $ - Tcp.Websocket.Ready
 
-        Tcp.hsocket             dd              not (0)
 
-        ; UNITIALIZED DATA
+; UNITIALIZED DATA
+        Tcp.hsocket             dd              ?  ; must be -1
 
         ; This is private data of TCP module
         Tcp.wsaData             WSADATA         ?
@@ -117,7 +117,7 @@ SocketIO.Random:
         Reconciliator.ZeroTick          dd      ?  ; point from which sync with server happened
         Reconciliator.GlobalTick        dd      ?  ; must be as fresh as possible
         Reconciliator.GameTick          dd      ?  ; for game ticks
-        Reconciliator.TicksPlayed       dd      ?  ; ????
+        ;Reconciliator.TicksPlayed       dd      ?  ; ????
 
 struct GameInput
         tick            dd      ?  ; ignore

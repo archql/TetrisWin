@@ -136,34 +136,39 @@ endp
 proc Game.GenNewFig
 
         ; setup start place
-        mov     [Game.FigX], FIELD_W/2-2
-        mov     [Game.FigY], FIG_START_Y ; -2
-        mov     [Game.CurFigRotation], 0
-        mov     [Game.FigPreviewY], 0
+        xor     ebx, ebx
+        mov     esi, Game.CurFig
+        mov     [esi + (Game.FigX - Game.CurFig)], FIELD_W/2-2
+        mov     [esi + (Game.FigY - Game.CurFig)], FIG_START_Y ; -2
+        mov     [esi + (Game.CurFigRotation - Game.CurFig)], bx
+        mov     [esi + (Game.FigPreviewY - Game.CurFig)], bx
 
         ; setup new color
         mov     eax, colorsNum
         stdcall Random.Get, 3, eax
-        mov     [Game.CurFigColor], ax
+        mov     [esi + (Game.CurFigColor - Game.CurFig)], ax
 
         ; setup cur fig
-        mov     ax, [Game.NextFigNumber]
-        mov     [Game.CurFigNumber], ax
-        mov     ax, [Game.NextFig]
-        mov     [Game.CurFig], ax
+        mov     ax, [esi + (Game.NextFigNumber - Game.CurFig)]
+        mov     [esi + (Game.CurFigNumber - Game.CurFig)], ax
+        mov     ax, [esi + (Game.NextFig - Game.CurFig)]
+        mov     [esi + (Game.CurFig - Game.CurFig)], ax
 
         ; setup next fig
-        cmp     [Game.NextFigCtr], 0
+        cmp     [esi + (Game.NextFigCtr - Game.CurFig)], bx
         jnz     .hasNextFig
 .hasNotNextFig:
         stdcall Game.GenSequence
         jmp     .endnext
 .hasNextFig:
-        dec     [Game.NextFigCtr]
+        dec     [esi + (Game.NextFigCtr - Game.CurFig)]
         ; move sequence of figs
         mov     ecx, figNum
-        mov     esi, Game.NextFigNumber + 2
         mov     edi, Game.NextFigNumber
+        mov     esi, edi
+        inc     esi
+        inc     esi
+        ;mov     esi, Game.NextFigNumber + 2    (1 byte win)
         rep movsw
 .endnext:
         ; get fig bits

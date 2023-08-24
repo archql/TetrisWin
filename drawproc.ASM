@@ -274,9 +274,9 @@
         ; draw text HOLDED FIG
         stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 6        , Str.HoldedFig.Len, eax, Str.HoldedFig
         ; DRAW text SCORE
-        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 2, SCOLE_LEN_CONST  , eax, Str.Score
+        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 2, SCORE_LEN_CONST  , eax, Str.Score
         ; DRAW text SCORE HIGH
-        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 3, SCOLE_LEN_CONST  , eax, Str.HighScore
+        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 3, SCORE_LEN_CONST  , eax, Str.HighScore
 
         ; Draw CurNickName
         stdcall View.DrawText, FIELD_W + 3 - 1 + 1, FIELD_H - 3, 8, eax, Game.NickName
