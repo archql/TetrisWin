@@ -93,6 +93,7 @@ More information [here](#graphics)
 | competition mode     |  F4	           |
 
 More information (v7.+) [here](#network-mode-v7)
+
 More information (v5.+) [here](#network-mode-v5)
 
 #### 🔐SERVER AUTHENTICATION PROCESS (v.7.+)🔐
@@ -160,7 +161,7 @@ with all keys pressed
  - `JOINING` &mdash; client is trying to connect to the server. The try is not finished yet.
  
 #### Connection algorithm:
- - Follow the **SERVER AUTHENTICATION PROCESS** which is described above. You can ignore it and play with *DEFAULT* nickname
+ - Follow the [SERVER AUTHENTICATION PROCESS](#server-authentication-process-v7) which is described above. You can ignore it and play with *DEFAULT* nickname
  - **Use *F3* key to make try to connect to the server** (your current state is `OFFLINE` or `CONLOST`). 
  - From version **5.9** Online Game View (**OGV**) is added. Every client in the **same room** sends its game frame with ping message. 
  - Chat is also working only for players in the **same room**
@@ -343,7 +344,7 @@ Now it is part of `.ttr`
 `'.ttr.tmp'` file is same format file as `'.ttr'` file. But it used to save gameplay of a player.
 
 ### Network protocol (5.+)
-
+ - is invalid for v7.+
  - net packet starts with 2 bytes of message code and other data which depends on game version and message
  - processing logics is &mdash; When message is recieved, its code is checked along with the details of the sender and recipient. This is necessary due to the peculiarity of UDP broadcast packets distribution namely they also recieved by the device from which they were sent ("self-sending"). However, due to the possible presence of a large number of network adapters in the single device there may be duplicated "self-sended" packets. Therefore, there are messages processing which do not accept "self-sending" (named *public-only*); messages that need it (named *global*); messages that need it but in a single copy (named *public*). 
  - current protocol (**v.6.4**) message codes are:
