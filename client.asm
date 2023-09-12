@@ -21,9 +21,9 @@ SO_REUSEADDR                = 0x0004
         Wnd.Text                    db    'Launch error :/', 0
         Wnd.class                   db    'FASMW32',0
         Wnd.title                   db    'TETRIS WIN ASM by Artiom Drankevich',0
-        Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
-        Client.QuaryKey             db    'MachineGuid', 0
-        WndCreationCheck            db    'ACCEPT', 0
+        ;Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
+        ;Client.QuaryKey             db    'MachineGuid', 0
+        ;WndCreationCheck            db    'ACCEPT', 0
 
 
 ; # send Chat msg

@@ -232,7 +232,7 @@
         mov     edi, 2  ; Y
         stdcall View.DrawFigure, 3;//????
         ; draw holded figure
-        mov     bx,  word [Game.HoldedFig]
+        mov     bx,  word [Game.HeldFig]
         mov     esi, FIELD_W + 3; X
         mov     edi, 2  +  4  +  2 ; Y
         stdcall View.DrawFigure, 3;//????

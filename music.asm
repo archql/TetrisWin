@@ -16,7 +16,7 @@ proc SoundPlayer.Ini
         mov      edi, [midihandle]
         mov      esi, SoundPlayer.Instruments
         ; inefficient but compact
-        mov      ebx, 5
+        mov      ebx, SoundPlayer.Instruments.Len
 .loadInstruments:
         ;xor      eax, eax ; TODO danger??
         lodsw
@@ -95,7 +95,7 @@ proc SoundPlayer.Update
         add     [SoundPlayer.CurTick], ax
         ; play single snd tmp
         ;stdcall SoundPlayer.Pause
-        stdcall SoundPlayer.PlayNextEx
+        stdcall SoundPlayer.PlayNextNEx
 @@:
 
         ret
@@ -106,10 +106,19 @@ proc SoundPlayer.Pause
 
         mov     edi, [midihandle]
         mov     esi, dword [midiOutShortMsg]
-        stdcall esi, edi, 0x00007BB0
-        stdcall esi, edi, 0x00007BB1
-        stdcall esi, edi, 0x00007BB2
-        stdcall esi, edi, 0x00007BB9
+        mov     ecx, SoundPlayer.Instruments.Len
+        mov     eax, 0x00007BB0
+.PauseLoop:
+        push    eax ecx
+        dec     ecx
+        or      eax, ecx
+        stdcall esi, edi, eax
+        pop     ecx eax
+        loop .PauseLoop
+        ;stdcall esi, edi, 0x00007BB0
+        ;stdcall esi, edi, 0x00007BB1
+        ;stdcall esi, edi, 0x00007BB2
+        ;stdcall esi, edi, 0x00007BB9
 
         ret
 endp
@@ -119,7 +128,7 @@ proc SoundPlayer.PlayNextEx uses ebx
         ; sound here
         movzx    ebx, word [SoundPlayer.NextSound]
 
-        mov      ecx, 4; num of players
+        mov      ecx, 11; num of players
 .PlayPackOfNotes:
         push     ecx
         movzx    ecx, word [SoundPlayer.Notes + ebx]
@@ -188,6 +197,83 @@ proc SoundPlayer.PlayNextSEx uses ebx
         xor      ebx, ebx
 @@:
         mov      [SoundPlayer.NextSound], bx
+
+        ret
+endp
+
+proc SoundPlayer.PlayNextNEx uses esi edi
+        ;
+        stdcall  SoundPlayer.Pause
+        ; sound here
+        movzx    edx, word [SoundPlayer.NextSound]
+        lea      esi, [SoundPlayer.Notes + edx]
+        mov      ecx, 8 - 3
+        ; check first 2 bytes
+        ;xor      eax, eax
+        ;lodsw
+        ;shr      eax, 1 ; if it is long
+        ;
+        ; check first 2 bytes
+        xor      eax, eax
+        lodsb
+        test     al, 1
+        jz       @F
+        add      ecx, 8
+        xchg     ah, al
+        lodsb
+        xchg     ah, al
+@@:
+        shr      eax, 1
+        ;jc       @F
+       ; dec      esi
+        ;sub      ecx, 8
+        ;shr      eax, 8
+;@@:
+        push     ecx
+        ;
+        xor      ecx, ecx
+        shrd     ecx, eax, 2 ; its a tick multiplier
+        rol      ecx, 2
+        shr      eax, 2
+        ;
+        mov      edx, 100 ; min delta tick
+        shl      edx, cl
+        mov      [SoundPlayer.DeltaTick], dx ; set delay
+        ;
+        pop      ecx
+        mov      edx, eax
+        ;
+.PlayLoop:
+        shr      edx, 1
+        jnc      @F ; CF = 0 => next
+        ;
+        xor      eax, eax
+        lodsb    ; load note num
+        shl      eax, 8
+        or       eax, [SoundPlayer.VolumeMask]
+        or       eax, 0x00'00'00'90
+        ;
+        push     ecx edx
+        ;
+        dec      ecx
+        cmp      ecx, 3 ; channel of 9
+        jne      .NotSpecialChannel
+        mov      cl, 9
+.NotSpecialChannel:
+        or       eax, ecx
+        ;
+        invoke   midiOutShortMsg, [midihandle], eax
+        pop      edx ecx
+@@:
+        loop     .PlayLoop
+
+        ; get next pos
+        sub      esi, SoundPlayer.Notes
+        cmp      esi, Soundplayer.Len
+        jl       @F
+        xor      esi, esi
+@@:
+        mov      [SoundPlayer.NextSound], si
 
         ret
 endp

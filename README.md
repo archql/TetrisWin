@@ -108,7 +108,7 @@ More information (v5.+) [here](#network-mode-v5)
   - `REGSTRD` state means the authentication process went successfully
   - However, `REJCTED` state means the authentication process failed
 - *TIP*
-  - to get SHA256 hash you 7zip. Please, do not use online services except your password is not very important to you.
+  - to get SHA256 hash you 7zip or online SHA256. Please, do not use online services if your password is very important to you.
 
 
 #### 🏷️NICKNAME CONTROLS:🏷️

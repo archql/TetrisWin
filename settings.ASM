@@ -362,3 +362,75 @@ proc Settings.Music.Play uses ebx
 endp
 
 
+;#############Haffmans tree decode####################
+; params (inorder)
+proc Settings.Haffman.Decode
+
+local   read_sz         dd      ?
+local   read_pos        dd      SoundPlayer.Haffman.Data
+
+        ;
+        mov     esi, SoundPlayer.Notes
+        mov     edi, SoundPlayer.Haffman.Table
+        ;
+        xor     ecx, ecx
+        push    ecx
+        inc     ecx
+        jmp     .StartHaffmanLoop
+        ;
+.HaffmansLoop:
+        ; save ctr
+        push    ecx
+        mov     ecx, [read_sz]
+        ; logics here (edi is table, esi is write pos, set ecx, edx, eax)
+        ; read next bit
+        inc     ecx    ; size of readed
+        shl     edx, 1 ; reciever of code
+        shr     al,  1
+        adc     edx
+        ;
+        dec     edi
+        ;
+.LoopFindLen:
+        ;
+        inc     edi
+        ; check len
+        xchg    eax, ecx
+        scasb   edi
+        xchg    eax, ecx
+        jne     .EndCheckLen
+        ; len is eq
+        xchg    eax, edx
+        scasw   edi
+        xchg    eax, edx
+        ; if not equal - move next
+        jne     .LoopFindLen
+        ;
+        xchg    esi, edi ; esi was pos to write?
+        movsb
+        xchg    esi, edi
+        ; Drop Info
+.StartHaffmanLoop:
+        xor    ecx, ecx
+        xor    edx, edx
+        ;
+.EndCheckLen:
+        ; end logics
+        mov     [read_sz], ecx
+        pop     ecx
+        loop    .HaffmansLoop
+        ; check on exit
+        xchg    esi, [read_pos]
+        ;
+        cmp     esi, SoundPlayer.Haffman.Data.End
+        jge     .Exit
+        ; load next byte
+        lodsb   esi
+        xchg    esi, [read_pos]
+        mov     ecx, 8 ; setup next loop
+        ;
+        jmp     .HaffmansLoop
+        ;
+.Exit:
+        ret
+endp

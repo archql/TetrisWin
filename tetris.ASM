@@ -15,7 +15,7 @@ entry start
         TRUE    = 1
         FALSE   = 0
 
-        START_TICK_SPEED = 500
+        START_TICK_SPEED = 1000
         GLOW_TIME_TICKS  = 15
 
         NUM_OF_CHARACTERS = 128
@@ -207,8 +207,9 @@ proc WindowProc ,\;uses ebx esi edi,\
         fistp   dword [esp]
 
         pop     eax
-        sub     eax, 2
-        cmp     ax, 0
+        dec     eax ; 1 byte win
+        dec     eax
+        test    eax, eax
         jl      .IgnoreFigMove
         cmp     ax, FIELD_W - 3
         jg      .IgnoreFigMove
@@ -477,17 +478,19 @@ proc WindowProc ,\;uses ebx esi edi,\
         stdcall SoundPlayer.Pause
         xor     [Game.MusicOff], 1
 @@:
+        ; 11 BYTES WON
+        mov     edx, SoundPlayer.Volume
         cmp     eax, 0xDB ; '['
         jne     @F
-        cmp     [SoundPlayer.Volume], 0x07
+        cmp     byte [edx], 0x07
         jbe     @F
-        sub     [SoundPlayer.Volume], 0x0F
+        sub     byte [edx], 0x0F
 @@:
         cmp     eax, 0xDD ; ']'
         jne     @F
-        cmp     [SoundPlayer.Volume], 0x7F
+        cmp     byte [edx], 0x7F
         jae     @F
-        add     [SoundPlayer.Volume], 0x0F
+        add     byte [edx], 0x0F
 @@:
         ; check if exit required
         cmp     [Game.Playing], FALSE
@@ -495,8 +498,12 @@ proc WindowProc ,\;uses ebx esi edi,\
         cmp     eax, VK_ESCAPE
         je      .wmdestroy
 @@:
+        ; check if chat chosen
+        cmp     word [View.MenuChosen], 10b
+        je      @F
         ; send key event
         stdcall Reconciliator.ProcessEvent
+@@:
         jmp     .defwndproc
   .wmkeyup:
         mov     eax, [wparam]

@@ -203,6 +203,8 @@ proc Reconciliator.ChatMessage
         cmp     di, [Chat.MsgPos]
         jne     @F
         inc     [Chat.MsgPos]
+        ; playsound
+        invoke  midiOutShortMsg, [midihandle], 0x003F3C93
         ;
         ret
 endp

@@ -82,23 +82,25 @@ proc Game.Initialize
         mov     [Game.NextFigCtr], 0 ; set fig buf to 0 -- major bug fix!
         stdcall Game.GenNewFig ; its for ini new fig -> cur fig
         stdcall Game.GenNewFig
+        ;
+        mov     esi, Game.FigPreviewY ; WON 20 BYTES
         ; set preview Y to max (prevent bugs)
-        mov     [Game.FigPreviewY], FIG_START_Y
+        mov     [esi + (Game.FigPreviewY - Game.FigPreviewY)], FIG_START_Y
 
         ; setup timer
-        mov     [Game.TickSpeed], START_TICK_SPEED
-        mov     [Game.Pause], TRUE;
-        mov     [Game.Playing], TRUE;temp!!FALSE
+        mov     [esi + (Game.TickSpeed - Game.FigPreviewY)], START_TICK_SPEED
+        mov     [esi + (Game.Pause - Game.FigPreviewY)], TRUE;
+        mov     [esi + (Game.Playing - Game.FigPreviewY)], TRUE;temp!!FALSE
 
         ; set music pos to start
         mov     [SoundPlayer.NextSound], 0
 
-        mov     [Game.FigsPlaced], 0
+        mov     [esi + (Game.FigsPlaced - Game.FigPreviewY)], 0
 
         ; setup holded
-        and     word [Game.Holded], FALSE;MY_FALSE; set ifhold to true
-        mov     word [Game.HoldedFigNum], -1
-        mov     word [Game.HoldedFig], 0
+        and     word [esi + (Game.Held - Game.FigPreviewY)], FALSE ; set ifhold to true
+        mov     word [esi + (Game.HeldFigNum - Game.FigPreviewY)], -1
+        mov     word [esi + (Game.HeldFig - Game.FigPreviewY)], 0
 
         ret
 endp
@@ -289,17 +291,17 @@ proc Game.KeyEvent uses eax
         ; check if holded fig used
         cmp     eax, 'H'
         jne     .skipHold
-        cmp     [Game.Holded], TRUE
+        cmp     [Game.Held], TRUE
         je      .skipHold
         ; hold
-        or      word [Game.Holded], TRUE; set ifhold to true (1 hold per fig)
+        or      word [Game.Held], TRUE; set ifhold to true (1 hold per fig)
         movzx   ebx, cx; save cur fig num
         shl     bx, 3
         mov     bx, word [figArr + ebx]
-        mov     word [Game.HoldedFig], bx
+        mov     word [Game.HeldFig], bx
 
         ; swap cur and buffered
-        xchg    word [Game.HoldedFigNum], cx
+        xchg    word [Game.HeldFigNum], cx
         test    cx, cx ; if holded fig isnt set yet
         jns     @F     ; works if figs < 127
         push    eax
@@ -447,7 +449,7 @@ proc Game.KeyEvent uses eax
 @@:
         push    eax
         ; unblock hold usage
-        and     word [Game.Holded], FALSE
+        and     word [Game.Held], FALSE
 
         ; speed up
         ; inc counts of figure

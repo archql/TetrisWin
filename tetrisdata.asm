@@ -112,13 +112,26 @@ if (SERVER_DEFINED)
 end if
 
         ;# SoundPlayer
-        SoundPlayer.Notes         file    'tetris_ex.amid' ; ex
-        SoundPlayer.NotesNum:     ; this pos - 2 bytes
-        SoundPlayer.Instruments   db    1100'0000b or 0, 32 ,\; 0, 0,\ ; 32 25 25 10
-                                        1100'0000b or 1, 25 ,\; 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
-                                        1100'0000b or 2, 25 ,\; 0, 0,\
-                                        1100'0000b or 3, 10 ,\; 0, 0,\
-                                        1100'0000b or 4, 127;, 0, 0; gunshot
+        Soundplayer.Notes:
+        SoundPlayer.Notes         file    'tetris.amid' ; ex
+        SoundPlayer.NotesNum:     ; this pos - 2 bytes (outdated) label SoundPlayer.Volume        byte at $ - 2
+        Soundplayer.Len           = $ - Soundplayer.Notes
+        ;Soundplayer.Haffman.Table file     'tetris_ex_table.amid' ; ex
+        ;Soundplayer.Haffman.Data  file     'tetris_ex_data.amid' ; ex
+        ;Soundplayer.Haffman.Data.End:
+
+        SoundPlayer.Instruments   db    1100'0000b or 0, 32,\ ;2 ,\; 0, 0,\ ; 32 25 25 10
+                                        1100'0000b or 1, 25,\ ;2 ,\; 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
+                                        1100'0000b or 2, 25,\ ;2 ,\; 0, 0,\  2
+                                        1100'0000b or 3, 10,\ ;34 ,\; 0, 0,\ 34
+                                        1100'0000b or 4, 117 ,\; 0, 0,\ 117
+                                        1100'0000b or 5, 34 ,\; 0, 0,\
+                                        1100'0000b or 6, 2 ,\; 0, 0,\
+                                        1100'0000b or 7, 2 ,\; 0, 0,\
+                                        1100'0000b or 8, 2 ,\; 0, 0,\
+                                        1100'0000b or 9, 2 ,\; 0, 0,\
+                                        1100'0000b or 10, 2;, 0, 0; gunshot
+        SoundPlayer.Instruments.Len = ($ - SoundPlayer.Instruments) / 2
 
         if (HELP_DEFINED)
         Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
@@ -212,6 +225,11 @@ Unitialized_mem:
 
         MSG_CODE_BASE_CHAT              = $B000
 
+        ; alloc music buffer
+        ;Soundplayer.Len                 dd      ?
+        ;SoundPlayer.Notes               dd      16384 dup ? ; 16 kB for music reserve
+
+
 GameBuffer:
         ; Its defines base .ttr file data
         GameBuffer.Score                dw      ?
@@ -247,9 +265,9 @@ TetrisFrame:
         Game.Playing                    dw      ?
         Game.Pause                      dw      ?
         Game.FigsPlaced                 dw      ?
-        Game.Holded                     dw      ?
-        Game.HoldedFigNum               dw      ?
-        Game.HoldedFig                  dw      ?
+        Game.Held                       dw      ?
+        Game.HeldFigNum                 dw      ?
+        Game.HeldFig                    dw      ?
         Game.MusicOff                   dw      ?
         Game.SoftDrop                   dw      ?
 
@@ -351,7 +369,7 @@ UNINI_MEM_LEN                   = $ - Unitialized_mem  ; Its filled with 0s when
         ; -- Version major (max 255)
         GAME_V_MAJOR                    = 7
         ; -- Version minor (max 63)
-        GAME_V_MINOR                    = 7
+        GAME_V_MINOR                    = 8
         ; -- Type?                      (2 bits)
         GAME_V_TYPE_DBG                 = 0
         GAME_V_TYPE_RELEASE             = 11b
