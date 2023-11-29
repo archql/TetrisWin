@@ -318,43 +318,6 @@ proc View.DrawGlow
         ret
 endp
 
-; UNUSED
-proc View.DrawEffectElement
-
-
-        ; test rotating rect draw
-        ;invoke  glPushMatrix;
-        ;invoke  glTranslatef, dword [esp + 16], dword [esp + 16], 0.5  ;  esp -= 4 happened 2xtimes
-        ;invoke  glBegin, GL_QUADS
-
-                ;invoke  glVertex2f, edi, edi
-                ;invoke  glVertex2f, esi, edi
-                ;invoke  glVertex2f, esi, esi
-                ;invoke  glVertex2f, edi, esi
-
-        ;invoke  glEnd
-        ;invoke  glPopMatrix
-
-        ; draw background texture
-        invoke  glPushMatrix
-        invoke  glTranslatef, dword [esp + 20], dword [esp + 20], 0.5
-        invoke  glRotatef, [Glow.AnimAngle], 0.0, 0.0, 0.5;
-        invoke  glEnable, GL_TEXTURE_2D
-        invoke  glBegin, GL_QUADS
-                invoke  glTexCoord2i, 0, 1
-                invoke  glVertex2f, edi, edi
-                invoke  glTexCoord2i, 1, 1
-                invoke  glVertex2f, esi, edi
-                invoke  glTexCoord2i, 1, 0
-                invoke  glVertex2f, esi, esi
-                invoke  glTexCoord2i, 0, 0
-                invoke  glVertex2f, edi, esi
-        invoke  glEnd
-        invoke  glDisable, GL_TEXTURE_2D
-        invoke  glPopMatrix
-
-        ret
-endp
 
 ;#############DRAW GAME######################
 ; constts:
@@ -662,54 +625,58 @@ proc View.CreatePrimitive.Cube
         mov     esi, -0.48
         mov     edi, 0.48
 
+        push    ebp
+        lea     ebp, [glVertex3f]
         ; Top face (y = 1.0f)
         ; Define vertices in counter-clockwise (CCW) order with normal pointing out
         ;invoke  glColor3f, 0.0, 1.0, 0.0;     // Green
         invoke  glNormal3f, ebx, 1.0, ebx
-        invoke  glVertex3f, edi, edi, esi;
-        invoke  glVertex3f, esi, edi, esi;
-        invoke  glVertex3f, esi, edi, edi;
-        invoke  glVertex3f, edi, edi, edi;
+        stdcall ebp, edi, edi, esi;
+        stdcall ebp, esi, edi, esi;
+        stdcall ebp, esi, edi, edi;
+        stdcall ebp, edi, edi, edi;
  
         ; Bottom face (y = -1.0f)
         ;invoke  glColor3f, 1.0, 0.5, 0.0;     // Orange
         invoke  glNormal3f, ebx, -1.0, ebx
-        invoke  glVertex3f, edi, esi, edi;
-        invoke  glVertex3f, esi, esi, edi;
-        invoke  glVertex3f, esi, esi, esi;
-        invoke  glVertex3f, edi, esi, esi;
+        stdcall ebp, edi, esi, edi;
+        stdcall ebp, esi, esi, edi;
+        stdcall ebp, esi, esi, esi;
+        stdcall ebp, edi, esi, esi;
  
         ;// Front face  (z = 1.0f)
         ;invoke  glColor3f, 1.0, 0.0, 0.0;     // Red
         invoke  glNormal3f, ebx, ebx, 1.0
-        invoke  glVertex3f, edi, edi, edi;
-        invoke  glVertex3f, esi, edi, edi;
-        invoke  glVertex3f, esi, esi, edi;
-        invoke  glVertex3f, edi, esi, edi;
+        stdcall ebp, edi, edi, edi;
+        stdcall ebp, esi, edi, edi;
+        stdcall ebp, esi, esi, edi;
+        stdcall ebp, edi, esi, edi;
  
         ;// Back face (z = -1.0f)
         ;invoke  glColor3f, 1.0, 1.0, 0.0;     // Yellow
         invoke  glNormal3f, ebx, ebx, -1.0
-        invoke  glVertex3f, edi, esi, esi;
-        invoke  glVertex3f, esi, esi, esi;
-        invoke  glVertex3f, esi, edi, esi;
-        invoke  glVertex3f, edi, edi, esi;
+        stdcall ebp, edi, esi, esi;
+        stdcall ebp, esi, esi, esi;
+        stdcall ebp, esi, edi, esi;
+        stdcall ebp, edi, edi, esi;
  
         ;// Left face (x = -1.0f)
         ;invoke  glColor3f, 0.0, 0.0, 1.0;     // Blue
         invoke  glNormal3f, -1.0, ebx, ebx
-        invoke  glVertex3f, esi, edi, edi;
-        invoke  glVertex3f, esi, edi, esi;
-        invoke  glVertex3f, esi, esi, esi;
-        invoke  glVertex3f, esi, esi, edi;
+        stdcall ebp, esi, edi, edi;
+        stdcall ebp, esi, edi, esi;
+        stdcall ebp, esi, esi, esi;
+        stdcall ebp, esi, esi, edi;
  
         ;// Right face (x = 1.0f)
         ;invoke  glColor3f, 1.0, 0.0, 1.0;     // Magenta
         invoke  glNormal3f, 1.0, ebx, ebx
-        invoke  glVertex3f, edi, edi, esi;
-        invoke  glVertex3f, edi, edi, edi;
-        invoke  glVertex3f, edi, esi, edi;
-        invoke  glVertex3f, edi, esi, esi;
+        stdcall ebp, edi, edi, esi;
+        stdcall ebp, edi, edi, edi;
+        stdcall ebp, edi, esi, edi;
+        stdcall ebp, edi, esi, esi;
+
+        pop     ebp
 
         invoke  glEnd
         ; ================================
@@ -782,13 +749,16 @@ proc View.CreatePrimitive.TexturedCube  ; uses eax ebx ecx edx esi edi
         add     [bufadr], 36h; skip bmp header
         mov     eax, [bufadr]
         mov     eax, [eax - 20h]
-        invoke  glTexImage2D, GL_TEXTURE_2D, ebx, GL_RGB8, eax, eax, ebx, GL_BGR, GL_UNSIGNED_BYTE, [bufadr]
-        invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE
-        invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE
-        invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR
-        invoke  glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR
+        ;
+        mov     esi, GL_TEXTURE_2D
+        lea     edi, [glTexParameteri]
+        invoke  glTexImage2D, esi, ebx, GL_RGB8, eax, eax, ebx, GL_BGR, GL_UNSIGNED_BYTE, [bufadr]
+        stdcall edi, esi, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE
+        stdcall edi, esi, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE
+        stdcall edi, esi, GL_TEXTURE_MIN_FILTER, GL_LINEAR
+        stdcall edi, esi, GL_TEXTURE_MAG_FILTER, GL_LINEAR
 
-        invoke  glDisable, GL_TEXTURE_2D
+        invoke  glDisable, esi
 ;===============================================================================================
 .Error:
         ; generate list

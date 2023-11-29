@@ -5,7 +5,8 @@
         ; we dont need registry anymore
         ;Client.QuaryValue           db    'SOFTWARE\Microsoft\Cryptography', 0
         ;Client.QuaryKey             db    'MachineGuid', 0
-        WndCreationCheck            db    'ACCEPT', 0
+        ;WndCreationCheck            db    'ACCEPT', 0
+        WndCreationCheck            = 666
 
 
 proc Reconciliator.Init

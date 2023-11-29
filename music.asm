@@ -95,7 +95,7 @@ proc SoundPlayer.Update
         add     [SoundPlayer.CurTick], ax
         ; play single snd tmp
         ;stdcall SoundPlayer.Pause
-        stdcall SoundPlayer.PlayNextNEx
+        stdcall SoundPlayer.PlayNextNNEx
 @@:
 
         ret
@@ -128,7 +128,7 @@ proc SoundPlayer.PlayNextEx uses ebx
         ; sound here
         movzx    ebx, word [SoundPlayer.NextSound]
 
-        mov      ecx, 11; num of players
+        mov      ecx, 4; num of players
 .PlayPackOfNotes:
         push     ecx
         movzx    ecx, word [SoundPlayer.Notes + ebx]
@@ -201,6 +201,114 @@ proc SoundPlayer.PlayNextSEx uses ebx
         ret
 endp
 
+proc SoundPlayer.PlayNextNNEx uses esi edi
+        ;
+        ;stdcall  SoundPlayer.Pause
+        ; sound here
+        movzx    edx, word [SoundPlayer.NextSound]
+        lea      esi, [SoundPlayer.Notes + edx]
+        mov      ecx, 8 - (SOUNDPLAYER_BITS_FOR_TIME + 1) ; 1 bit set - if 16 bits used
+        ; check first 2 bytes
+        ;xor      eax, eax
+        ;lodsw
+        ;shr      eax, 1 ; if it is long
+        ;
+        ; check first 2 bytes
+        xor      eax, eax
+        lodsb
+        test     al, 1
+        jz       @F
+        add      ecx, 8
+        dec      esi ; move ptr back
+        lodsw        ; load word instead of byte
+@@:
+        shr      eax, 1  ; skip 1 bit
+        push     ecx
+        ;
+        mov      ecx, eax
+        and      ecx, (1 shl SOUNDPLAYER_BITS_FOR_TIME) - 1
+        shr      eax, SOUNDPLAYER_BITS_FOR_TIME
+        ;
+        mov      edx, SOUNDPLAYER_MIN_DTIME ; max delta tick  encoded
+        shl      edx, cl ; shr???
+        mov      [SoundPlayer.DeltaTick], dx ; set delay
+        ;
+        pop      ecx
+        mov      edx, eax
+        ;
+.PlayLoop:
+        shr      edx, 1
+        jnc      .ToNextChannel ; CF = 0 => next
+        ;
+        ; save ctrs
+        push     ecx edx
+        dec      ecx  ; bc channels are numerated from 0
+        ;
+        xor      eax, eax
+        lodsb    ; load note num
+        ; 1) check if it is a pack of notes
+        test     al ,al
+        jns      .NotAPAck
+        ;
+        not      al
+        inc      dword [esp + 4] ; ecx
+        shl      dword [esp], 1  ; set bit of edx again
+        inc      dword [esp]
+        ;
+.NotAPAck:
+        ; 2) check if pause
+        test     al, 0x40
+        jz       .ItsAPAuse
+        ;
+        and      al, 0x3F
+        or       eax, [SoundPlayer.VolumeMask] ; TODO duplicated
+.ItsAPAuse:
+        ;
+;if (SOUNDPLAYER_CHANNEL_BASED)
+        add      al, [SoundPlayer.ChannelBaseNotes + ecx]
+;end if
+        ;
+        shl      eax, 8
+        or       eax, 0x00'00'00'90
+        ;
+if (SOUNDPLAYER_SPECIAL_CHANNEL <> 9)
+        cmp      ecx, SOUNDPLAYER_SPECIAL_CHANNEL ; TOGGLE THIS OPTIMIZATION IF NEEDED (3 is encoded channal of special 9 channal - 1 byte less data)
+        jne      .NotSpecialChannelA
+        mov      cl, 9
+.NotSpecialChannelA:
+if (SOUNDPLAYER_IGNORE_SPECIAL = 1)
+        cmp      ecx, 9 ; TOGGLE THIS OPTIMIZATION IF NEEDED (3 is encoded channal of special 9 channal - 1 byte less data)
+        jne      .NotSpecialChannelB
+        mov      cl, SOUNDPLAYER_SPECIAL_CHANNEL
+.NotSpecialChannelB:
+end if
+end if
+        or       eax, ecx
+        ;
+if (SOUNDPLAYER_FORCE_PAUSE = 1)
+        mov      edx, 0x00007BB0
+        or       edx, ecx
+        push     eax
+        invoke   midiOutShortMsg, [midihandle], edx    ; force pause
+        pop      eax
+end if
+        invoke   midiOutShortMsg, [midihandle], eax
+        pop      edx ecx
+.ToNextChannel:
+        loop     .PlayLoop
+
+        ; get next pos
+        sub      esi, SoundPlayer.Notes
+        cmp      esi, Soundplayer.Len
+        jl       @F
+        xor      esi, esi
+@@:
+        mov      [SoundPlayer.NextSound], si
+
+        ret
+endp
+
+
 proc SoundPlayer.PlayNextNEx uses esi edi
         ;
         stdcall  SoundPlayer.Pause
@@ -266,7 +374,6 @@ proc SoundPlayer.PlayNextNEx uses esi edi
         pop      edx ecx
 @@:
         loop     .PlayLoop
-
         ; get next pos
         sub      esi, SoundPlayer.Notes
         cmp      esi, Soundplayer.Len
@@ -274,7 +381,6 @@ proc SoundPlayer.PlayNextNEx uses esi edi
         xor      esi, esi
 @@:
         mov      [SoundPlayer.NextSound], si
-
         ret
 endp
 

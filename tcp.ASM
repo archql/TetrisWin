@@ -15,7 +15,7 @@ WM_APP                      = 0x8000
 WM_TCP_CONNECTED            = WM_APP + 1
 WM_TCP_PACKET_ARRIVED       = WM_APP + 2
 
-; U must set Tcp.DecodePacket ->
+; U must set Tcp.DecodePacket to your proc ->
 ;Tcp.DecodePacket            = ....
 ; Calling convention
 ; [in, esi] - pos to buffer

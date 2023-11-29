@@ -7,11 +7,14 @@
    else
         invoke  glTranslatef, 0.0, 0.0, -40.0;
    end if
-        cmp     [View.MenuChosen], 0
+        movzx   eax, [View.MenuChosen]
+        test    eax, eax
         je      .ViewMenu_1
-        cmp     [View.MenuChosen], 1
+        dec     eax
+        test    eax, eax
         je      .ViewMenu_2
-        cmp     [View.MenuChosen], 2
+        dec     eax
+        test    eax, eax
         je      .ViewMenu_3
 
         ; #####################
@@ -270,16 +273,17 @@
         invoke  glPopMatrix
 
         ; draw text NEXT FIG
-        stdcall View.DrawText, FIELD_W + 3 - 1, 2            , Str.NextFig.Len  , eax, Str.NextFig
+        mov     esi, View.DrawText ; 24 bytes won
+        stdcall esi, FIELD_W + 3 - 1, 2            , Str.NextFig.Len  , eax, Str.NextFig
         ; draw text HOLDED FIG
-        stdcall View.DrawText, FIELD_W + 3 - 1, 2 + 6        , Str.HoldedFig.Len, eax, Str.HoldedFig
+        stdcall esi, FIELD_W + 3 - 1, 2 + 6        , Str.HoldedFig.Len, eax, Str.HoldedFig
         ; DRAW text SCORE
-        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 2, SCORE_LEN_CONST  , eax, Str.Score
+        stdcall esi, FIELD_W + 3    , 2 + 4 + 6 + 2, SCORE_LEN_CONST  , eax, Str.Score
         ; DRAW text SCORE HIGH
-        stdcall View.DrawText, FIELD_W + 3    , 2 + 4 + 6 + 3, SCORE_LEN_CONST  , eax, Str.HighScore
+        stdcall esi, FIELD_W + 3    , 2 + 4 + 6 + 3, SCORE_LEN_CONST  , eax, Str.HighScore
 
         ; Draw CurNickName
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 1, FIELD_H - 3, 8, eax, Game.NickName
+        stdcall esi, FIELD_W + 3 - 1 + 1, FIELD_H - 3, 8, eax, Game.NickName
         ; Draw TmpNickName
         mov     ebx, Settings.strTempNickNameBlocked
         ; If setup mode activated
@@ -297,18 +301,18 @@
         stdcall View.FastWhiteColor
 @@:
         ; Draw Main Str
-        stdcall View.DrawText, FIELD_W + 3 - 1 + 1, FIELD_H - 2, 8, eax, ebx
+        stdcall esi, FIELD_W + 3 - 1 + 1, FIELD_H - 2, 8, eax, ebx
 
         cmp     [Game.Playing], 1
         je      @F
         ; DRAW text GAME OVER
-        stdcall View.DrawText, FIELD_W / 2 - 2, 2, 9, eax, Str.Loose
+        stdcall esi, FIELD_W / 2 - 2, 2, 9, eax, Str.Loose
         jmp     .end_draw
 @@:
         cmp     [Game.Pause], 1
         jne     @F
         ; DRAW text PAUSE
-        stdcall View.DrawText, FIELD_W / 2 - 1, 2, 6, eax, Str.Pause
+        stdcall esi, FIELD_W / 2 - 1, 2, 6, eax, Str.Pause
 @@:
         ; end draw;
 .end_draw:

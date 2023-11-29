@@ -245,24 +245,24 @@ proc Game.KeyEvent uses eax
         mov     eax, [esp]
 @@:
         ; Check if special used
-        cmp     eax, VK_RETURN
-        jne     .skipSpecial
-        cmp     [Game.Score], SPECIAL_PRICE
-        jl      .skipSpecial
+;        cmp     eax, VK_RETURN
+;        jne     .skipSpecial
+;        cmp     [Game.Score], SPECIAL_PRICE
+;        jl      .skipSpecial
         ; Special effect
         ; block buffer
         ;or      word [Game.Holded], TRUE
         ; rm some score
-        sub     [Game.Score], SPECIAL_PRICE
+;        sub     [Game.Score], SPECIAL_PRICE
         ;write score
-        movzx   eax, word [Game.Score]
-        cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
+;        movzx   eax, word [Game.Score]
+;        cinvoke wsprintfA, Str.Score, Str.Score.Format, eax
 
         ; Do special
-        invoke  midiOutShortMsg, [midihandle], 0x007F2594
+;        invoke  midiOutShortMsg, [midihandle], 0x007F2594
 
         ; rm lines
-        stdcall Game.ClearField
+;        stdcall Game.ClearField
         ; rm N random lines
         ;mov     edx, FIELD_W
         ;mov     ecx, SPECIAL_NUM_LINES_RM; N
@@ -296,7 +296,7 @@ proc Game.KeyEvent uses eax
         ; hold
         or      word [Game.Held], TRUE; set ifhold to true (1 hold per fig)
         movzx   ebx, cx; save cur fig num
-        shl     bx, 3
+        shl     ebx, 3
         mov     bx, word [figArr + ebx]
         mov     word [Game.HeldFig], bx
 
@@ -330,26 +330,27 @@ proc Game.KeyEvent uses eax
         cmp     eax, VK_LEFT;'a'
         ;test    al, 0000'0100b
         jne     @F
-        dec     si
+        dec     esi
 @@:
+
         cmp     eax, VK_RIGHT ;'d'
         ;test    al, 0000'0001b
         jne     @F
-        inc     si
+        inc     esi
 @@:
         ;pop     eax
         ; decode key and apply rotation
         cmp     eax, VK_UP  ; rotation
         ;test    al, 0000'0010b
         jne     @F
-        dec     dx ; inc
+        dec     edx ; inc
 @@:
         cmp     eax, VK_DOWN ; rotation
         ;test    al, 0000'1000b
         jne     @F
-        inc     dx ; dec
+        inc     edx ; dec
 @@:
-        and     dx, 0000'0000'0000'0011b ; masked rotation
+        and     edx, 0000'0000'0000'0011b ; masked rotation
 
 .NonKeyPositionChange: ; bx is fig, esi edi - cords
         ; get figure (duplicated!)

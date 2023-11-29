@@ -112,18 +112,24 @@ if (SERVER_DEFINED)
 end if
 
         ;# SoundPlayer
+        ;SOUNDPLAYER_CHANNEL_BASED   = 1
+        SOUNDPLAYER_IGNORE_SPECIAL  = 1
+        SOUNDPLAYER_FORCE_PAUSE     = 1
+        SOUNDPLAYER_SPECIAL_CHANNEL = 11 ; 3
+        SOUNDPLAYER_MIN_DTIME       = 100; 30; 4 15
+        SOUNDPLAYER_BITS_FOR_TIME   = 3
         Soundplayer.Notes:
-        SoundPlayer.Notes         file    'tetris.amid' ; ex
+        SoundPlayer.Notes         file    'red_alert.amid' ; ex tetris_ex
         SoundPlayer.NotesNum:     ; this pos - 2 bytes (outdated) label SoundPlayer.Volume        byte at $ - 2
         Soundplayer.Len           = $ - Soundplayer.Notes
         ;Soundplayer.Haffman.Table file     'tetris_ex_table.amid' ; ex
         ;Soundplayer.Haffman.Data  file     'tetris_ex_data.amid' ; ex
         ;Soundplayer.Haffman.Data.End:
 
-        SoundPlayer.Instruments   db    1100'0000b or 0, 32,\ ;2 ,\; 0, 0,\ ; 32 25 25 10
-                                        1100'0000b or 1, 25,\ ;2 ,\; 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
-                                        1100'0000b or 2, 25,\ ;2 ,\; 0, 0,\  2
-                                        1100'0000b or 3, 10,\ ;34 ,\; 0, 0,\ 34
+        SoundPlayer.Instruments   db    1100'0000b or 0, 2,\ ;30,\;32,\ ;30 32 2 ,\; 0, 0,\ ; 32 25 25 10
+                                        1100'0000b or 1, 2,\;25,\ ;25 2,\; 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
+                                        1100'0000b or 2, 2,\;25,\ ;25 2,\; 0, 0,\  2
+                                        1100'0000b or 3, 34,\ ;10 34,\; 0, 0,\ 34
                                         1100'0000b or 4, 117 ,\; 0, 0,\ 117
                                         1100'0000b or 5, 34 ,\; 0, 0,\
                                         1100'0000b or 6, 2 ,\; 0, 0,\
@@ -132,6 +138,25 @@ end if
                                         1100'0000b or 9, 2 ,\; 0, 0,\
                                         1100'0000b or 10, 2;, 0, 0; gunshot
         SoundPlayer.Instruments.Len = ($ - SoundPlayer.Instruments) / 2
+
+        ;SoundPlayer.ChannelBaseNotes    db      31,\ ;40,\ ;36,\ ;31 ; 0 channel
+        ;                                        40,\ ;52,\  ; 1 channel
+        ;                                        28,\ ;56,\  ; ...
+        ;                                        36,\ ;42,\  ;
+        ;                                        0,\  ;
+        ;                                        0,\  ;
+        ;                                        0
+        SoundPlayer.ChannelBaseNotes    db      42,\ ;40 ; 0 channel
+                                                42,\  ; 1 channel
+                                                42,\  ; ...
+                                                42,\  ;
+                                                42,\  ;
+                                                56,\  ;
+                                                42,\
+                                                46,\
+                                                54,\
+                                                58
+
 
         if (HELP_DEFINED)
         Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
@@ -290,7 +315,7 @@ FILE_SZ_TO_WRITE = ($ - GameBuffer)
         SoundPlayer.NextSound           dw      ?
 
         SoundPlayer.VolumeMask          dd      ?
-        label SoundPlayer.Volume        byte at $ - 2
+        label SoundPlayer.Volume        byte at $ - 3 ; - 2
 
         ;SoundPlayer.CurEventTick        dw      ?
         SoundPlayer.EndGameTick         dw      ?

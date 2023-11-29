@@ -31,10 +31,10 @@ start:
         ; zero
         xor     ebx, ebx
         ; agree
-        mov     esi, WndCreationCheck
-        invoke  GetFileAttributes, esi
-        test    eax, eax
-        js      aaaa_error
+        ;mov     esi, WndCreationCheck
+        ;invoke  GetFileAttributes, esi
+        ;test    eax, eax
+        ;js      aaaa_error
         ; zero allocated memory
         xor     eax, eax
         mov     ecx, UNINI_MEM_LEN
@@ -150,8 +150,8 @@ start:
         invoke  DispatchMessage, esi
         jmp     msg_loop
 
-aaaa_error:
-        invoke  MessageBox, ebx, esi, esi, ebx
+;aaaa_error:
+        ;invoke  MessageBox, ebx, esi, esi, ebx
 creation_error:
         invoke  MessageBox, ebx, Wnd.Text, Wnd.title, MB_OK or MB_ICONERROR;
   end_loop:
