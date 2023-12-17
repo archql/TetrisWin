@@ -10,7 +10,7 @@ entry start
 
 ;===========================
 ; consts
-        SERVER_DEFINED              = TRUE
+        SERVER_DEFINED              = FALSE
 
         TRUE    = 1
         FALSE   = 0
@@ -30,11 +30,6 @@ section '.code' code executable readable  ; code section
 start:
         ; zero
         xor     ebx, ebx
-        ; agree
-        mov     esi, WndCreationCheck
-        invoke  GetFileAttributes, esi
-        test    eax, eax
-        js      aaaa_error
         ; zero allocated memory
         xor     eax, eax
         mov     ecx, UNINI_MEM_LEN
@@ -133,8 +128,6 @@ end if
         invoke  DispatchMessage, esi
         jmp     msg_loop
 
-aaaa_error:
-        invoke  MessageBox, ebx, esi, esi, ebx
 creation_error:
         invoke  MessageBox, ebx, Wnd.Text, Wnd.title, MB_OK or MB_ICONERROR;
   end_loop:
@@ -165,14 +158,6 @@ proc WindowProc ,\;uses ebx esi edi,\
         je      .wmkeyup
         cmp     ebx, WM_DESTROY
         je      .wmdestroy
-        cmp     ebx, WM_CHAR
-        je      .wmchar
-        cmp     ebx, WM_MOUSEWHEEL
-        je      .wmmousewheel
-        cmp     ebx, WM_LBUTTONDOWN
-        je      .wmmousedown
-        cmp     ebx, WM_RBUTTONDOWN
-        je      .wmrmousedown
   .defwndproc:
         pop     ebp
         jmp     [DefWindowProc]
@@ -403,18 +388,6 @@ proc WindowProc ,\;uses ebx esi edi,\
 
         xor     eax,eax
         jmp     .finish
-  .wmchar:
-        ; got ansi char
-        ; save key pressed
-        mov     eax, [wparam]
-        ; check if chat activated
-        ;if (CHAT_DEFINED)
-        cmp     [View.MenuChosen], 2
-        jne     .ignoreChatInput
-        include 'chat.asm'
-    .ignoreChatInput:
-        ; exit
-        jmp     .defwndproc
   .wmkeydown:
         ; save key pressed
         mov     ebx, [wparam]
@@ -560,61 +533,6 @@ proc WindowProc ,\;uses ebx esi edi,\
         ;xor     byte [Keyboard.Pressed], dl
 ;@@:
         jmp     .defwndproc
-
-  .wmmousewheel:
-        ; save key pressed + params data
-        mov     ebx, dword [wparam]  ; The high-order word indicates the distance the wheel is rotated
-        mov     esi, View.FieldAngleDraw
-        ; check if ctrl is pressed
-        test    bx, MK_CONTROL
-        jnz     @F
-        ; check if shift is pressed
-        test    bx, MK_SHIFT
-        jz      .RegularWheel
-        add     esi, 4
-@@:
-        ; calculate next angle
-        fld     dword [esi]
-        fld1
-        fld1
-        faddp
-        test    ebx, ebx
-        js      @F
-        fchs
-@@:
-        faddp
-        fstp    dword [esi]
-
-        jmp     .EndWheel
-   .RegularWheel:
-        cmp     [Game.Pause], 1
-        je      .EndWheel
-        cmp     [Game.Playing], 1
-        jne     .EndWheel
-        mov     eax, VK_DOWN
-        test    ebx, ebx
-        js      @F
-        mov     eax, VK_UP
-     @@:
-        stdcall Game.KeyEvent
-   .EndWheel:
-        jmp     .defwndproc
-
-   .wmrmousedown:
-        mov     eax, 'H'
-   .wmmousedown:
-        cmp     [Game.Pause], 1
-        je      .EndWmmousedown
-        cmp     [Game.Playing], 1
-        jne     .EndWmmousedown
-        cmp     al, 'H'
-        je      @F
-        mov     eax, ' '
-      @@:
-        stdcall Game.KeyEvent
-      .EndWmmousedown:
-        jmp     .defwndproc
-
   .wmdestroy:
         ; server conn
         if (SERVER_DEFINED)
