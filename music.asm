@@ -6,21 +6,21 @@
 ;SoundPlayer.EndGameTick         dw      ?
 ;SoundPlayer.LineGameTick        dw      ?
 
-NOTES_PACK_BYTES                = 2; 9
-
 proc SoundPlayer.Ini
 
         xor     ebx, ebx
         invoke  midiOutOpen, midihandle, ebx, ebx, ebx, ebx; last CALLBACK_NULL
 
-        mov      esi, [midihandle]
-        mov      edi, SoundPlayer.Instruments
-        invoke   midiOutShortMsg, esi, dword [edi]
-        invoke   midiOutShortMsg, esi, dword [edi + 4]
-        invoke   midiOutShortMsg, esi, dword [edi + 8]
-        invoke   midiOutShortMsg, esi, dword [edi + 12]
-        ; gunshot
-        invoke   midiOutShortMsg, esi, dword [edi + 16]
+        mov      edi, [midihandle]
+        mov      esi, SoundPlayer.Instruments
+        ; inefficient but compact
+        mov      ebx, SoundPlayer.Instruments.Len
+.loadInstruments:
+        ;xor      eax, eax ; TODO danger??
+        lodsw
+        invoke   midiOutShortMsg, edi, eax
+        dec      ebx
+        jnz     .loadInstruments
 
         ;/* Close the MIDI device */
         ;invoke  midiOutClose, [midihandle];
@@ -31,7 +31,6 @@ proc SoundPlayer.Ini
         mov      [SoundPlayer.Volume], 0x7F
 
         ret
-
 endp
 
 proc SoundPlayer.Close
@@ -93,101 +92,136 @@ proc SoundPlayer.Update
         add     [SoundPlayer.CurTick], ax
         ; play single snd tmp
         ;stdcall SoundPlayer.Pause
-        stdcall SoundPlayer.PlayNextEx
+        stdcall SoundPlayer.PlayNextNNEx
 @@:
 
         ret
 endp
 
-
+; I need ins len
 proc SoundPlayer.Pause
 
         mov     edi, [midihandle]
-        invoke  midiOutShortMsg, edi, 0x00007BB0
-        invoke  midiOutShortMsg, edi, 0x00007BB1
-        invoke  midiOutShortMsg, edi, 0x00007BB2
-        invoke  midiOutShortMsg, edi, 0x00007BB9
+        mov     esi, dword [midiOutShortMsg]
+        mov     ecx, SoundPlayer.Instruments.Len
+        mov     eax, 0x00007BB0
+.PauseLoop:
+        push    eax ecx
+        dec     ecx
+        or      eax, ecx
+        stdcall esi, edi, eax
+        pop     ecx eax
+        loop .PauseLoop
 
         ret
 endp
 
 
-proc SoundPlayer.PlayNextEx uses ebx
+proc SoundPlayer.PlayNextNNEx uses esi edi
+        ;
+        ;stdcall  SoundPlayer.Pause
         ; sound here
-        movzx    ebx, word [SoundPlayer.NextSound]
-
-        mov      ecx, 4; num of players
-.PlayPackOfNotes:
-        push     ecx
-        movzx    ecx, word [SoundPlayer.Notes + ebx]
-        or       ecx, [SoundPlayer.VolumeMask]
-        invoke   midiOutShortMsg, [midihandle],  ecx
-
-        ;add      ebx, NOTES_PACK_BYTES; 2 bytes per note
-        inc      ebx
-        inc      ebx
-        pop      ecx
-        loop     .PlayPackOfNotes
-
-        ; get delta tick
-        movzx    ax, byte [SoundPlayer.Notes + ebx]
-        shl      ax, 1
-        mov      [SoundPlayer.DeltaTick], ax
-        inc      ebx
-
-        cmp      bx, word [SoundPlayer.NotesNum - 2]
-        jl       @F
-        xor      ebx, ebx
+        movzx    edx, word [SoundPlayer.NextSound]
+        lea      esi, [SoundPlayer.Notes + edx]
+        mov      ecx, 8 - (SOUNDPLAYER_BITS_FOR_TIME + 1) ; 1 bit set - if 16 bits used
+        ; check first 2 bytes
+        ;xor      eax, eax
+        ;lodsw
+        ;shr      eax, 1 ; if it is long
+        ;
+        ; check first 2 bytes
+        xor      eax, eax
+        lodsb
+        test     al, 1
+        jz       @F
+        add      ecx, 8
+        dec      esi ; move ptr back
+        lodsw        ; load word instead of byte
 @@:
-        mov      [SoundPlayer.NextSound], bx
+        shr      eax, 1  ; skip 1 bit
+        push     ecx
+        ;
+        mov      ecx, eax
+        and      ecx, (1 shl SOUNDPLAYER_BITS_FOR_TIME) - 1
+        shr      eax, SOUNDPLAYER_BITS_FOR_TIME
+        ;
+        mov      edx, SOUNDPLAYER_MIN_DTIME ; max delta tick  encoded
+        shl      edx, cl ; shr???
+        mov      [SoundPlayer.DeltaTick], dx ; set delay
+        ;
+        pop      ecx
+        mov      edx, eax
+        ;
+.PlayLoop:
+        shr      edx, 1
+        jnc      .ToNextChannel ; CF = 0 => next
+        ;
+        ; save ctrs
+        push     ecx edx
+        dec      ecx  ; bc channels are numerated from 0
+        ;
+        xor      eax, eax
+        lodsb    ; load note num
+        ; 1) check if it is a pack of notes
+        test     al ,al
+        jns      .NotAPAck
+        ;
+        not      al
+        inc      dword [esp + 4] ; ecx
+        shl      dword [esp], 1  ; set bit of edx again
+        inc      dword [esp]
+        ;
+.NotAPAck:
+        ; 2) check if pause
+        test     al, 0x40
+        jz       .ItsAPAuse
+        ;
+        and      al, 0x3F
+        or       eax, [SoundPlayer.VolumeMask] ; TODO duplicated
+.ItsAPAuse:
+        ;
+;if (SOUNDPLAYER_CHANNEL_BASED)
+        add      al, [SoundPlayer.ChannelBaseNotes + ecx]
+;end if
+        ;
+        shl      eax, 8
+        or       eax, 0x00'00'00'90
+        ;
+if (SOUNDPLAYER_SPECIAL_CHANNEL <> 9)
+        cmp      ecx, SOUNDPLAYER_SPECIAL_CHANNEL ; TOGGLE THIS OPTIMIZATION IF NEEDED (3 is encoded channal of special 9 channal - 1 byte less data)
+        jne      .NotSpecialChannelA
+        mov      cl, 9
+.NotSpecialChannelA:
+if (SOUNDPLAYER_IGNORE_SPECIAL = 1)
+        cmp      ecx, 9 ; TOGGLE THIS OPTIMIZATION IF NEEDED (3 is encoded channal of special 9 channal - 1 byte less data)
+        jne      .NotSpecialChannelB
+        mov      cl, SOUNDPLAYER_SPECIAL_CHANNEL
+.NotSpecialChannelB:
+end if
+end if
+        or       eax, ecx
+        ;
+if (SOUNDPLAYER_FORCE_PAUSE = 1)
+        mov      edx, 0x00007BB0
+        or       edx, ecx
+        push     eax
+        invoke   midiOutShortMsg, [midihandle], edx    ; force pause
+        pop      eax
+end if
+        invoke   midiOutShortMsg, [midihandle], eax
+        pop      edx ecx
+.ToNextChannel:
+        loop     .PlayLoop
+
+        ; get next pos
+        sub      esi, SoundPlayer.Notes
+        cmp      esi, Soundplayer.Len
+        jl       @F
+        xor      esi, esi
+@@:
+        mov      [SoundPlayer.NextSound], si
 
         ret
 endp
-
-proc SoundPlayer.PlayNextSEx uses ebx
-        ; sound here
-        movzx    ebx, word [SoundPlayer.NextSound]
-
-        mov      ecx, 4; num of players
-.PlayPackOfNotes:
-        push     ecx
-        dec      ecx
-        neg      ecx
-        test     ecx, ecx
-        jnz      @F
-        add      ecx, 6
-@@:
-        add      ecx, 3
-
-        ;movzx    ecx, byte [SoundPlayer.Notes + ebx]
-        or       ecx, [SoundPlayer.VolumeMask]
-        or       cl, 0x90  ; regulat midi msg
-        or       ch, byte [SoundPlayer.Notes + ebx]
-        test     ch, ch ; 1000'0000b
-        js       @F
-        xor      cl, 0x30
-@@:
-        and      ch, 0111'1111b
-        invoke   midiOutShortMsg, [midihandle],  ecx
-
-        inc      ebx ;add      ebx, NOTES_PACK_BYTES / 2; 1 byte per note
-        pop      ecx
-        loop     .PlayPackOfNotes
-
-        ; get delta tick
-        movzx    ax, byte [SoundPlayer.Notes + ebx]
-        shl      ax, 1
-        mov      [SoundPlayer.DeltaTick], ax
-        inc      ebx
-
-        cmp      bx, word [SoundPlayer.NotesNum - 2]
-        jl       @F
-        xor      ebx, ebx
-@@:
-        mov      [SoundPlayer.NextSound], bx
-
-        ret
-endp
-
 
 

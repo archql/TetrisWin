@@ -15,7 +15,7 @@ entry start
         TRUE    = 1
         FALSE   = 0
 
-        START_TICK_SPEED = 500
+        START_TICK_SPEED = 1000
         GLOW_TIME_TICKS  = 15
 
         NUM_OF_CHARACTERS = 128

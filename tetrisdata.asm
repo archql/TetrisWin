@@ -112,14 +112,27 @@ if (SERVER_DEFINED)
         Client.StrKeyFail           db    '@UUIDERR'
 end if
 
-        ;# SoundPlayer
-        SoundPlayer.Notes         file    'tetris_ex.amid' ; ex
-        SoundPlayer.NotesNum:     ; this pos - 2 bytes
-        SoundPlayer.Instruments   db    1100'0000b or 0, 32 , 0, 0,\ ; 32 25 25 10
-                                        1100'0000b or 1, 25 , 0, 0,\; formatt 1100'nnnn n - channel no, instr no, 0, 0
-                                        1100'0000b or 2, 25 , 0, 0,\
-                                        1100'0000b or 3, 10 , 0, 0,\
-                                        1100'0000b or 4, 127, 0, 0; gunshot
+;# SoundPlayer =======================================
+SOUNDPLAYER_FORCE_PAUSE         = 0 ; set it to 1 if song has no pauses
+SOUNDPLAYER_IGNORE_SPECIAL      = 0 ; set it if you need to ignore special channel
+SOUNDPLAYER_SPECIAL_CHANNEL     = 3 ; set it to map 9th channel to which you prefer
+SOUNDPLAYER_MIN_DTIME           = 100 ; minimal tick time per note
+SOUNDPLAYER_BITS_FOR_TIME       = 3 ; how much bits it uses to store time
+
+Soundplayer.Notes:
+
+SoundPlayer.Notes       file    'tetris.amid'
+Soundplayer.Len = $ - Soundplayer.Notes
+SoundPlayer.Instruments db      1100'0000b or 0, 32,\
+1100'0000b or 1, 25,\
+1100'0000b or 2, 25
+
+SoundPlayer.Instruments.Len = ($ - SoundPlayer.Instruments) / 2
+SoundPlayer.ChannelBaseNotes    db      36,\
+52,\
+56,\
+42
+; =================================================================
 
         if (HELP_DEFINED)
         Help.Str1       db      '  ~~~TETRIS HELP TABLE~~~  '
@@ -279,7 +292,7 @@ FILE_SZ_TO_RCV   = ($ - GameMessage)
         SoundPlayer.NextSound           dw      ?
 
         SoundPlayer.VolumeMask          dd      ?
-        label SoundPlayer.Volume        byte at $ - 2
+        label SoundPlayer.Volume        byte at $ - 3 ; - 2
 
         ;SoundPlayer.CurEventTick        dw      ?
         SoundPlayer.EndGameTick         dw      ?
